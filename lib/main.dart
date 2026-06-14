@@ -14,6 +14,8 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  // Force login every time (as requested)
+  await FirebaseAuth.instance.signOut();
   runApp(
     ChangeNotifierProvider(
       create: (_) => CurrencyProvider(),

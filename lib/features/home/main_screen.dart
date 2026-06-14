@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../auth/role_selection_screen.dart';
+import '../../core/theme.dart';
 import 'home_screen.dart';
 import '../hotels/hotel_screen.dart';
 import '../restaurants/restaurant_screen.dart';
@@ -17,25 +18,7 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
-  String? _role;
-  bool _isLoading = true;
   final UserRoleService _roleService = UserRoleService();
-
-  @override
-  void initState() {
-    super.initState();
-    _checkRole();
-  }
-
-  Future<void> _checkRole() async {
-    final role = await _roleService.getUserRole();
-    if (mounted) {
-      setState(() {
-        _role = role;
-        _isLoading = false;
-      });
-    }
-  }
 
   final List<Widget> _travelerScreens = [
     const HomeScreen(),
@@ -53,56 +36,85 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
+    return StreamBuilder<String?>(
+      stream: _roleService.getUserRoleStream(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
 
-    if (_role == 'Service Provider') {
-      return const ProviderDashboard();
-    }
+        final role = snapshot.data;
 
-    return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: _travelerScreens,
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Theme.of(context).primaryColor,
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            activeIcon: Icon(Icons.home),
-            label: 'Home',
+        if (role == null) {
+          return const RoleSelectionScreen();
+        }
+
+        if (role == 'Hotel Owner' ||
+            role == 'Restaurant Owner' ||
+            role == 'Transport Provider' ||
+            role == 'Service Provider') {
+          return const ProviderDashboard();
+        }
+
+        return Scaffold(
+          body: IndexedStack(
+            index: _selectedIndex,
+            children: _travelerScreens,
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.hotel_outlined),
-            activeIcon: Icon(Icons.hotel),
-            label: 'Hotels',
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, -5),
+                ),
+              ],
+            ),
+            child: BottomNavigationBar(
+              currentIndex: _selectedIndex,
+              onTap: _onItemTapped,
+              type: BottomNavigationBarType.fixed,
+              selectedItemColor: AppTheme.primaryPurple,
+              unselectedItemColor: Colors.grey,
+              showUnselectedLabels: true,
+              elevation: 0,
+              backgroundColor: Colors.white,
+              selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              unselectedLabelStyle: const TextStyle(fontSize: 12),
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.home_outlined),
+                  activeIcon: Icon(Icons.home_rounded),
+                  label: 'Home',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.hotel_outlined),
+                  activeIcon: Icon(Icons.hotel_rounded),
+                  label: 'Hotels',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.restaurant_outlined),
+                  activeIcon: Icon(Icons.restaurant_rounded),
+                  label: 'Food',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.directions_bus_outlined),
+                  activeIcon: Icon(Icons.directions_bus_rounded),
+                  label: 'Transport',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.person_outline),
+                  activeIcon: Icon(Icons.person_rounded),
+                  label: 'Profile',
+                ),
+              ],
+            ),
           ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.restaurant_outlined),
-            activeIcon: Icon(Icons.restaurant),
-            label: 'Food',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.directions_bus_outlined),
-            activeIcon: Icon(Icons.directions_bus),
-            label: 'Transport',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            activeIcon: Icon(Icons.person),
-            label: 'Profile',
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
