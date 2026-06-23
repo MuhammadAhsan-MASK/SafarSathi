@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/theme.dart';
 import '../budget/trip_planner_screen.dart';
 import '../hotels/hotel_screen.dart';
@@ -9,11 +8,57 @@ import '../transport/transport_screen.dart';
 import '../attractions/attractions_screen.dart';
 import '../auth/role_selection_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+import '../auth/user_role_service.dart';
+
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  bool _isSwitching = false;
+
+  void _handleQuickSwitch() async {
+    final roleService = UserRoleService();
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Traveler Mode'),
+        content: const Text('Do you want to switch to Service Provider mode?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryPurple),
+            child: const Text('Switch Now', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      if (mounted) setState(() => _isSwitching = true);
+      try {
+        await roleService.updateUserRole('Service Provider');
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to switch: $e')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isSwitching = false);
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    if (_isSwitching) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       body: SingleChildScrollView(
@@ -59,7 +104,7 @@ class HomeScreen extends StatelessWidget {
                       'Welcome back,',
                       style: GoogleFonts.poppins(
                         fontSize: 16,
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                       ),
                     ),
                     Text(
@@ -73,10 +118,13 @@ class HomeScreen extends StatelessWidget {
                   ],
                 ),
               ),
-              const CircleAvatar(
-                radius: 25,
-                backgroundColor: Colors.white24,
-                child: Icon(Icons.person, color: Colors.white),
+              InkWell(
+                onTap: _handleQuickSwitch,
+                child: const CircleAvatar(
+                  radius: 25,
+                  backgroundColor: Colors.white24,
+                  child: Icon(Icons.swap_horiz_rounded, color: Colors.white),
+                ),
               ),
             ],
           ),
@@ -145,7 +193,7 @@ class HomeScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.2),
+              color: color.withValues(alpha: 0.2),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -170,41 +218,47 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRecentTrips(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Recent Trips',
-                style: GoogleFonts.poppins(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              TextButton(onPressed: () {}, child: const Text('View All')),
-            ],
+          child: Text(
+            'Recent Trips',
+            style: GoogleFonts.poppins(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         const SizedBox(height: 16),
-        SizedBox(
-          height: 180,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.all(24),
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(25),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+          ),
+          child: Column(
             children: [
-              _buildTripCard(context, 'Hunza Valley Adventure', '5 days', 'PKR 45,000'),
-              _buildTripCard(context, 'Skardu Expedition', '7 days', 'PKR 65,000'),
+              Icon(Icons.map_outlined, color: Colors.grey.withValues(alpha: 0.4), size: 40),
+              const SizedBox(height: 12),
+              Text(
+                'No trips planned yet',
+                style: GoogleFonts.poppins(color: Colors.grey, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Your upcoming adventures will appear here.',
+                style: GoogleFonts.poppins(color: Colors.grey[400], fontSize: 12),
+              ),
             ],
           ),
         ),
       ],
     );
-  }
 
   Widget _buildTripCard(BuildContext context, String title, String duration, String price) {
     return Container(
@@ -215,7 +269,7 @@ class HomeScreen extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(25),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 15, offset: const Offset(0, 5)),
         ],
       ),
       child: Column(
@@ -288,7 +342,7 @@ class HomeScreen extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               'Join our platform and reach thousands of travelers across Pakistan.',
-              style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 20),

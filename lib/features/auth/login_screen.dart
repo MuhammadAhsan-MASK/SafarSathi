@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/theme.dart';
-import './signup_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -47,6 +46,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         password: _loginPasswordController.text.trim(),
       );
     } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message ?? 'Login failed')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -57,6 +57,8 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     setState(() => _isLoading = true);
     try {
       final GoogleSignIn googleSignIn = GoogleSignIn();
+      // Force account selection by signing out first
+      await googleSignIn.signOut();
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
       
       if (googleUser == null) {
@@ -94,6 +96,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       }
     } catch (e) {
       debugPrint('Google Sign-In error: $e');
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Google Sign-In failed: $e')),
       );
@@ -146,7 +149,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.2),
               shape: BoxShape.circle,
             ),
             child: const Icon(Icons.airplanemode_active_rounded, size: 60, color: Colors.white),
@@ -164,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             'Discover Pakistan • Plan Perfect Trips',
             style: GoogleFonts.poppins(
               fontSize: 14,
-              color: Colors.white.withOpacity(0.9),
+              color: Colors.white.withValues(alpha: 0.9),
               letterSpacing: 0.5,
             ),
           ),
@@ -183,7 +186,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -281,7 +284,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         padding: const EdgeInsets.symmetric(vertical: 12),
         minimumSize: const Size(double.infinity, 55),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-        side: BorderSide(color: Colors.grey.withOpacity(0.3)),
+        side: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -316,10 +319,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         margin: const EdgeInsets.only(bottom: 20),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.9),
+          color: Colors.white.withValues(alpha: 0.9),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10),
           ],
         ),
         child: Row(
@@ -356,6 +359,65 @@ class _SignupFormState extends State<SignupForm> {
   String _selectedRole = 'Traveler';
   bool _isLoading = false;
 
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _isLoading = true);
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      // Force account selection by signing out first
+      await googleSignIn.signOut();
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      
+      if (googleUser == null) {
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential = await _auth.signInWithCredential(credential);
+      
+      if (userCredential.user != null) {
+        // For Google Sign-Up, we ensure a Firestore doc exists with the selected role
+        final userDoc = await _firestore
+            .collection('users')
+            .doc(userCredential.user!.uid)
+            .get();
+            
+        if (!userDoc.exists) {
+          await _firestore
+              .collection('users')
+              .doc(userCredential.user!.uid)
+              .set({
+            'name': userCredential.user!.displayName ?? '',
+            'email': userCredential.user!.email ?? '',
+            'role': _selectedRole,
+            'createdAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        } else {
+          // If user exists, optionally update role if it's missing
+          final data = userDoc.data();
+          if (data != null && data['role'] == null) {
+            await _firestore.collection('users').doc(userCredential.user!.uid).update({
+              'role': _selectedRole,
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Google Sign-In error: $e');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Google Sign-In failed: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
   Future<void> _handleSignup() async {
     if (_nameController.text.trim().isEmpty || 
         _emailController.text.trim().isEmpty || 
@@ -388,6 +450,7 @@ class _SignupFormState extends State<SignupForm> {
         // and the role stream in MainScreen
       }
     } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message ?? 'Signup failed')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -446,6 +509,33 @@ class _SignupFormState extends State<SignupForm> {
                   : const Text('Sign Up'),
             ),
           ),
+          const SizedBox(height: 16),
+          const Text('OR', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          _buildGoogleButton(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGoogleButton() {
+    return OutlinedButton(
+      onPressed: _isLoading ? null : _handleGoogleSignIn,
+      style: OutlinedButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        minimumSize: const Size(double.infinity, 50),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        side: BorderSide(color: Colors.grey.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.g_mobiledata_rounded, size: 30, color: Colors.red),
+          const SizedBox(width: 8),
+          Text(
+            'Sign Up with Google',
+            style: GoogleFonts.poppins(color: Colors.black87, fontWeight: FontWeight.w500, fontSize: 13),
+          ),
         ],
       ),
     );
@@ -476,7 +566,7 @@ class _SignupFormState extends State<SignupForm> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: isSelected ? AppTheme.primaryPurple.withOpacity(0.1) : Colors.grey[50],
+            color: isSelected ? AppTheme.primaryPurple.withValues(alpha: 0.1) : Colors.grey[50],
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: isSelected ? AppTheme.primaryPurple : Colors.grey[300]!),
           ),

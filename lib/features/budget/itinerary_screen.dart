@@ -21,10 +21,24 @@ class ItineraryScreen extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.all(24),
               children: [
-                _buildTimelineSlot('Morning', '09:00 AM', 'Visit Rakaposhi View Point', 'Refreshments & Sightseeing', Icons.wb_sunny_outlined, Colors.orange),
-                _buildTimelineSlot('Afternoon', '01:30 PM', 'Lunch at Hunza Food Pavilion', 'Traditional local cuisine', Icons.restaurant, Colors.deepOrange),
-                _buildTimelineSlot('Evening', '04:00 PM', 'Altit Fort Exploration', 'Historical tour & Photography', Icons.fort_outlined, Colors.brown),
-                _buildTimelineSlot('Night', '08:00 PM', 'Stargazing at Duiker', 'Stunning peaks view', Icons.nightlight_round_outlined, Colors.indigo),
+                const SizedBox(height: 100),
+                Center(
+                  child: Column(
+                    children: [
+                      Icon(Icons.event_note_outlined, color: Colors.grey.withValues(alpha: 0.3), size: 60),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Itinerary is empty',
+                        style: GoogleFonts.poppins(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Start adding activities to your trip planning.',
+                        style: GoogleFonts.poppins(color: Colors.grey[400], fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -39,7 +53,7 @@ class ItineraryScreen extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)],
       ),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
@@ -110,7 +124,7 @@ class ItineraryScreen extends StatelessWidget {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
                       ],
                     ),
                     child: Column(

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'core/theme.dart';
 import 'core/currency_provider.dart';
+import 'core/favorites_provider.dart';
 import 'features/auth/login_screen.dart';
 import 'features/home/main_screen.dart';
 import 'features/splash/splash_screen.dart';
@@ -17,8 +18,11 @@ void main() async {
   // Force login every time (as requested)
   await FirebaseAuth.instance.signOut();
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => CurrencyProvider(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => CurrencyProvider()),
+        ChangeNotifierProvider(create: (_) => FavoriteProvider()),
+      ],
       child: const SafarSathiApp(),
     ),
   );

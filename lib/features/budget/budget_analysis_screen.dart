@@ -52,9 +52,9 @@ class BudgetAnalysisScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10)),
-        ],
+      boxShadow: [
+        BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 10)),
+      ],
       ),
       child: Column(
         children: [
@@ -74,11 +74,11 @@ class BudgetAnalysisScreen extends StatelessWidget {
               Column(
                 children: [
                   Text(
-                    '72',
+                    '--',
                     style: GoogleFonts.poppins(fontSize: 40, fontWeight: FontWeight.bold, color: Colors.black),
                   ),
                   Text(
-                    'out of 100',
+                    'No Data',
                     style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
                   ),
                 ],
@@ -87,12 +87,12 @@ class BudgetAnalysisScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           Text(
-            'Good Health',
-            style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green),
+            'Incomplete',
+            style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.orange),
           ),
           const SizedBox(height: 8),
           Text(
-            'Your budget is well-balanced for this destination.',
+            'Plan a trip to see your budget analysis.',
             style: GoogleFonts.poppins(fontSize: 14, color: Colors.grey),
             textAlign: TextAlign.center,
           ),
@@ -117,10 +117,10 @@ class BudgetAnalysisScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'PKR 42,500',
+                'PKR 0',
                 style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold, color: AppTheme.primaryPurple),
               ),
-              const Icon(Icons.trending_up, color: Colors.orange),
+              const Icon(Icons.receipt_long_outlined, color: Colors.grey),
             ],
           ),
         ),
@@ -134,11 +134,7 @@ class BudgetAnalysisScreen extends StatelessWidget {
       children: [
         Text('Analysis Summary', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
-        _buildInsightItem(Icons.check_circle, 'Accommodation is within average range for Hunza.', Colors.green),
-        const SizedBox(height: 12),
-        _buildInsightItem(Icons.info, 'Transportation costs are 15% higher than usual.', Colors.orange),
-        const SizedBox(height: 12),
-        _buildInsightItem(Icons.lightbulb, 'Try off-peak dining to save PKR 3,000.', Colors.blue),
+        _buildInsightItem(Icons.info_outline, 'Add destinations to get cost insights.', Colors.grey),
       ],
     );
   }

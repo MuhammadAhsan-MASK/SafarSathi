@@ -4,6 +4,8 @@ import '../../core/theme.dart';
 import '../../core/currency_provider.dart';
 import 'services/hotel_service.dart';
 import 'models/hotel_model.dart';
+import '../../core/favorites_provider.dart';
+import '../booking/booking_success_screen.dart';
 
 class HotelScreen extends StatefulWidget {
   const HotelScreen({super.key});
@@ -15,6 +17,42 @@ class HotelScreen extends StatefulWidget {
 class _HotelScreenState extends State<HotelScreen> {
   final HotelService _hotelService = HotelService();
   String _searchQuery = '';
+
+  void _simulateBooking(BuildContext context, String name, String category) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: Card(
+          child: Padding(
+            padding: EdgeInsets.all(24.0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Processing Booking...'),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) {
+        if (mounted) {
+          Navigator.pop(context); // Close dialog
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => BookingSuccessScreen(itemName: name, category: category),
+            ),
+          );
+        }
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -78,7 +116,7 @@ class _HotelScreenState extends State<HotelScreen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -114,13 +152,25 @@ class _HotelScreenState extends State<HotelScreen> {
               Positioned(
                 top: 12,
                 right: 12,
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.favorite_border, size: 20, color: Colors.red),
+                child: Consumer<FavoriteProvider>(
+                  builder: (context, favorites, _) {
+                    final isFav = favorites.isFavorite(hotel.id);
+                    return InkWell(
+                      onTap: () => favorites.toggleFavorite(hotel.id),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          isFav ? Icons.favorite : Icons.favorite_border,
+                          size: 20,
+                          color: Colors.red,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
@@ -196,12 +246,12 @@ class _HotelScreenState extends State<HotelScreen> {
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
-                      onPressed: () {},
+                      onPressed: () => _simulateBooking(context, hotel.name, 'Hotel'),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         textStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                       ),
-                      child: const Text('VIEW DETAILS'),
+                      child: const Text('BOOK NOW'),
                     ),
                   ],
                 ),

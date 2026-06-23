@@ -3,52 +3,118 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/theme.dart';
 import '../auth/user_role_service.dart';
+import 'saved_items_screen.dart';
 
-class ProfileScreen extends StatelessWidget {
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
+
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  bool _isSwitchingRole = false;
+
+  Future<void> _handleRoleSwitch(String currentRole) async {
+    final roleService = UserRoleService();
+    String newRole = currentRole == 'Traveler' ? 'Service Provider' : 'Traveler';
+    
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(newRole == 'Service Provider' ? 'Become a Provider' : 'Switch Mode'),
+        content: Text(newRole == 'Service Provider' 
+          ? 'Do you want to become a service provider?' 
+          : 'Do you want to switch back to traveler mode?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryPurple),
+            child: Text(newRole == 'Service Provider' ? 'Become Provider' : 'Switch Now', style: const TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      setState(() => _isSwitchingRole = true);
+      try {
+        await roleService.updateUserRole(newRole);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Successfully switched to $newRole mode')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to switch role: $e')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isSwitchingRole = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     final roleService = UserRoleService();
 
-    return FutureBuilder<String?>(
-      future: roleService.getUserRole(),
+    return StreamBuilder<String?>(
+      stream: roleService.getUserRoleStream(),
       builder: (context, snapshot) {
         final role = snapshot.data;
 
         return Scaffold(
           backgroundColor: AppTheme.backgroundColor,
-          body: snapshot.connectionState == ConnectionState.waiting
+          body: (snapshot.connectionState == ConnectionState.waiting || _isSwitchingRole)
               ? const Center(child: CircularProgressIndicator())
               : SingleChildScrollView(
                   child: Column(
                     children: [
                       _buildPremiumHeader(context, user, role),
-                      const SizedBox(height: 30),
+                      const SizedBox(height: 20),
+                      
+                      // Role Switching Banner
+                      if (role != null) _buildRoleSwitchBanner(role),
+                      
+                      const SizedBox(height: 10),
                       if (role != 'Service Provider' && role != 'Hotel Owner' && role != 'Restaurant Owner' && role != 'Transport Provider') ...[
                         _buildSection(
                           'My Trip Library',
                           [
-                            _buildTripCard('Summer in Naran', 'PKR 45,000', '25 June - 30 June', Colors.blue),
-                            _buildTripCard('Lahore Food Tour', 'PKR 12,500', '12 July - 14 July', Colors.orange),
+                            _buildEmptyState('No trips added yet', Icons.map_outlined),
                           ],
                         ),
                       ] else ...[
                         _buildSection(
                           'Business Performance',
                           [
-                            _buildStatCard('Active Listings', '12', Icons.list_alt, AppTheme.primaryPurple),
-                            _buildStatCard('Monthly Reach', '2.4k', Icons.trending_up, Colors.green),
+                            _buildStatCard('Active Listings', '0', Icons.list_alt, AppTheme.primaryPurple),
+                            _buildStatCard('Monthly Reach', '0', Icons.trending_up, Colors.green),
                           ],
                         ),
                       ],
                       _buildSection(
                         'Preferences',
                         [
+                          _buildSettingTile(Icons.favorite_outline, 'Saved Items', onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const SavedItemsScreen()));
+                          }),
                           _buildSettingTile(Icons.person_outline, 'Personal Information'),
                           _buildSettingTile(Icons.notifications_none, 'Notification Settings'),
                           _buildSettingTile(Icons.security, 'Privacy & Security'),
+                        ],
+                      ),
+                      _buildSection(
+                        'Policy & About',
+                        [
+                          _buildSettingTile(Icons.policy_outlined, 'Privacy Policy'),
+                          _buildSettingTile(Icons.gavel_outlined, 'Terms of Service'),
+                          _buildSettingTile(Icons.info_outline, 'About SafarSathi'),
                           _buildSettingTile(Icons.help_outline, 'Help & Support'),
                         ],
                       ),
@@ -60,6 +126,60 @@ class ProfileScreen extends StatelessWidget {
                 ),
         );
       },
+    );
+  }
+
+  Widget _buildRoleSwitchBanner(String role) {
+    bool isTraveler = role == 'Traveler';
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryPurple.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.primaryPurple.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(isTraveler ? Icons.business_center : Icons.person, color: AppTheme.primaryPurple),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      isTraveler ? 'Become a Service Provider' : 'Switch to Traveler Mode',
+                      style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    Text(
+                      isTraveler 
+                        ? 'List your hotel, transport or restaurant' 
+                        : 'Plan trips and discover destinations',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => _handleRoleSwitch(role),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryPurple,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(isTraveler ? 'GET STARTED' : 'SWITCH MODE'),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -127,34 +247,20 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTripCard(String title, String price, String date, Color color) {
+  Widget _buildEmptyState(String message, IconData icon) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
+      width: double.infinity,
+      padding: const EdgeInsets.all(30),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
       ),
-      child: Row(
+      child: Column(
         children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-            child: Icon(Icons.map_outlined, color: color),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
-                Text(date, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-              ],
-            ),
-          ),
-          Text(price, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: AppTheme.primaryPurple)),
+          Icon(icon, color: Colors.grey.withValues(alpha: 0.3), size: 40),
+          const SizedBox(height: 12),
+          Text(message, style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14)),
         ],
       ),
     );
@@ -179,7 +285,7 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSettingTile(IconData icon, String title) {
+  Widget _buildSettingTile(IconData icon, String title, {VoidCallback? onTap}) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
@@ -187,7 +293,7 @@ class ProfileScreen extends StatelessWidget {
         title: Text(title, style: GoogleFonts.poppins(fontSize: 14)),
         trailing: const Icon(Icons.chevron_right, size: 20),
         contentPadding: EdgeInsets.zero,
-        onTap: () {},
+        onTap: onTap ?? () {},
       ),
     );
   }

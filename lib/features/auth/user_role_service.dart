@@ -39,4 +39,13 @@ class UserRoleService {
       return null;
     });
   }
+
+  Future<void> updateUserRole(String newRole) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('No user logged in');
+
+    await _firestore.collection('users').doc(user.uid).update({
+      'role': newRole,
+    });
+  }
 }
