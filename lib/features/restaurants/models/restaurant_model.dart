@@ -9,6 +9,7 @@ class Restaurant {
   final String? imageUrl;
   final String vendorId;
   final DateTime? createdAt;
+  final Map<String, double> typePrices;
 
   Restaurant({
     required this.id,
@@ -19,6 +20,7 @@ class Restaurant {
     required this.vendorId,
     this.imageUrl,
     this.createdAt,
+    this.typePrices = const {},
   });
 
   factory Restaurant.fromFirestore(DocumentSnapshot doc) {
@@ -32,6 +34,7 @@ class Restaurant {
       imageUrl: data['imageUrl'],
       vendorId: data['vendorId'] ?? '',
       createdAt: data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : null,
+      typePrices: Map<String, double>.from(data['typePrices'] ?? {}),
     );
   }
 
@@ -44,6 +47,7 @@ class Restaurant {
       'imageUrl': imageUrl,
       'vendorId': vendorId,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : null,
+      'typePrices': typePrices,
     };
   }
 }

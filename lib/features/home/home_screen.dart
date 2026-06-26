@@ -71,8 +71,6 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 30),
             _buildRecentTrips(context),
             const SizedBox(height: 30),
-            _buildServiceProviderBanner(context),
-            const SizedBox(height: 30),
           ],
         ),
       ),
@@ -218,6 +216,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _buildRecentTrips(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -259,6 +258,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ],
     );
+  }
 
   Widget _buildTripCard(BuildContext context, String title, String duration, String price) {
     return Container(

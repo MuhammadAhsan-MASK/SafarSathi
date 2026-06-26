@@ -10,6 +10,7 @@ class TransportOption {
   final IconData icon;
   final String vendorId;
   final DateTime? createdAt;
+  final Map<String, double> typePrices;
 
   TransportOption({
     required this.id,
@@ -20,6 +21,7 @@ class TransportOption {
     required this.icon,
     required this.vendorId,
     this.createdAt,
+    this.typePrices = const {},
   });
 
   factory TransportOption.fromFirestore(DocumentSnapshot doc) {
@@ -45,6 +47,7 @@ class TransportOption {
       icon: icon,
       vendorId: data['vendorId'] ?? '',
       createdAt: data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : null,
+      typePrices: Map<String, double>.from(data['typePrices'] ?? {}),
     );
   }
 
@@ -57,6 +60,7 @@ class TransportOption {
       'category': icon == Icons.train ? 'train' : (icon == Icons.flight ? 'flight' : 'bus'),
       'vendorId': vendorId,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : null,
+      'typePrices': typePrices,
     };
   }
 }

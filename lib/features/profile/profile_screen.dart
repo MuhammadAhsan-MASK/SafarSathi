@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/theme.dart';
 import '../auth/user_role_service.dart';
 import 'saved_items_screen.dart';
+import 'info_screens.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -78,9 +79,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       _buildPremiumHeader(context, user, role),
                       const SizedBox(height: 20),
                       
-                      // Role Switching Banner
-                      if (role != null) _buildRoleSwitchBanner(role),
-                      
                       const SizedBox(height: 10),
                       if (role != 'Service Provider' && role != 'Hotel Owner' && role != 'Restaurant Owner' && role != 'Transport Provider') ...[
                         _buildSection(
@@ -104,18 +102,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _buildSettingTile(Icons.favorite_outline, 'Saved Items', onTap: () {
                             Navigator.push(context, MaterialPageRoute(builder: (context) => const SavedItemsScreen()));
                           }),
-                          _buildSettingTile(Icons.person_outline, 'Personal Information'),
+                          _buildSettingTile(Icons.person_outline, 'Personal Information', onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const PersonalInfoScreen()));
+                          }),
                           _buildSettingTile(Icons.notifications_none, 'Notification Settings'),
-                          _buildSettingTile(Icons.security, 'Privacy & Security'),
                         ],
                       ),
                       _buildSection(
                         'Policy & About',
                         [
-                          _buildSettingTile(Icons.policy_outlined, 'Privacy Policy'),
-                          _buildSettingTile(Icons.gavel_outlined, 'Terms of Service'),
-                          _buildSettingTile(Icons.info_outline, 'About SafarSathi'),
-                          _buildSettingTile(Icons.help_outline, 'Help & Support'),
+                          _buildSettingTile(Icons.policy_outlined, 'Privacy Policy', onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const InfoScreen(title: 'Privacy Policy', content: StaticContent.privacyPolicy)));
+                          }),
+                          _buildSettingTile(Icons.gavel_outlined, 'Terms of Service', onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const InfoScreen(title: 'Terms of Service', content: StaticContent.termsOfService)));
+                          }),
+                          _buildSettingTile(Icons.info_outline, 'About SastaSafar', onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const InfoScreen(title: 'About SastaSafar', content: StaticContent.aboutContent)));
+                          }),
+                          _buildSettingTile(Icons.help_outline, 'Help & Support', onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (context) => const InfoScreen(title: 'Help & Support', content: StaticContent.helpSupport)));
+                          }),
                         ],
                       ),
                       const SizedBox(height: 40),
@@ -129,64 +136,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildRoleSwitchBanner(String role) {
-    bool isTraveler = role == 'Traveler';
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.primaryPurple.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.primaryPurple.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Icon(isTraveler ? Icons.business_center : Icons.person, color: AppTheme.primaryPurple),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      isTraveler ? 'Become a Service Provider' : 'Switch to Traveler Mode',
-                      style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 14),
-                    ),
-                    Text(
-                      isTraveler 
-                        ? 'List your hotel, transport or restaurant' 
-                        : 'Plan trips and discover destinations',
-                      style: const TextStyle(fontSize: 12, color: Colors.grey),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => _handleRoleSwitch(role),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryPurple,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: Text(isTraveler ? 'GET STARTED' : 'SWITCH MODE'),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildPremiumHeader(BuildContext context, User? user, String? role) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.only(top: 80, bottom: 40, left: 24, right: 24),
+      padding: const EdgeInsets.only(top: 60, bottom: 40, left: 24, right: 24),
       decoration: const BoxDecoration(
         gradient: AppTheme.primaryGradient,
         borderRadius: BorderRadius.only(
@@ -196,6 +150,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       child: Column(
         children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              if (role != null)
+                IconButton(
+                  icon: const Icon(Icons.swap_horiz_rounded, color: Colors.white),
+                  onPressed: () => _handleRoleSwitch(role),
+                ),
+            ],
+          ),
           CircleAvatar(
             radius: 55,
             backgroundColor: Colors.white24,

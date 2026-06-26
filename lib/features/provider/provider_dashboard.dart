@@ -10,6 +10,9 @@ import '../transport/services/transport_service.dart';
 import '../transport/models/transport_model.dart';
 import '../profile/profile_screen.dart';
 import '../auth/user_role_service.dart';
+import 'rooms_pricing_screen.dart';
+import 'bookings_screen.dart';
+import 'reviews_screen.dart';
 
 class ProviderDashboard extends StatefulWidget {
   const ProviderDashboard({super.key});
@@ -20,6 +23,8 @@ class ProviderDashboard extends StatefulWidget {
 
 class _ProviderDashboardState extends State<ProviderDashboard> {
   final TransportService _transportService = TransportService();
+  final HotelService _hotelService = HotelService();
+  final RestaurantService _restaurantService = RestaurantService();
   int _selectedIndex = 0;
   bool _isSwitching = false;
 
@@ -220,42 +225,46 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
         children: [
           Text('Manage Property', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
-          _buildManagementCard('Rooms & Pricing', 'Manage inventory and rates', Icons.king_bed_outlined, AppTheme.primaryPurple),
+          _buildManagementCard('Rooms & Pricing', 'Manage inventory and rates', Icons.king_bed_outlined, AppTheme.primaryPurple, () => Navigator.push(context, MaterialPageRoute(builder: (context) => RoomsPricingScreen(vendorId: FirebaseAuth.instance.currentUser?.uid ?? '')))),
           const SizedBox(height: 12),
-          _buildManagementCard('Recent Bookings', 'Review guest reservations', Icons.history, Colors.orange),
+          _buildManagementCard('Recent Bookings', 'Review guest reservations', Icons.history, Colors.orange, () => Navigator.push(context, MaterialPageRoute(builder: (context) => BookingsScreen(vendorId: FirebaseAuth.instance.currentUser?.uid ?? '')))),
           const SizedBox(height: 12),
-          _buildManagementCard('Guest Reviews', 'Respond to feedback', Icons.star_outline, Colors.blue),
+          _buildManagementCard('Guest Reviews', 'Respond to feedback', Icons.star_outline, Colors.blue, () => Navigator.push(context, MaterialPageRoute(builder: (context) => ReviewsScreen(vendorId: FirebaseAuth.instance.currentUser?.uid ?? '')))),
         ],
       ),
     );
   }
 
-  Widget _buildManagementCard(String title, String subtitle, IconData icon, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
-            child: Icon(icon, color: color),
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15)),
-                Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-              ],
+  Widget _buildManagementCard(String title, String subtitle, IconData icon, Color color, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+              child: Icon(icon, color: color),
             ),
-          ),
-          const Icon(Icons.chevron_right, color: Colors.grey),
-        ],
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15)),
+                  Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: Colors.grey),
+          ],
+        ),
       ),
     );
   }
@@ -412,24 +421,38 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
   }
 
   void _addHotel() {
-    showDialog(context: context, builder: (context) => _BuildAddServiceDialog(title: 'Add Hotel', onAdd: (name, loc, price, type, desc) async {
-      await _hotelService.addHotel(Hotel(id: '', name: name, location: loc, price: price, rating: 4.0, description: desc, vendorId: FirebaseAuth.instance.currentUser?.uid ?? ''));
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hotel added successfully!')));
-    }));
+    showDialog(context: context, builder: (context) => _BuildAddServiceDialog(
+      title: 'Add Hotel', 
+      types: const ['Deluxe', 'Standard', 'Family'],
+      onAdd: (name, loc, basePrice, typePrices, desc) async {
+        await _hotelService.addHotel(Hotel(id: '', name: name, location: loc, price: basePrice, rating: 4.0, description: desc, vendorId: FirebaseAuth.instance.currentUser?.uid ?? '', typePrices: typePrices));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hotel added successfully!')));
+      },
+    ));
   }
 
   void _addRestaurant() {
-    showDialog(context: context, builder: (context) => _BuildAddServiceDialog(title: 'Add Restaurant', isRestaurant: true, onAdd: (name, loc, price, type, desc) async {
-      await _restaurantService.addRestaurant(Restaurant(id: '', name: name, cuisine: type, price: price, location: loc, vendorId: FirebaseAuth.instance.currentUser?.uid ?? ''));
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Restaurant added successfully!')));
-    }));
+    showDialog(context: context, builder: (context) => _BuildAddServiceDialog(
+      title: 'Add Restaurant', 
+      isRestaurant: true, 
+      types: const ['Expensive', 'Economical', 'Cheap'],
+      onAdd: (name, loc, basePrice, typePrices, desc) async {
+        await _restaurantService.addRestaurant(Restaurant(id: '', name: name, cuisine: typePrices.keys.isNotEmpty ? typePrices.keys.first : 'General', price: basePrice, location: loc, vendorId: FirebaseAuth.instance.currentUser?.uid ?? '', typePrices: typePrices));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Restaurant added successfully!')));
+      },
+    ));
   }
 
   void _addTransport() {
-    showDialog(context: context, builder: (context) => _BuildAddServiceDialog(title: 'Add Transport', isTransport: true, onAdd: (name, loc, price, type, desc) async {
-      await _transportService.addTransportOption(TransportOption(id: '', type: name, route: loc, fare: price, time: type, icon: Icons.directions_bus, vendorId: FirebaseAuth.instance.currentUser?.uid ?? ''));
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Transport added successfully!')));
-    }));
+    showDialog(context: context, builder: (context) => _BuildAddServiceDialog(
+      title: 'Add Transport', 
+      isTransport: true, 
+      types: const ['Expensive', 'Standard', 'Economical'],
+      onAdd: (name, loc, basePrice, typePrices, desc) async {
+        await _transportService.addTransportOption(TransportOption(id: '', type: typePrices.keys.isNotEmpty ? typePrices.keys.first : 'Standard', route: loc, fare: basePrice, time: 'Varies', icon: Icons.directions_bus, vendorId: FirebaseAuth.instance.currentUser?.uid ?? '', typePrices: typePrices));
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Transport added successfully!')));
+      },
+    ));
   }
 }
 
@@ -437,19 +460,46 @@ class _BuildAddServiceDialog extends StatefulWidget {
   final String title;
   final bool isRestaurant;
   final bool isTransport;
-  final Function(String name, String location, double price, String type, String description) onAdd;
+  final List<String> types;
+  final Function(String name, String location, double basePrice, Map<String, double> typePrices, String description) onAdd;
 
-  const _BuildAddServiceDialog({required this.title, this.isRestaurant = false, this.isTransport = false, required this.onAdd});
+  const _BuildAddServiceDialog({
+    required this.title, 
+    this.isRestaurant = false, 
+    this.isTransport = false, 
+    required this.types,
+    required this.onAdd
+  });
 
   @override State<_BuildAddServiceDialog> createState() => _BuildAddServiceDialogState();
 }
 
 class _BuildAddServiceDialogState extends State<_BuildAddServiceDialog> {
   final _nameController = TextEditingController();
-  final _locationController = TextEditingController();
-  final _priceController = TextEditingController();
-  final _typeController = TextEditingController();
+  final _areaController = TextEditingController();
+  final _cityController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final Map<String, TextEditingController> _priceControllers = {};
+
+  @override
+  void initState() {
+    super.initState();
+    for (var type in widget.types) {
+      _priceControllers[type] = TextEditingController();
+    }
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _areaController.dispose();
+    _cityController.dispose();
+    _descriptionController.dispose();
+    for (var controller in _priceControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -458,10 +508,17 @@ class _BuildAddServiceDialogState extends State<_BuildAddServiceDialog> {
       content: SingleChildScrollView(
         child: Column(
           children: [
-            TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Name')),
-            TextField(controller: _locationController, decoration: const InputDecoration(labelText: 'Location')),
-            TextField(controller: _priceController, decoration: const InputDecoration(labelText: 'Price'), keyboardType: TextInputType.number),
-            TextField(controller: _typeController, decoration: InputDecoration(labelText: widget.isRestaurant ? 'Cuisine' : 'Type')),
+            TextField(controller: _nameController, decoration: const InputDecoration(labelText: 'Basic Name')),
+            TextField(controller: _areaController, decoration: const InputDecoration(labelText: 'Area Name')),
+            TextField(controller: _cityController, decoration: const InputDecoration(labelText: 'City')),
+            const SizedBox(height: 16),
+            Text('Prices by Type', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 14)),
+            ...widget.types.map((type) => TextField(
+              controller: _priceControllers[type],
+              decoration: InputDecoration(labelText: '$type Price (PKR)'),
+              keyboardType: TextInputType.number,
+            )),
+            const SizedBox(height: 16),
             TextField(controller: _descriptionController, decoration: const InputDecoration(labelText: 'Description')),
           ],
         ),
@@ -469,7 +526,18 @@ class _BuildAddServiceDialogState extends State<_BuildAddServiceDialog> {
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
         ElevatedButton(onPressed: () {
-          widget.onAdd(_nameController.text, _locationController.text, double.tryParse(_priceController.text) ?? 0, _typeController.text, _descriptionController.text);
+          final Map<String, double> prices = {};
+          double basePrice = 0;
+          
+          _priceControllers.forEach((key, controller) {
+            double p = double.tryParse(controller.text) ?? 0;
+            if (p > 0) {
+              prices[key] = p;
+              if (basePrice == 0) basePrice = p; // Use first filled price as base
+            }
+          });
+
+          widget.onAdd(_nameController.text, '${_areaController.text}, ${_cityController.text}', basePrice, prices, _descriptionController.text);
           Navigator.pop(context);
         }, child: const Text('Add')),
       ],

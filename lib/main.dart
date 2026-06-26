@@ -23,19 +23,19 @@ void main() async {
         ChangeNotifierProvider(create: (_) => CurrencyProvider()),
         ChangeNotifierProvider(create: (_) => FavoriteProvider()),
       ],
-      child: const SafarSathiApp(),
+      child: const SastaSafarApp(),
     ),
   );
 }
 
-class SafarSathiApp extends StatefulWidget {
-  const SafarSathiApp({super.key});
+class SastaSafarApp extends StatefulWidget {
+  const SastaSafarApp({super.key});
 
   @override
-  State<SafarSathiApp> createState() => _SafarSathiAppState();
+  State<SastaSafarApp> createState() => _SastaSafarAppState();
 }
 
-class _SafarSathiAppState extends State<SafarSathiApp> {
+class _SastaSafarAppState extends State<SastaSafarApp> {
   bool _showSplash = true;
 
   @override
@@ -54,7 +54,7 @@ class _SafarSathiAppState extends State<SafarSathiApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'SafarSathi',
+      title: 'SastaSafar',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       home: _showSplash 

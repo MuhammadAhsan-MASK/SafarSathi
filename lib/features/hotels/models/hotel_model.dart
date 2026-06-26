@@ -10,6 +10,7 @@ class Hotel {
   final String description;
   final String vendorId;
   final DateTime? createdAt;
+  final Map<String, double> typePrices;
 
   Hotel({
     required this.id,
@@ -21,6 +22,7 @@ class Hotel {
     this.imageUrl,
     this.description = '',
     this.createdAt,
+    this.typePrices = const {},
   });
 
   factory Hotel.fromFirestore(DocumentSnapshot doc) {
@@ -35,6 +37,7 @@ class Hotel {
       description: data['description'] ?? '',
       vendorId: data['vendorId'] ?? '',
       createdAt: data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : null,
+      typePrices: Map<String, double>.from(data['typePrices'] ?? {}),
     );
   }
 
@@ -48,6 +51,7 @@ class Hotel {
       'description': description,
       'vendorId': vendorId,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : null,
+      'typePrices': typePrices,
     };
   }
 }

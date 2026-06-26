@@ -91,7 +91,7 @@ class _SignupScreenState extends State<SignupScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Join SafarSathi',
+                'Join SastaSafar',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
