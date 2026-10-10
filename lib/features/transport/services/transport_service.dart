@@ -36,4 +36,33 @@ class TransportService {
   Future<void> deleteTransportOption(String id) async {
     await _firestore.collection('transport').doc(id).delete();
   }
+
+  String? getSeasonalWarning(String source, String destination) {
+    final s = source.toLowerCase();
+    final d = destination.toLowerCase();
+    final month = DateTime.now().month;
+
+    bool involvesNaran(String text) => text.contains('naran') || text.contains('babusar') || text.contains('chilas');
+    bool involvesDeosai(String text) => text.contains('deosai') || text.contains('astor');
+    bool involvesKhunjerab(String text) => text.contains('khunjerab') || text.contains('sost');
+
+    if (involvesNaran(s) || involvesNaran(d)) {
+      // Typically closed Nov (11) to May (5)
+      if (month < 6 || month > 10) {
+        return "⚠️ Babusar Top is currently closed due to snow. Alternate route via KKH is required.";
+      }
+    }
+    if (involvesDeosai(s) || involvesDeosai(d)) {
+      if (month < 7 || month > 9) {
+        return "⚠️ Deosai Plains are inaccessible due to heavy snow. Jeep tracks are blocked.";
+      }
+    }
+    if (involvesKhunjerab(s) || involvesKhunjerab(d)) {
+      if (month < 4 || month > 11) {
+        return "⚠️ Khunjerab Pass is closed for tourists during winter due to extreme cold.";
+      }
+    }
+    
+    return null;
+  }
 }

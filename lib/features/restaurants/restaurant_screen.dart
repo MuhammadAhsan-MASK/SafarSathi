@@ -6,6 +6,8 @@ import 'services/restaurant_service.dart';
 import 'models/restaurant_model.dart';
 import '../../core/favorites_provider.dart';
 import '../booking/booking_success_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'restaurant_detail_screen.dart';
 
 class RestaurantScreen extends StatefulWidget {
   const RestaurantScreen({super.key});
@@ -17,6 +19,17 @@ class RestaurantScreen extends StatefulWidget {
 class _RestaurantScreenState extends State<RestaurantScreen> {
   final RestaurantService _restaurantService = RestaurantService();
   String _searchQuery = '';
+
+  Future<void> _launchUrl(String urlString) async {
+    final Uri uri = Uri.parse(urlString);
+    if (!await launchUrl(uri)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open $urlString')),
+        );
+      }
+    }
+  }
 
   void _simulateBooking(BuildContext context, String name, String category) {
     showDialog(
@@ -109,7 +122,16 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
   }
 
   Widget _buildRestaurantCard(BuildContext context, Restaurant restaurant) {
-    return Container(
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => RestaurantDetailScreen(restaurant: restaurant),
+          ),
+        );
+      },
+      child: Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -232,6 +254,12 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
+                    if (restaurant.websiteUrl != null && restaurant.websiteUrl!.isNotEmpty)
+                      IconButton(
+                        icon: Icon(Icons.language, color: Theme.of(context).primaryColor),
+                        tooltip: 'Visit Official Website',
+                        onPressed: () => _launchUrl(restaurant.websiteUrl!),
+                      ),
                     OutlinedButton(
                       onPressed: () => _simulateBooking(context, restaurant.name, 'Restaurant'),
                       child: const Text('BOOK NOW'),

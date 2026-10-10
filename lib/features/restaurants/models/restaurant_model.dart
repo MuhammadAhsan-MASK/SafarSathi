@@ -7,6 +7,7 @@ class Restaurant {
   final double price;
   final String location;
   final String? imageUrl;
+  final String? websiteUrl;
   final String vendorId;
   final DateTime? createdAt;
   final Map<String, double> typePrices;
@@ -19,6 +20,7 @@ class Restaurant {
     required this.location,
     required this.vendorId,
     this.imageUrl,
+    this.websiteUrl,
     this.createdAt,
     this.typePrices = const {},
   });
@@ -32,6 +34,7 @@ class Restaurant {
       price: (data['price'] ?? 0).toDouble(),
       location: data['location'] ?? '',
       imageUrl: data['imageUrl'],
+      websiteUrl: data['websiteUrl'],
       vendorId: data['vendorId'] ?? '',
       createdAt: data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : null,
       typePrices: Map<String, double>.from(data['typePrices'] ?? {}),
@@ -45,6 +48,7 @@ class Restaurant {
       'price': price,
       'location': location,
       'imageUrl': imageUrl,
+      'websiteUrl': websiteUrl,
       'vendorId': vendorId,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : null,
       'typePrices': typePrices,

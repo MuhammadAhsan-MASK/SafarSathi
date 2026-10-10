@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme.dart';
+import '../../core/weather_service.dart';
 import 'budget_analysis_screen.dart';
 
 class TripPlannerScreen extends StatefulWidget {
@@ -16,6 +18,7 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
   DateTime? _startDate;
   DateTime? _endDate;
   int _travelers = 1;
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -55,15 +58,132 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
                     width: double.infinity,
                     height: 55,
                     child: ElevatedButton(
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const BudgetAnalysisScreen()),
-                      ),
+                      onPressed: _isLoading ? null : () async {
+                        if (_destinationController.text.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Please enter a destination')),
+                          );
+                          return;
+                        }
+                        double parsedBudget = 0;
+                        try {
+                          if (_budgetController.text.isEmpty) {
+                            throw const FormatException("Budget cannot be empty.");
+                          }
+                          final parsedText = _budgetController.text.replaceAll(RegExp(r'[^0-9.]'), '');
+                          final tempBudget = double.tryParse(parsedText);
+                          
+                          if (tempBudget == null) {
+                            throw const FormatException("Please enter a valid numeric budget.");
+                          }
+                          if (tempBudget.isInfinite || tempBudget.isNaN) {
+                            throw const FormatException("Calculated budget is invalid.");
+                          }
+                          if (tempBudget > 1000000000) {
+                            throw const FormatException("Budget entered is too large to process realistically.");
+                          }
+                          if (tempBudget < 1000) {
+                            throw const FormatException("Budget cannot be lower than PKR 1000.");
+                          }
+                          parsedBudget = tempBudget;
+                        } on FormatException catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(e.message)),
+                          );
+                          return;
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("An unexpected error occurred processing your budget.")),
+                          );
+                          return;
+                        }
+                        
+                        try {
+                          final startDate = _startDate ?? DateTime.now();
+                          final endDate = _endDate ?? DateTime.now().add(const Duration(days: 3));
+                          int days = endDate.difference(startDate).inDays.abs() + 1;
+                          if (days < 1) days = 1;
+                          final minBudget = days * 1500 * _travelers;
+                          
+                          if (parsedBudget < minBudget) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Budget too low for $days day(s) and $_travelers traveler(s). Minimum realistic budget is PKR $minBudget.')),
+                            );
+                            return;
+                          }
+                        } catch (e) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Error calculating minimum budget constraints.")),
+                          );
+                          return;
+                        }
+
+                        setState(() => _isLoading = true);
+                        try {
+                          final warning = await WeatherService.checkWeatherWarning(_destinationController.text);
+                          if (warning != null) {
+                            if (!mounted) return;
+                            final proceed = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                backgroundColor: Colors.red.shade50,
+                                title: Row(
+                                  children: [
+                                    const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 28),
+                                    const SizedBox(width: 10),
+                                    const Expanded(
+                                      child: Text(
+                                        'Disaster / Travel Alert',
+                                        style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 18),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                content: Text(
+                                  warning.message,
+                                  style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 14),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, false),
+                                    child: const Text('Cancel Trip'),
+                                  ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, true),
+                                    style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                    child: const Text('Proceed Anyway'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (proceed != true) return;
+                          }
+
+                          if (!mounted) return;
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => BudgetAnalysisScreen(
+                                destination: _destinationController.text,
+                                budget: parsedBudget,
+                                startDate: _startDate ?? DateTime.now(),
+                                endDate: _endDate ?? DateTime.now().add(const Duration(days: 3)),
+                                travelers: _travelers,
+                              ),
+                            ),
+                          );
+                        } finally {
+                          if (mounted) setState(() => _isLoading = false);
+                        }
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primaryPurple,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                       ),
-                      child: const Text('Continue to Budget Analysis'),
+                      child: _isLoading 
+                          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('Continue to Budget Analysis'),
                     ),
                   ),
                 ],

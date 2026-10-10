@@ -8,6 +8,8 @@ class TransportOption {
   final double fare;
   final String time;
   final IconData icon;
+  final String? imageUrl;
+  final String? websiteUrl;
   final String vendorId;
   final DateTime? createdAt;
   final Map<String, double> typePrices;
@@ -20,6 +22,8 @@ class TransportOption {
     required this.time,
     required this.icon,
     required this.vendorId,
+    this.imageUrl,
+    this.websiteUrl,
     this.createdAt,
     this.typePrices = const {},
   });
@@ -45,6 +49,8 @@ class TransportOption {
       fare: (data['fare'] ?? 0).toDouble(),
       time: data['time'] ?? '',
       icon: icon,
+      imageUrl: data['imageUrl'],
+      websiteUrl: data['websiteUrl'],
       vendorId: data['vendorId'] ?? '',
       createdAt: data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : null,
       typePrices: Map<String, double>.from(data['typePrices'] ?? {}),
@@ -58,6 +64,8 @@ class TransportOption {
       'fare': fare,
       'time': time,
       'category': icon == Icons.train ? 'train' : (icon == Icons.flight ? 'flight' : 'bus'),
+      'imageUrl': imageUrl,
+      'websiteUrl': websiteUrl,
       'vendorId': vendorId,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : null,
       'typePrices': typePrices,

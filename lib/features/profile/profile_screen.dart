@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 import '../../core/theme.dart';
+import '../../core/currency_provider.dart';
 import '../auth/user_role_service.dart';
 import 'saved_items_screen.dart';
 import 'info_screens.dart';
+import '../../core/seed_data.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -105,6 +108,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           _buildSettingTile(Icons.person_outline, 'Personal Information', onTap: () {
                             Navigator.push(context, MaterialPageRoute(builder: (context) => const PersonalInfoScreen()));
                           }),
+                          Consumer<CurrencyProvider>(
+                            builder: (context, currencyProvider, child) {
+                              return _buildSettingTile(
+                                Icons.currency_exchange, 
+                                'Currency: ${currencyProvider.selectedCurrency}',
+                                onTap: () => _showCurrencyPicker(context, currencyProvider),
+                              );
+                            },
+                          ),
                           _buildSettingTile(Icons.notifications_none, 'Notification Settings'),
                         ],
                       ),
@@ -125,6 +137,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           }),
                         ],
                       ),
+                      _buildSection(
+                        'Developer Tools',
+                        [
+                          _buildSettingTile(Icons.data_object, 'Seed Real FYP Data', onTap: () async {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Seeding Database... This may take a moment.')),
+                            );
+                            try {
+                              await SeedData.seedFirebase();
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Database seeded! Go check Hotels and Restaurants tabs.')),
+                                );
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Failed to seed database: $e')),
+                                );
+                              }
+                            }
+                          }),
+                        ],
+                      ),
                       const SizedBox(height: 40),
                       _buildLogoutButton(context),
                       const SizedBox(height: 50),
@@ -136,6 +172,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+
+  void _showCurrencyPicker(BuildContext context, CurrencyProvider currencyProvider) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Select Currency',
+                style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 10),
+              ...currencyProvider.currencies.map((currency) {
+                final isSelected = currencyProvider.selectedCurrency == currency;
+                return ListTile(
+                  leading: Text(
+                    isSelected ? '✓' : '',
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+                  ),
+                  title: Text(currency, style: GoogleFonts.poppins()),
+                  onTap: () {
+                    currencyProvider.setCurrency(currency);
+                    Navigator.pop(context);
+                  },
+                  trailing: isSelected ? const Icon(Icons.check, color: AppTheme.primaryPurple) : null,
+                );
+              }),
+            ],
+          ),
+        );
+      },
+    );
+  }
 
   Widget _buildPremiumHeader(BuildContext context, User? user, String? role) {
     return Container(

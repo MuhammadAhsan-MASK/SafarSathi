@@ -6,6 +6,8 @@ import 'services/hotel_service.dart';
 import 'models/hotel_model.dart';
 import '../../core/favorites_provider.dart';
 import '../booking/booking_success_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'hotel_detail_screen.dart';
 
 class HotelScreen extends StatefulWidget {
   const HotelScreen({super.key});
@@ -17,6 +19,17 @@ class HotelScreen extends StatefulWidget {
 class _HotelScreenState extends State<HotelScreen> {
   final HotelService _hotelService = HotelService();
   String _searchQuery = '';
+
+  Future<void> _launchUrl(String urlString) async {
+    final Uri uri = Uri.parse(urlString);
+    if (!await launchUrl(uri)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open $urlString')),
+        );
+      }
+    }
+  }
 
   void _simulateBooking(BuildContext context, String name, String category) {
     showDialog(
@@ -109,7 +122,16 @@ class _HotelScreenState extends State<HotelScreen> {
   }
 
   Widget _buildHotelCard(BuildContext context, Hotel hotel) {
-    return Container(
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => HotelDetailScreen(hotel: hotel),
+          ),
+        );
+      },
+      child: Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -245,6 +267,12 @@ class _HotelScreenState extends State<HotelScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
+                    if (hotel.websiteUrl != null && hotel.websiteUrl!.isNotEmpty)
+                      IconButton(
+                        icon: Icon(Icons.language, color: Theme.of(context).primaryColor),
+                        tooltip: 'Visit Official Website',
+                        onPressed: () => _launchUrl(hotel.websiteUrl!),
+                      ),
                     ElevatedButton(
                       onPressed: () => _simulateBooking(context, hotel.name, 'Hotel'),
                       style: ElevatedButton.styleFrom(

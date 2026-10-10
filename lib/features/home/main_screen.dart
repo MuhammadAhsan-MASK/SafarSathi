@@ -8,6 +8,7 @@ import '../transport/transport_screen.dart';
 import '../profile/profile_screen.dart';
 import '../auth/user_role_service.dart';
 import '../provider/provider_dashboard.dart';
+import '../chatbot/chatbot_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -63,6 +64,20 @@ class _MainScreenState extends State<MainScreen> {
             index: _selectedIndex,
             children: _travelerScreens,
           ),
+          floatingActionButton: FloatingActionButton.extended(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ChatbotScreen()),
+            ),
+            backgroundColor: AppTheme.primaryPurple,
+            icon: const Icon(Icons.auto_awesome_rounded, color: Colors.white),
+            label: const Text(
+              'SafarBot',
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+            elevation: 8,
+          ),
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
           bottomNavigationBar: Container(
             decoration: BoxDecoration(
               boxShadow: [

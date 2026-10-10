@@ -7,12 +7,16 @@ class CurrencyProvider extends ChangeNotifier {
     'PKR': 1.0,
     'USD': 280.0,
     'GBP': 350.0,
+    'EUR': 305.0,
+    'SAR': 75.0,
   };
 
   final Map<String, String> _symbols = {
     'PKR': 'Rs.',
     'USD': '\$',
     'GBP': '£',
+    'EUR': '€',
+    'SAR': '﷼',
   };
 
   String get selectedCurrency => _selectedCurrency;
