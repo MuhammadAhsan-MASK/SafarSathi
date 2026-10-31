@@ -1,20 +1,87 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/transport_model.dart';
+import '../../../core/seed_data.dart';
 
 class TransportService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Stream<List<TransportOption>> getTransportOptions({String? source, String? destination}) {
-    Query query = _firestore.collection('transport');
+  static bool isRouteMatch(String route, {String? source, String? destination}) {
+    final r = route.toLowerCase();
     
-    // Simple filter if provided
-    if (source != null && source.isNotEmpty) {
-      query = query.where('route', isGreaterThanOrEqualTo: source);
+    bool matchesCity(String text, String city) {
+      final c = city.trim().toLowerCase();
+      if (c.isEmpty) return true;
+      if (text.contains(c)) return true;
+
+      // Handle common Pakistani abbreviations
+      if ((c.contains('karachi') || c == 'khi') && (text.contains('karachi') || text.contains('khi'))) return true;
+      if ((c.contains('islamabad') || c.contains('rawalpindi') || c == 'isb' || c == 'isd' || c == 'rwp') &&
+          (text.contains('islamabad') || text.contains('rawalpindi') || text.contains('isb') || text.contains('isd') || text.contains('rwp'))) {
+        return true;
+      }
+      if ((c.contains('lahore') || c == 'lhr') && (text.contains('lahore') || text.contains('lhr'))) return true;
+      if ((c.contains('peshawar') || c == 'pew') && (text.contains('peshawar') || text.contains('pew'))) return true;
+      if ((c.contains('skardu') || c == 'kdu') && (text.contains('skardu') || text.contains('kdu'))) return true;
+      if ((c.contains('gilgit') || c.contains('hunza') || c == 'gil') &&
+          (text.contains('gilgit') || text.contains('hunza') || text.contains('gil'))) {
+        return true;
+      }
+      if (c.contains('swat') && text.contains('swat')) return true;
+      if (c.contains('murree') && text.contains('murree')) return true;
+
+      return false;
     }
 
-    return query.snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) => TransportOption.fromFirestore(doc)).toList();
-    });
+    final hasSource = source != null && source.trim().isNotEmpty;
+    final hasDest = destination != null && destination.trim().isNotEmpty;
+
+    if (!hasSource && !hasDest) return true;
+
+    // Route format often "Origin -> Destination"
+    if (route.contains('->') || route.contains(' to ') || route.contains('-')) {
+      final parts = route.split(RegExp(r'->|to|-'));
+      if (parts.length >= 2) {
+        final originPart = parts[0];
+        final destPart = parts[1];
+
+        if (hasSource && hasDest) {
+          return matchesCity(originPart, source) && matchesCity(destPart, destination);
+        }
+        if (hasSource) return matchesCity(originPart, source);
+        if (hasDest) return matchesCity(destPart, destination);
+      }
+    }
+
+    if (hasSource && hasDest) {
+      return matchesCity(r, source) && matchesCity(r, destination);
+    }
+    if (hasSource) return matchesCity(r, source);
+    if (hasDest) return matchesCity(r, destination);
+
+    return true;
+  }
+
+  Stream<List<TransportOption>> getTransportOptions({String? source, String? destination, String? category}) async* {
+    List<TransportOption> filterList(List<TransportOption> list) {
+      return list.where((t) {
+        final routeOk = isRouteMatch(t.route, source: source, destination: destination);
+        final catOk = category == null || category.isEmpty || t.category == category;
+        return routeOk && catOk;
+      }).toList();
+    }
+
+    // Immediately yield seed transports matching route + category
+    yield filterList(SeedData.initialTransports);
+
+    try {
+      await for (final snapshot in _firestore.collection('transport').snapshots()) {
+        final firestoreTransports = snapshot.docs.map((doc) => TransportOption.fromFirestore(doc)).toList();
+        final combined = _mergeTransports(SeedData.initialTransports, firestoreTransports);
+        yield filterList(combined);
+      }
+    } catch (_) {
+      yield filterList(SeedData.initialTransports);
+    }
   }
 
   Stream<List<TransportOption>> getTransportOptionsByVendor(String vendorId) {
@@ -47,7 +114,6 @@ class TransportService {
     bool involvesKhunjerab(String text) => text.contains('khunjerab') || text.contains('sost');
 
     if (involvesNaran(s) || involvesNaran(d)) {
-      // Typically closed Nov (11) to May (5)
       if (month < 6 || month > 10) {
         return "⚠️ Babusar Top is currently closed due to snow. Alternate route via KKH is required.";
       }
@@ -64,5 +130,16 @@ class TransportService {
     }
     
     return null;
+  }
+
+  List<TransportOption> _mergeTransports(List<TransportOption> priorityList, List<TransportOption> secondaryList) {
+    final Map<String, TransportOption> map = {};
+    for (var t in secondaryList) {
+      map[t.id] = t;
+    }
+    for (var t in priorityList) {
+      map[t.id] = t;
+    }
+    return map.values.toList();
   }
 }

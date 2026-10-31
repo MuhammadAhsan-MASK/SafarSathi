@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:csv/csv.dart';
 import '../models/hotel_model.dart';
+import '../../../core/seed_data.dart';
 
 class HotelService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -41,7 +42,6 @@ class HotelService {
       _cachedCsvHotels = csvHotels;
       return csvHotels;
     } catch (e) {
-      print('Failed to load CSV: $e');
       return [];
     }
   }
@@ -49,9 +49,17 @@ class HotelService {
   Stream<List<Hotel>> getHotels() async* {
     List<Hotel> csvHotels = await _loadCsvHotels();
     
-    await for (final snapshot in _firestore.collection('hotels').snapshots()) {
-      final firestoreHotels = snapshot.docs.map((doc) => Hotel.fromFirestore(doc)).toList();
-      yield [...csvHotels, ...firestoreHotels];
+    // First yield initial authentic seed hotels + CSV immediately
+    yield _mergeHotels(SeedData.initialHotels, csvHotels);
+    
+    try {
+      await for (final snapshot in _firestore.collection('hotels').snapshots()) {
+        final firestoreHotels = snapshot.docs.map((doc) => Hotel.fromFirestore(doc)).toList();
+        yield _mergeHotels(SeedData.initialHotels, [...firestoreHotels, ...csvHotels]);
+      }
+    } catch (_) {
+      // Yield cached seed + CSV if firestore is offline
+      yield _mergeHotels(SeedData.initialHotels, csvHotels);
     }
   }
 
@@ -76,20 +84,40 @@ class HotelService {
   }
 
   Stream<List<Hotel>> searchHotels(String query) async* {
+    final lowerQuery = query.trim().toLowerCase();
     List<Hotel> csvHotels = await _loadCsvHotels();
-    final lowerQuery = query.toLowerCase();
-    final filteredCsvHotels = csvHotels.where((h) => 
-        h.name.toLowerCase().contains(lowerQuery) || 
-        h.location.toLowerCase().contains(lowerQuery)
-    ).toList();
 
-    await for (final snapshot in _firestore
-        .collection('hotels')
-        .where('name', isGreaterThanOrEqualTo: query)
-        .where('name', isLessThanOrEqualTo: '$query\uf8ff')
-        .snapshots()) {
-      final firestoreHotels = snapshot.docs.map((doc) => Hotel.fromFirestore(doc)).toList();
-      yield [...filteredCsvHotels, ...firestoreHotels];
+    bool matches(Hotel h) {
+      if (lowerQuery.isEmpty) return true;
+      return h.name.toLowerCase().contains(lowerQuery) ||
+             h.location.toLowerCase().contains(lowerQuery) ||
+             h.description.toLowerCase().contains(lowerQuery);
     }
+
+    // Immediately yield matching from in-memory seed + CSV
+    final immediateMatches = _mergeHotels(SeedData.initialHotels, csvHotels).where(matches).toList();
+    yield immediateMatches;
+
+    try {
+      await for (final snapshot in _firestore.collection('hotels').snapshots()) {
+        final firestoreHotels = snapshot.docs.map((doc) => Hotel.fromFirestore(doc)).toList();
+        final allHotels = _mergeHotels(SeedData.initialHotels, [...firestoreHotels, ...csvHotels]);
+        yield allHotels.where(matches).toList();
+      }
+    } catch (_) {
+      yield immediateMatches;
+    }
+  }
+
+  List<Hotel> _mergeHotels(List<Hotel> priorityList, List<Hotel> secondaryList) {
+    final Map<String, Hotel> map = {};
+    for (var h in secondaryList) {
+      map[h.id] = h;
+    }
+    // Overwrite or ensure priority hotels exist
+    for (var h in priorityList) {
+      map[h.id] = h;
+    }
+    return map.values.toList();
   }
 }

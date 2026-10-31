@@ -421,36 +421,39 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
   }
 
   void _addHotel() {
-    showDialog(context: context, builder: (context) => _BuildAddServiceDialog(
+    showDialog(context: context, builder: (dialogContext) => _BuildAddServiceDialog(
       title: 'Add Hotel', 
       types: const ['Deluxe', 'Standard', 'Family'],
       onAdd: (name, loc, basePrice, typePrices, desc) async {
+        final messenger = ScaffoldMessenger.of(context);
         await _hotelService.addHotel(Hotel(id: '', name: name, location: loc, price: basePrice, rating: 4.0, description: desc, vendorId: FirebaseAuth.instance.currentUser?.uid ?? '', typePrices: typePrices));
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Hotel added successfully!')));
+        messenger.showSnackBar(const SnackBar(content: Text('Hotel added successfully!')));
       },
     ));
   }
 
   void _addRestaurant() {
-    showDialog(context: context, builder: (context) => _BuildAddServiceDialog(
+    showDialog(context: context, builder: (dialogContext) => _BuildAddServiceDialog(
       title: 'Add Restaurant', 
       isRestaurant: true, 
       types: const ['Expensive', 'Economical', 'Cheap'],
       onAdd: (name, loc, basePrice, typePrices, desc) async {
+        final messenger = ScaffoldMessenger.of(context);
         await _restaurantService.addRestaurant(Restaurant(id: '', name: name, cuisine: typePrices.keys.isNotEmpty ? typePrices.keys.first : 'General', price: basePrice, location: loc, vendorId: FirebaseAuth.instance.currentUser?.uid ?? '', typePrices: typePrices));
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Restaurant added successfully!')));
+        messenger.showSnackBar(const SnackBar(content: Text('Restaurant added successfully!')));
       },
     ));
   }
 
   void _addTransport() {
-    showDialog(context: context, builder: (context) => _BuildAddServiceDialog(
+    showDialog(context: context, builder: (dialogContext) => _BuildAddServiceDialog(
       title: 'Add Transport', 
       isTransport: true, 
       types: const ['Expensive', 'Standard', 'Economical'],
       onAdd: (name, loc, basePrice, typePrices, desc) async {
+        final messenger = ScaffoldMessenger.of(context);
         await _transportService.addTransportOption(TransportOption(id: '', type: typePrices.keys.isNotEmpty ? typePrices.keys.first : 'Standard', route: loc, fare: basePrice, time: 'Varies', icon: Icons.directions_bus, vendorId: FirebaseAuth.instance.currentUser?.uid ?? '', typePrices: typePrices));
-        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Transport added successfully!')));
+        messenger.showSnackBar(const SnackBar(content: Text('Transport added successfully!')));
       },
     ));
   }

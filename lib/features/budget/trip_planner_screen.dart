@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme.dart';
 import '../../core/weather_service.dart';
 import 'budget_analysis_screen.dart';
@@ -13,12 +12,64 @@ class TripPlannerScreen extends StatefulWidget {
 }
 
 class _TripPlannerScreenState extends State<TripPlannerScreen> {
-  final _destinationController = TextEditingController();
+  final _originController = TextEditingController(text: 'Karachi');
+  final _destinationController = TextEditingController(text: 'Islamabad');
   final _budgetController = TextEditingController(text: '50000');
   DateTime? _startDate;
   DateTime? _endDate;
   int _travelers = 1;
   bool _isLoading = false;
+
+  final List<String> _popularOrigins = [
+    'Karachi',
+    'Lahore',
+    'Islamabad',
+    'Rawalpindi',
+    'Peshawar',
+    'Multan',
+    'Faisalabad',
+  ];
+
+  final List<String> _popularDestinations = [
+    'Islamabad',
+    'Hunza',
+    'Skardu',
+    'Swat',
+    'Murree',
+    'Lahore',
+    'Karachi',
+  ];
+
+  DestinationWeather? _destinationWeather;
+  bool _isLoadingWeather = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadWeatherForDestination(_destinationController.text);
+  }
+
+  Future<void> _loadWeatherForDestination(String destination) async {
+    final city = destination.trim();
+    if (city.isEmpty) return;
+    setState(() => _isLoadingWeather = true);
+    final weather = await WeatherService.getDestinationWeatherDetails(city);
+    if (mounted) {
+      setState(() {
+        _destinationWeather = weather;
+        _isLoadingWeather = false;
+      });
+    }
+  }
+
+  void _swapRoute() {
+    setState(() {
+      final temp = _originController.text;
+      _originController.text = _destinationController.text;
+      _destinationController.text = temp;
+    });
+    _loadWeatherForDestination(_destinationController.text);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,8 +89,66 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildInputField('Destination', Icons.location_on_outlined, 'e.g., Hunza, Skardu, Karachi', _destinationController),
-                  const SizedBox(height: 20),
+                  // ── Route Section (From & To) ─────────────────────────────
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildInputField(
+                              'From (Departure)',
+                              Icons.flight_takeoff_rounded,
+                              'e.g., Karachi, Lahore',
+                              _originController,
+                            ),
+                            const SizedBox(height: 8),
+                            _buildQuickChips(_popularOrigins, (city) {
+                              setState(() => _originController.text = city);
+                            }, _originController.text),
+                            const SizedBox(height: 16),
+                            _buildInputField(
+                              'To (Destination)',
+                              Icons.location_on_outlined,
+                              'e.g., Islamabad, Hunza, Skardu',
+                              _destinationController,
+                              onSubmitted: (val) => _loadWeatherForDestination(val),
+                            ),
+                            const SizedBox(height: 8),
+                            _buildQuickChips(_popularDestinations, (city) {
+                              setState(() => _destinationController.text = city);
+                              _loadWeatherForDestination(city);
+                            }, _destinationController.text),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 50.0),
+                        child: InkWell(
+                          onTap: _swapRoute,
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryPurple.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppTheme.primaryPurple.withValues(alpha: 0.3)),
+                            ),
+                            child: const Icon(Icons.swap_vert_rounded, color: AppTheme.primaryPurple, size: 26),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // ── Live Destination Weather Badge ──────────────────────
+                  _buildLiveWeatherBadge(),
+                  const SizedBox(height: 18),
+
+                  // ── Dates ────────────────────────────────────────────────
                   Row(
                     children: [
                       Expanded(child: _buildDatePicker('Start Date', _startDate, (date) => setState(() => _startDate = date))),
@@ -48,23 +157,55 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
+
+                  // ── Travelers ─────────────────────────────────────────────
                   _buildTravelersDropdown(),
                   const SizedBox(height: 20),
-                  _buildInputField('Total Budget (PKR)', Icons.account_balance_wallet_outlined, 'e.g., 50000', _budgetController, isNumber: true),
+
+                  // ── Budget ────────────────────────────────────────────────
+                  _buildInputField(
+                    'Total Budget (PKR)',
+                    Icons.account_balance_wallet_outlined,
+                    'e.g., 50000',
+                    _budgetController,
+                    isNumber: true,
+                  ),
                   const SizedBox(height: 30),
+
+                  // ── Preview ───────────────────────────────────────────────
                   _buildBudgetBreakdownPreview(),
                   const SizedBox(height: 40),
+
+                  // ── Continue Button ───────────────────────────────────────
                   SizedBox(
                     width: double.infinity,
                     height: 55,
                     child: ElevatedButton(
                       onPressed: _isLoading ? null : () async {
-                        if (_destinationController.text.isEmpty) {
+                        final origin = _originController.text.trim();
+                        final destination = _destinationController.text.trim();
+
+                        if (origin.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Please enter a destination')),
+                            const SnackBar(content: Text('Please enter a departure city (From)')),
                           );
                           return;
                         }
+
+                        if (destination.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Please enter a destination city (To)')),
+                          );
+                          return;
+                        }
+
+                        if (origin.toLowerCase() == destination.toLowerCase()) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Departure and destination city must be different')),
+                          );
+                          return;
+                        }
+
                         double parsedBudget = 0;
                         try {
                           if (_budgetController.text.isEmpty) {
@@ -120,12 +261,12 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
 
                         setState(() => _isLoading = true);
                         try {
-                          final warning = await WeatherService.checkWeatherWarning(_destinationController.text);
+                          final warning = await WeatherService.checkWeatherWarning(destination);
                           if (warning != null) {
-                            if (!mounted) return;
+                            if (!context.mounted) return;
                             final proceed = await showDialog<bool>(
                               context: context,
-                              builder: (context) => AlertDialog(
+                              builder: (dialogCtx) => AlertDialog(
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                                 backgroundColor: Colors.red.shade50,
                                 title: Row(
@@ -146,11 +287,11 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
                                 ),
                                 actions: [
                                   TextButton(
-                                    onPressed: () => Navigator.pop(context, false),
+                                    onPressed: () => Navigator.pop(dialogCtx, false),
                                     child: const Text('Cancel Trip'),
                                   ),
                                   TextButton(
-                                    onPressed: () => Navigator.pop(context, true),
+                                    onPressed: () => Navigator.pop(dialogCtx, true),
                                     style: TextButton.styleFrom(foregroundColor: Colors.red),
                                     child: const Text('Proceed Anyway'),
                                   ),
@@ -160,12 +301,13 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
                             if (proceed != true) return;
                           }
 
-                          if (!mounted) return;
+                          if (!context.mounted) return;
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => BudgetAnalysisScreen(
-                                destination: _destinationController.text,
+                                origin: origin,
+                                destination: destination,
                                 budget: parsedBudget,
                                 startDate: _startDate ?? DateTime.now(),
                                 endDate: _endDate ?? DateTime.now().add(const Duration(days: 3)),
@@ -195,10 +337,160 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
     );
   }
 
+  Widget _buildLiveWeatherBadge() {
+    if (_isLoadingWeather) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.blue.shade50,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.blue.shade100),
+        ),
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 10),
+            Text('Fetching live satellite weather...', style: TextStyle(fontSize: 12, color: Colors.blueGrey)),
+          ],
+        ),
+      );
+    }
+
+    if (_destinationWeather == null) {
+      return const SizedBox.shrink();
+    }
+
+    final w = _destinationWeather!;
+    final isAlert = w.isSevere;
+    final cardBg = isAlert ? Colors.red.shade50 : const Color(0xFFF0F7FF);
+    final borderColor = isAlert ? Colors.red.shade200 : const Color(0xFFBAE6FD);
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(w.icon, style: const TextStyle(fontSize: 22)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          '${w.destination}: ${w.temperature.toStringAsFixed(1)}°C',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            color: isAlert ? Colors.red.shade900 : const Color(0xFF0369A1),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isAlert ? Colors.red.shade100 : Colors.blue.shade100,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            w.condition,
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: isAlert ? Colors.red.shade800 : Colors.blue.shade800,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'Wind: ${w.windSpeed.toStringAsFixed(0)} km/h • Open-Meteo Live',
+                      style: TextStyle(fontSize: 10, color: Colors.blueGrey.shade600),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh, size: 18, color: Colors.blueGrey),
+                tooltip: 'Refresh Weather',
+                onPressed: () => _loadWeatherForDestination(_destinationController.text),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isAlert ? Icons.warning_amber_rounded : Icons.backpack_outlined,
+                  size: 15,
+                  color: isAlert ? Colors.red : Colors.teal.shade700,
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    w.advice,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
+                      color: isAlert ? Colors.red.shade800 : Colors.black87,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickChips(List<String> cities, Function(String) onSelect, String currentVal) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: cities.map((city) {
+          final isSelected = currentVal.toLowerCase() == city.toLowerCase();
+          return Padding(
+            padding: const EdgeInsets.only(right: 6.0),
+            child: ActionChip(
+              label: Text(city),
+              labelStyle: TextStyle(
+                fontSize: 11,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? Colors.white : Colors.black87,
+              ),
+              backgroundColor: isSelected ? AppTheme.primaryPurple : Colors.grey[200],
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              onPressed: () => onSelect(city),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
   Widget _buildGradientHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 24),
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
       decoration: const BoxDecoration(
         gradient: AppTheme.primaryGradient,
         borderRadius: BorderRadius.only(
@@ -206,14 +498,24 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
           bottomRight: Radius.circular(30),
         ),
       ),
-      child: Text(
-        'Plan your Pakistan adventure',
-        style: GoogleFonts.poppins(color: Colors.white, fontSize: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Route-Based Travel Planning',
+            style: GoogleFonts.poppins(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Find authentic flights, buses & trains for your exact route, plus top-rated stays & dining.',
+            style: GoogleFonts.poppins(color: Colors.white70, fontSize: 12),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildInputField(String label, IconData icon, String hint, TextEditingController controller, {bool isNumber = false}) {
+  Widget _buildInputField(String label, IconData icon, String hint, TextEditingController controller, {bool isNumber = false, Function(String)? onSubmitted}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -222,6 +524,8 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
         TextField(
           controller: controller,
           keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+          onChanged: (_) => setState(() {}),
+          onSubmitted: onSubmitted,
           decoration: InputDecoration(
             hintText: hint,
             prefixIcon: Icon(icon, color: AppTheme.primaryPurple),

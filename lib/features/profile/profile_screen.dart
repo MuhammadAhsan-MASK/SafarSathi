@@ -141,22 +141,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         'Developer Tools',
                         [
                           _buildSettingTile(Icons.data_object, 'Seed Real FYP Data', onTap: () async {
-                            ScaffoldMessenger.of(context).showSnackBar(
+                            final messenger = ScaffoldMessenger.of(context);
+                            messenger.showSnackBar(
                               const SnackBar(content: Text('Seeding Database... This may take a moment.')),
                             );
                             try {
                               await SeedData.seedFirebase();
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Database seeded! Go check Hotels and Restaurants tabs.')),
-                                );
-                              }
+                              messenger.showSnackBar(
+                                const SnackBar(content: Text('Database seeded! All hotels, restaurants, transports & attractions updated.')),
+                              );
                             } catch (e) {
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Failed to seed database: $e')),
-                                );
-                              }
+                              messenger.showSnackBar(
+                                SnackBar(content: Text('Failed to seed database: $e')),
+                              );
                             }
                           }),
                         ],

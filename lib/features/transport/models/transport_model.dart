@@ -13,6 +13,10 @@ class TransportOption {
   final String vendorId;
   final DateTime? createdAt;
   final Map<String, double> typePrices;
+  final String category; // 'bus', 'flight', 'train'
+  final String departureTime;
+  final int availableSeats;
+  final String operator;
 
   TransportOption({
     required this.id,
@@ -26,6 +30,10 @@ class TransportOption {
     this.websiteUrl,
     this.createdAt,
     this.typePrices = const {},
+    this.category = 'bus',
+    this.departureTime = '08:00',
+    this.availableSeats = 15,
+    this.operator = '',
   });
 
   factory TransportOption.fromFirestore(DocumentSnapshot doc) {
@@ -54,6 +62,10 @@ class TransportOption {
       vendorId: data['vendorId'] ?? '',
       createdAt: data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : null,
       typePrices: Map<String, double>.from(data['typePrices'] ?? {}),
+      category: data['category'] ?? 'bus',
+      departureTime: data['departureTime'] ?? '08:00',
+      availableSeats: (data['availableSeats'] ?? 15) as int,
+      operator: data['operator'] ?? '',
     );
   }
 
@@ -63,7 +75,10 @@ class TransportOption {
       'route': route,
       'fare': fare,
       'time': time,
-      'category': icon == Icons.train ? 'train' : (icon == Icons.flight ? 'flight' : 'bus'),
+      'category': category,
+      'departureTime': departureTime,
+      'availableSeats': availableSeats,
+      'operator': operator,
       'imageUrl': imageUrl,
       'websiteUrl': websiteUrl,
       'vendorId': vendorId,

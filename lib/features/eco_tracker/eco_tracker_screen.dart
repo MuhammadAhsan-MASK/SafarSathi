@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../core/theme.dart';
 
 class EcoTrackerScreen extends StatefulWidget {
   const EcoTrackerScreen({super.key});

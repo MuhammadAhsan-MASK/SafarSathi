@@ -195,7 +195,7 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
           spacing: 8,
           children: _people.map((p) => Chip(
             label: Text(p.name),
-            backgroundColor: AppTheme.primaryOrange.withOpacity(0.2),
+            backgroundColor: AppTheme.primaryOrange.withValues(alpha: 0.2),
           )).toList(),
         ),
         const Divider(height: 30),
@@ -217,7 +217,7 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
               ),
               leading: Container(
                 padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: AppTheme.primaryPurple.withOpacity(0.1), shape: BoxShape.circle),
+                decoration: BoxDecoration(color: AppTheme.primaryPurple.withValues(alpha: 0.1), shape: BoxShape.circle),
                 child: const Icon(Icons.receipt, color: AppTheme.primaryPurple),
               ),
             ),

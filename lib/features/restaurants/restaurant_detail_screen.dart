@@ -4,7 +4,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/currency_provider.dart';
 import 'models/restaurant_model.dart';
 import '../../core/theme.dart';
-import '../booking/booking_success_screen.dart';
 
 class RestaurantDetailScreen extends StatefulWidget {
   final Restaurant restaurant;
@@ -18,7 +17,7 @@ class RestaurantDetailScreen extends StatefulWidget {
 class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
   Future<void> _launchUrl(String urlString) async {
     final Uri uri = Uri.parse(urlString);
-    if (!await launchUrl(uri)) {
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not open $urlString')),
@@ -27,41 +26,27 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
     }
   }
 
-  void _simulateBooking(String orderItem) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: Card(
-          child: Padding(
-            padding: EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Placing Order...'),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-
-    Future.delayed(const Duration(seconds: 2), () {
+  Future<void> _callPhone(String phone) async {
+    final Uri uri = Uri(scheme: 'tel', path: phone);
+    if (!await launchUrl(uri)) {
       if (mounted) {
-        Navigator.pop(context); // Close dialog
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => BookingSuccessScreen(
-              itemName: '${widget.restaurant.name} - $orderItem',
-              category: 'Restaurant Order',
-            ),
-          ),
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not call $phone')),
         );
       }
-    });
+    }
+  }
+
+  Future<void> _openMap(String location, String name) async {
+    final query = Uri.encodeComponent('$name $location Pakistan');
+    final Uri uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$query');
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open Google Maps')),
+        );
+      }
+    }
   }
 
   @override
@@ -69,14 +54,15 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
     final restaurant = widget.restaurant;
     final currencyProvider = Provider.of<CurrencyProvider>(context);
 
-    // Mock realistic menu if empty
+    // Menu items
     final Map<String, double> menu = restaurant.typePrices.isNotEmpty
         ? restaurant.typePrices
         : {
-            'Special ${restaurant.cuisine.split(' ').first} Meal': restaurant.price > 0 ? restaurant.price : 800.0,
-            'Chef Signature Dish': (restaurant.price > 0 ? restaurant.price : 800.0) * 1.5,
-            'Family Platter': (restaurant.price > 0 ? restaurant.price : 800.0) * 3.5,
-            'Drinks & Desserts Combo': (restaurant.price > 0 ? restaurant.price : 800.0) * 0.8,
+            'Special ${restaurant.cuisine.split(' ').first} Platter': restaurant.price > 0 ? restaurant.price : 800.0,
+            'Chef Signature Dish': (restaurant.price > 0 ? restaurant.price : 800.0) * 1.4,
+            'Family Feast Deal': (restaurant.price > 0 ? restaurant.price : 800.0) * 3.2,
+            'Fresh Salads & Traditional Raita': (restaurant.price > 0 ? restaurant.price : 800.0) * 0.4,
+            'Special Traditional Chai & Dessert': (restaurant.price > 0 ? restaurant.price : 800.0) * 0.5,
           };
 
     return Scaffold(
@@ -97,6 +83,17 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                   : Container(color: Colors.grey[300], child: const Icon(Icons.restaurant, size: 50, color: Colors.grey)),
             ),
             actions: [
+              if (restaurant.phone != null && restaurant.phone!.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.phone),
+                  tooltip: 'Call for Reservation',
+                  onPressed: () => _callPhone(restaurant.phone!),
+                ),
+              IconButton(
+                icon: const Icon(Icons.map_outlined),
+                tooltip: 'View on Google Maps',
+                onPressed: () => _openMap(restaurant.location, restaurant.name),
+              ),
               if (restaurant.websiteUrl != null && restaurant.websiteUrl!.isNotEmpty)
                 IconButton(
                   icon: const Icon(Icons.language),
@@ -117,13 +114,19 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                       Expanded(
                         child: Text(
                           restaurant.name,
-                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                         ),
                       ),
-                      Text(
-                        restaurant.cuisine,
-                        style: TextStyle(
-                            color: Theme.of(context).primaryColor, fontSize: 18, fontWeight: FontWeight.bold),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.deepOrange,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          restaurant.cuisine,
+                          style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ],
                   ),
@@ -132,12 +135,54 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                     children: [
                       const Icon(Icons.location_on, size: 16, color: Colors.grey),
                       const SizedBox(width: 4),
-                      Text(restaurant.location, style: const TextStyle(color: Colors.grey, fontSize: 16)),
+                      Expanded(
+                        child: Text(
+                          restaurant.location,
+                          style: const TextStyle(color: Colors.grey, fontSize: 14),
+                        ),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 24),
-                  const Text('Restaurant Menu', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 12),
+                  // Price per person banner + Reservation CTA
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.deepOrange.shade100),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Estimated Cost', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                            Text(
+                              '~${currencyProvider.formatPrice(restaurant.price)} / person',
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.deepOrange),
+                            ),
+                          ],
+                        ),
+                        if (restaurant.phone != null && restaurant.phone!.isNotEmpty)
+                          ElevatedButton.icon(
+                            icon: const Icon(Icons.phone, size: 16),
+                            label: const Text('Reserve Table'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green.shade700,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onPressed: () => _callPhone(restaurant.phone!),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text('Sample Menu & Prices', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 10),
                 ],
               ),
             ),
@@ -147,10 +192,10 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
               (context, index) {
                 final entry = menu.entries.elementAt(index);
                 return Card(
-                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   child: Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: const EdgeInsets.all(14.0),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -158,19 +203,21 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(entry.key, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                              const SizedBox(height: 4),
+                              Text(entry.key, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 2),
                               Text(
                                 currencyProvider.formatPrice(entry.value),
-                                style: TextStyle(fontSize: 16, color: Theme.of(context).primaryColor, fontWeight: FontWeight.w600),
+                                style: const TextStyle(fontSize: 14, color: Colors.deepOrange, fontWeight: FontWeight.w600),
                               ),
                             ],
                           ),
                         ),
-                        OutlinedButton(
-                          onPressed: () => _simulateBooking(entry.key),
-                          child: const Text('ORDER / ADD'),
-                        )
+                        if (restaurant.phone != null && restaurant.phone!.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.phone_outlined, color: Colors.green),
+                            tooltip: 'Call to Order / Reserve',
+                            onPressed: () => _callPhone(restaurant.phone!),
+                          ),
                       ],
                     ),
                   ),

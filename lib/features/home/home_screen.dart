@@ -196,11 +196,17 @@ class _HomeScreenState extends State<HomeScreen> {
                       final budget = double.tryParse(parsedText) ?? 15000;
                       
                       int minBudget = 5000;
-                      if (selectedDuration.contains('1 day')) minBudget = 1500;
-                      else if (selectedDuration.contains('2–3')) minBudget = 4000;
-                      else if (selectedDuration.contains('4–5')) minBudget = 7000;
-                      else if (selectedDuration.contains('7 days')) minBudget = 10000;
-                      else minBudget = 15000;
+                      if (selectedDuration.contains('1 day')) {
+                        minBudget = 1500;
+                      } else if (selectedDuration.contains('2–3')) {
+                        minBudget = 4000;
+                      } else if (selectedDuration.contains('4–5')) {
+                        minBudget = 7000;
+                      } else if (selectedDuration.contains('7 days')) {
+                        minBudget = 10000;
+                      } else {
+                        minBudget = 15000;
+                      }
 
                       if (budget < minBudget) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -318,6 +324,8 @@ class _HomeScreenState extends State<HomeScreen> {
             _buildEcoTrackerBanner(context),
             const SizedBox(height: 30),
             _buildRecentTrips(context),
+            const SizedBox(height: 30),
+            _buildServiceProviderBanner(context),
             const SizedBox(height: 30),
           ],
         ),
@@ -604,6 +612,7 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildServiceTile(context, 'Safar Lingo', Icons.language_rounded, Colors.teal, Colors.teal[50]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const LingoScreen()))),
               _buildServiceTile(context, 'Local Guides', Icons.person_pin_rounded, Colors.orange, Colors.orange[50]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const GuidesScreen()))),
               _buildServiceTile(context, 'Bargain Engine', Icons.price_check_rounded, Colors.green, Colors.green[50]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const BargainScreen()))),
+              _buildServiceTile(context, 'Eco-Tracker', Icons.eco_rounded, Colors.teal.shade800, Colors.teal[50]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const EcoTrackerScreen()))),
             ],
           ),
         ],
@@ -688,66 +697,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildTripCard(BuildContext context, String title, String duration, String price) {
-    return Container(
-      width: 250,
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(25),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 15, offset: const Offset(0, 5)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: AppTheme.attractionBg, shape: BoxShape.circle),
-                child: const Icon(Icons.location_on, color: AppTheme.attractionColor, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  title,
-                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-            ],
-          ),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(duration, style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                  Text(price, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryPurple)),
-                ],
-              ),
-              ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  minimumSize: Size.zero,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                child: const Text('View', style: TextStyle(fontSize: 12)),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 

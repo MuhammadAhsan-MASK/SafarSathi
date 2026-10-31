@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'cultural_calendar.dart';
 import 'app_secrets.dart';
@@ -132,13 +133,13 @@ Suggest ONE perfect Pakistan destination for them. Reply ONLY in this exact JSON
           final map = jsonDecode(clean) as Map<String, dynamic>;
           return map.map((k, v) => MapEntry(k, v.toString()));
         } else {
-          print("API Error or rate limit: \$data");
+          debugPrint("API Error or rate limit: $data");
         }
       } else {
-         print("API HTTP Error: \${response.statusCode} - \${response.body}");
+         debugPrint("API HTTP Error: ${response.statusCode} - ${response.body}");
       }
     } catch (e) {
-       print("SurpriseMe API parse error: \$e");
+       debugPrint("SurpriseMe API parse error: $e");
     }
 
     // Diverse Fallbacks if API fails
@@ -241,7 +242,7 @@ Provide a highly customized and strictly categorized packing checklist. Reply ON
         return list.map((e) => e as Map<String, dynamic>).toList();
       }
     } catch (e) {
-      print("generatePackingList API error: \$e");
+      debugPrint("generatePackingList API error: $e");
     }
 
     // Dynamic Fallback if API fails

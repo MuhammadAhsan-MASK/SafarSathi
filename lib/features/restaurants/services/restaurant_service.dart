@@ -2,14 +2,22 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/restaurant_model.dart';
+import '../../../core/seed_data.dart';
 
 class RestaurantService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Stream<List<Restaurant>> getRestaurants() {
-    return _firestore.collection('restaurants').snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) => Restaurant.fromFirestore(doc)).toList();
-    });
+  Stream<List<Restaurant>> getRestaurants() async* {
+    yield SeedData.initialRestaurants;
+
+    try {
+      await for (final snapshot in _firestore.collection('restaurants').snapshots()) {
+        final firestoreRestaurants = snapshot.docs.map((doc) => Restaurant.fromFirestore(doc)).toList();
+        yield _mergeRestaurants(SeedData.initialRestaurants, firestoreRestaurants);
+      }
+    } catch (_) {
+      yield SeedData.initialRestaurants;
+    }
   }
 
   Stream<List<Restaurant>> getRestaurantsByVendor(String vendorId) {
@@ -33,26 +41,57 @@ class RestaurantService {
   }
 
   Stream<List<Restaurant>> searchRestaurants(String query) async* {
-    if (query.isEmpty) {
-      yield [];
-      return;
+    final lowerQuery = query.trim().toLowerCase();
+
+    bool matches(Restaurant r) {
+      if (lowerQuery.isEmpty) return true;
+      return r.name.toLowerCase().contains(lowerQuery) ||
+             r.location.toLowerCase().contains(lowerQuery) ||
+             r.cuisine.toLowerCase().contains(lowerQuery) ||
+             (r.description?.toLowerCase().contains(lowerQuery) ?? false);
     }
-    
-    // In emulator 10.0.2.2 represents localhost of the host machine
-    // For physical device, change this to your computer's local network IP (e.g., 192.168.x.x)
-    const baseUrl = 'http://10.0.2.2:8000';
-    
+
+    // Immediately yield matching from in-memory authentic catalog
+    final localMatches = SeedData.initialRestaurants.where(matches).toList();
+    yield localMatches;
+
+    // Next try Firestore
     try {
-      final response = await http.get(Uri.parse('$baseUrl/api/restaurants?city=$query'));
+      await for (final snapshot in _firestore.collection('restaurants').snapshots()) {
+        final firestoreRestaurants = snapshot.docs.map((doc) => Restaurant.fromFirestore(doc)).toList();
+        final combined = _mergeRestaurants(SeedData.initialRestaurants, firestoreRestaurants);
+        final filtered = combined.where(matches).toList();
+
+        // If local/firestore found items, yield them
+        if (filtered.isNotEmpty || lowerQuery.isEmpty) {
+          yield filtered;
+        } else {
+          // If empty, try optional scraper API as secondary source
+          final apiResults = await _tryApiSearch(query);
+          if (apiResults.isNotEmpty) {
+            yield apiResults;
+          } else {
+            yield filtered;
+          }
+        }
+      }
+    } catch (_) {
+      yield localMatches;
+    }
+  }
+
+  Future<List<Restaurant>> _tryApiSearch(String query) async {
+    const baseUrl = 'http://10.0.2.2:8000';
+    try {
+      final response = await http.get(Uri.parse('$baseUrl/api/restaurants?city=$query')).timeout(const Duration(seconds: 2));
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List restaurantsJson = data['restaurants'] ?? [];
-        
-        final apiRestaurants = restaurantsJson.map((jsonItem) => Restaurant(
+        return restaurantsJson.map((jsonItem) => Restaurant(
           id: jsonItem['id'].toString(),
           name: jsonItem['name'].toString(),
           cuisine: jsonItem['rating'] != null ? 'Rating: ${jsonItem['rating']}' : 'General',
-          price: 1000, // placeholder average price
+          price: 1200,
           location: data['city'] ?? query,
           vendorId: 'foodpanda',
           typePrices: {},
@@ -61,14 +100,19 @@ class RestaurantService {
               : null,
           websiteUrl: (jsonItem['website_url'] ?? jsonItem['url'])?.toString(),
         )).toList();
-        
-        yield apiRestaurants;
-      } else {
-        yield [];
       }
-    } catch (e) {
-      print('Proxy/Scraper API error: $e');
-      yield [];
+    } catch (_) {}
+    return [];
+  }
+
+  List<Restaurant> _mergeRestaurants(List<Restaurant> priorityList, List<Restaurant> secondaryList) {
+    final Map<String, Restaurant> map = {};
+    for (var r in secondaryList) {
+      map[r.id] = r;
     }
+    for (var r in priorityList) {
+      map[r.id] = r;
+    }
+    return map.values.toList();
   }
 }

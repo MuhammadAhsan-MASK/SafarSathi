@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/currency_provider.dart';
 import 'models/hotel_model.dart';
-import '../booking/booking_success_screen.dart';
 import '../../core/theme.dart';
 
 class HotelDetailScreen extends StatefulWidget {
@@ -18,7 +17,7 @@ class HotelDetailScreen extends StatefulWidget {
 class _HotelDetailScreenState extends State<HotelDetailScreen> {
   Future<void> _launchUrl(String urlString) async {
     final Uri uri = Uri.parse(urlString);
-    if (!await launchUrl(uri)) {
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not open $urlString')),
@@ -27,41 +26,27 @@ class _HotelDetailScreenState extends State<HotelDetailScreen> {
     }
   }
 
-  void _simulateBooking(String roomName) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: Card(
-          child: Padding(
-            padding: EdgeInsets.all(24.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Processing Booking...'),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-
-    Future.delayed(const Duration(seconds: 2), () {
+  Future<void> _callPhone(String phone) async {
+    final Uri uri = Uri(scheme: 'tel', path: phone);
+    if (!await launchUrl(uri)) {
       if (mounted) {
-        Navigator.pop(context); // Close dialog
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => BookingSuccessScreen(
-              itemName: '${widget.hotel.name} - $roomName',
-              category: 'Hotel Room',
-            ),
-          ),
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not call $phone')),
         );
       }
-    });
+    }
+  }
+
+  Future<void> _openMap(String location) async {
+    final encoded = Uri.encodeComponent(location);
+    final Uri uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$encoded');
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open maps')),
+        );
+      }
+    }
   }
 
   @override
@@ -96,6 +81,17 @@ class _HotelDetailScreenState extends State<HotelDetailScreen> {
                   : Container(color: Colors.grey[300], child: const Icon(Icons.image, size: 50, color: Colors.grey)),
             ),
             actions: [
+              if (hotel.phone != null && hotel.phone!.isNotEmpty)
+                IconButton(
+                  icon: const Icon(Icons.phone),
+                  tooltip: 'Call for Reservation',
+                  onPressed: () => _callPhone(hotel.phone!),
+                ),
+              IconButton(
+                icon: const Icon(Icons.map_outlined),
+                tooltip: 'View on Map',
+                onPressed: () => _openMap(hotel.location),
+              ),
               if (hotel.websiteUrl != null && hotel.websiteUrl!.isNotEmpty)
                 IconButton(
                   icon: const Icon(Icons.language),
@@ -175,9 +171,15 @@ class _HotelDetailScreenState extends State<HotelDetailScreen> {
                             ],
                           ),
                         ),
-                        ElevatedButton(
-                          onPressed: () => _simulateBooking(entry.key),
-                          child: const Text('BOOK ROOM'),
+                         ElevatedButton.icon(
+                          icon: const Icon(Icons.phone, size: 16),
+                          label: const Text('Call to Reserve'),
+                          onPressed: widget.hotel.phone != null
+                              ? () => _callPhone(widget.hotel.phone!)
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          ),
                         )
                       ],
                     ),

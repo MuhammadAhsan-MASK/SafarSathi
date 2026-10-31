@@ -19,7 +19,14 @@ class _GuidesScreenState extends State<GuidesScreen> {
   String _selectedRole = 'All';
   bool _onlySafeForFemales = false;
 
-  final List<String> _regions = ['All', 'Hunza Valley', 'Skardu (K2 Basecamp)', 'Naran / Kaghan', 'Swat Valley (Kalam)', 'Lahore'];
+  final List<String> _regions = [
+    'All',
+    'Hunza Valley',
+    'Skardu (K2 Basecamp)',
+    'Naran / Kaghan',
+    'Swat Valley (Kalam)',
+    'Lahore',
+  ];
   final List<String> _roles = ['All', 'Tour Guide', 'Jeep Driver', 'Porter'];
 
   @override
@@ -48,7 +55,7 @@ class _GuidesScreenState extends State<GuidesScreen> {
         actions: [
           ElevatedButton(
             onPressed: () => Navigator.pop(ctx),
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryPurple),
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryPurple, foregroundColor: Colors.white),
             child: const Text("Awesome!"),
           ),
         ],
@@ -61,7 +68,7 @@ class _GuidesScreenState extends State<GuidesScreen> {
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
       appBar: AppBar(
-        title: const Text('Hire Local Experts'),
+        title: const Text('Hire Local Experts', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: AppTheme.primaryPurple,
         foregroundColor: Colors.white,
       ),
@@ -70,9 +77,18 @@ class _GuidesScreenState extends State<GuidesScreen> {
           _buildFilters(),
           Expanded(
             child: _filteredGuides.isEmpty
-                ? const Center(child: Text('No guides found for the selected filters.'))
+                ? const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(32),
+                      child: Text(
+                        'No guides found for the selected filters.\nTry changing region or role.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey, fontSize: 14),
+                      ),
+                    ),
+                  )
                 : ListView.builder(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     itemCount: _filteredGuides.length,
                     itemBuilder: (ctx, index) {
                       return _buildGuideCard(_filteredGuides[index]);
@@ -94,13 +110,21 @@ class _GuidesScreenState extends State<GuidesScreen> {
             children: [
               Expanded(
                 child: DropdownButtonFormField<String>(
+                  isExpanded: true,
                   decoration: InputDecoration(
                     labelText: 'Region',
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   value: _selectedRegion,
-                  items: _regions.map((r) => DropdownMenuItem(value: r, child: Text(r, style: const TextStyle(fontSize: 13)))).toList(),
+                  items: _regions.map((r) => DropdownMenuItem(
+                    value: r,
+                    child: Text(
+                      r,
+                      style: const TextStyle(fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  )).toList(),
                   onChanged: (val) {
                     if (val != null) {
                       _selectedRegion = val;
@@ -109,16 +133,24 @@ class _GuidesScreenState extends State<GuidesScreen> {
                   },
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: DropdownButtonFormField<String>(
+                  isExpanded: true,
                   decoration: InputDecoration(
                     labelText: 'Role',
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                   ),
                   value: _selectedRole,
-                  items: _roles.map((r) => DropdownMenuItem(value: r, child: Text(r, style: const TextStyle(fontSize: 13)))).toList(),
+                  items: _roles.map((r) => DropdownMenuItem(
+                    value: r,
+                    child: Text(
+                      r,
+                      style: const TextStyle(fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  )).toList(),
                   onChanged: (val) {
                     if (val != null) {
                       _selectedRole = val;
@@ -129,11 +161,11 @@ class _GuidesScreenState extends State<GuidesScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           SwitchListTile(
-            title: Text("Solo / Female Traveler Safe", style: GoogleFonts.poppins(fontSize: 14)),
+            title: Text("Solo / Female Traveler Safe", style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600)),
             subtitle: const Text("Only show verified safe guides with top ratings", style: TextStyle(fontSize: 11)),
-            secondary: const Icon(Icons.security, color: Colors.pinkAccent),
+            secondary: const Icon(Icons.security, color: Colors.pinkAccent, size: 22),
             value: _onlySafeForFemales,
             contentPadding: EdgeInsets.zero,
             dense: true,
@@ -151,84 +183,115 @@ class _GuidesScreenState extends State<GuidesScreen> {
   }
 
   Widget _buildGuideCard(LocalGuide guide) {
+    final currencyProvider = Provider.of<CurrencyProvider>(context);
+
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 14),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Column(
           children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CircleAvatar(
-                  radius: 30,
-                  backgroundColor: AppTheme.primaryPurple.withOpacity(0.1),
+                  radius: 26,
+                  backgroundColor: AppTheme.primaryPurple.withValues(alpha: 0.1),
                   child: Icon(
-                    guide.role == 'Jeep Driver' ? Icons.directions_car : 
-                    guide.role == 'Porter' ? Icons.backpack : Icons.person,
+                    guide.role == 'Jeep Driver'
+                        ? Icons.directions_car
+                        : guide.role == 'Porter'
+                            ? Icons.backpack
+                            : Icons.person,
                     color: AppTheme.primaryPurple,
-                    size: 30,
+                    size: 26,
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
-                          Text(guide.name, style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
+                          Flexible(
+                            child: Text(
+                              guide.name,
+                              style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                           if (guide.isVerified)
                             const Padding(
-                              padding: EdgeInsets.only(left: 6),
-                              child: Icon(Icons.verified, color: Colors.blue, size: 18),
+                              padding: EdgeInsets.only(left: 4),
+                              child: Icon(Icons.verified, color: Colors.blue, size: 16),
                             ),
                           if (guide.isFemaleFriendly)
                             const Padding(
-                              padding: EdgeInsets.only(left: 6),
-                              child: Icon(Icons.security, color: Colors.pinkAccent, size: 18),
+                              padding: EdgeInsets.only(left: 4),
+                              child: Icon(Icons.security, color: Colors.pinkAccent, size: 16),
                             ),
                         ],
                       ),
-                      Text('${guide.role} • ${guide.region}', style: TextStyle(color: Colors.grey[700], fontSize: 13)),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${guide.role} • ${guide.region}',
+                        style: TextStyle(color: Colors.grey[700], fontSize: 12),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
                       Row(
                         children: [
-                          const Icon(Icons.star, color: Colors.amber, size: 16),
-                          const SizedBox(width: 4),
-                          Text('${guide.rating}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                          Text(' (${guide.tripCount} trips)', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                          const Icon(Icons.star, color: Colors.amber, size: 14),
+                          const SizedBox(width: 3),
+                          Text('${guide.rating}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          Flexible(
+                            child: Text(
+                              ' (${guide.tripCount} trips)',
+                              style: const TextStyle(color: Colors.grey, fontSize: 11),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
                       ),
                     ],
                   ),
                 ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      Provider.of<CurrencyProvider>(context).formatPrice(guide.dailyRatePkr),
-                      style: TextStyle(color: AppTheme.primaryPurple, fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                    const Text('/ day', style: TextStyle(color: Colors.grey, fontSize: 12)),
-                  ],
+                const SizedBox(width: 8),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 100),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        currencyProvider.formatPrice(guide.dailyRatePkr),
+                        style: const TextStyle(color: AppTheme.primaryPurple, fontWeight: FontWeight.bold, fontSize: 14),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const Text('/ day', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                    ],
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton(
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.person_add_alt_1, size: 16),
+                label: const Text('Hire Expert', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 onPressed: () => _hireGuide(guide),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryOrange,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
                 ),
-                child: const Text('Hire', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
             ),
           ],

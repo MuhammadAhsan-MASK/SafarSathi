@@ -6,6 +6,7 @@ class AppTheme {
   static const Color primaryPurple = Color(0xFF6A1B9A);
   static const Color secondaryPink = Color(0xFFE91E63);
   static const Color accentBlue = Color(0xFF2196F3);
+  static const Color primaryOrange = Color(0xFFFF9800);
   static const Color surfaceColor = Colors.white;
   static const Color backgroundColor = Color(0xFFF5F5F7);
   static const Color errorColor = Color(0xFFD32F2F);

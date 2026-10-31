@@ -8,6 +8,10 @@ class Attraction {
   final double fee;
   final String? imageUrl;
   final String vendorId;
+  final String? location;
+  final String? history;
+  final String? mapUrl;
+  final String? websiteUrl;
   final DateTime? createdAt;
 
   Attraction({
@@ -18,6 +22,10 @@ class Attraction {
     required this.fee,
     required this.vendorId,
     this.imageUrl,
+    this.location,
+    this.history,
+    this.mapUrl,
+    this.websiteUrl,
     this.createdAt,
   });
 
@@ -31,6 +39,10 @@ class Attraction {
       fee: (data['fee'] ?? 0).toDouble(),
       imageUrl: data['imageUrl'],
       vendorId: data['vendorId'] ?? '',
+      location: data['location'],
+      history: data['history'],
+      mapUrl: data['mapUrl'],
+      websiteUrl: data['websiteUrl'],
       createdAt: data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : null,
     );
   }
@@ -43,6 +55,10 @@ class Attraction {
       'fee': fee,
       'imageUrl': imageUrl,
       'vendorId': vendorId,
+      'location': location,
+      'history': history,
+      'mapUrl': mapUrl,
+      'websiteUrl': websiteUrl,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : null,
     };
   }

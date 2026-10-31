@@ -8,6 +8,7 @@ class Hotel {
   final double rating;
   final String? imageUrl;
   final String? websiteUrl;
+  final String? phone;
   final String description;
   final String vendorId;
   final DateTime? createdAt;
@@ -22,6 +23,7 @@ class Hotel {
     required this.vendorId,
     this.imageUrl,
     this.websiteUrl,
+    this.phone,
     this.description = '',
     this.createdAt,
     this.typePrices = const {},
@@ -37,6 +39,7 @@ class Hotel {
       rating: (data['rating'] ?? 0).toDouble(),
       imageUrl: data['imageUrl'],
       websiteUrl: data['websiteUrl'],
+      phone: data['phone'],
       description: data['description'] ?? '',
       vendorId: data['vendorId'] ?? '',
       createdAt: data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : null,
@@ -52,6 +55,7 @@ class Hotel {
       'rating': rating,
       'imageUrl': imageUrl,
       'websiteUrl': websiteUrl,
+      'phone': phone,
       'description': description,
       'vendorId': vendorId,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : null,
