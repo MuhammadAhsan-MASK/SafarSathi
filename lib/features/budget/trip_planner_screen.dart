@@ -380,6 +380,7 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Text(w.icon, style: const TextStyle(fontSize: 22)),
               const SizedBox(width: 8),
@@ -387,17 +388,21 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 6,
+                      runSpacing: 2,
                       children: [
                         Text(
                           '${w.destination}: ${w.temperature.toStringAsFixed(1)}°C',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 14,
+                            fontSize: 13,
                             color: isAlert ? Colors.red.shade900 : const Color(0xFF0369A1),
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
@@ -415,9 +420,12 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 2),
                     Text(
                       'Wind: ${w.windSpeed.toStringAsFixed(0)} km/h • Open-Meteo Live',
                       style: TextStyle(fontSize: 10, color: Colors.blueGrey.shade600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -425,6 +433,8 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
               IconButton(
                 icon: const Icon(Icons.refresh, size: 18, color: Colors.blueGrey),
                 tooltip: 'Refresh Weather',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                 onPressed: () => _loadWeatherForDestination(_destinationController.text),
               ),
             ],

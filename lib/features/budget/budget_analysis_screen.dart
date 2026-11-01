@@ -231,16 +231,23 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Icon(icon, size: 18, color: AppTheme.primaryPurple),
-              const SizedBox(width: 6),
-              Text(
-                title,
-                style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
-              ),
-            ],
+          Expanded(
+            child: Row(
+              children: [
+                Icon(icon, size: 18, color: AppTheme.primaryPurple),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ),
+          const SizedBox(width: 8),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(
@@ -622,7 +629,7 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                               if (a.mapUrl != null && a.mapUrl!.isNotEmpty) {
                                 _launchUrl(a.mapUrl!);
                               } else {
-                                final q = Uri.encodeComponent('${a.name} ${a.location ?? a.city}');
+                                final q = Uri.encodeComponent('${a.name}, ${a.location ?? a.city}, Pakistan');
                                 _launchUrl('https://www.google.com/maps/search/?api=1&query=$q');
                               }
                             },
@@ -758,9 +765,21 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color)),
+            Text(
+              title,
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
             const SizedBox(height: 2),
-            Text(amount, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87)),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                amount,
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87),
+              ),
+            ),
           ],
         ),
       ),

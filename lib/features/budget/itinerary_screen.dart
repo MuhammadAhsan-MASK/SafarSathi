@@ -659,6 +659,8 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -701,32 +703,41 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryPurple.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryPurple.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.wallet, color: AppTheme.primaryPurple, size: 20),
                     ),
-                    child: const Icon(Icons.wallet, color: AppTheme.primaryPurple, size: 20),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Day ${_selectedDay + 1} Budget Allocation',
-                        style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Day ${_selectedDay + 1} Budget Allocation',
+                            style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            'Trip Total: ${currency.formatPrice(_totalTripBudget)}',
+                            style: const TextStyle(fontSize: 11, color: Colors.grey),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
-                      Text(
-                        'Trip Total: ${currency.formatPrice(_totalTripBudget)}',
-                        style: const TextStyle(fontSize: 11, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               OutlinedButton.icon(
                 icon: const Icon(Icons.edit, size: 14),
                 label: const Text('Change', style: TextStyle(fontSize: 12)),
@@ -747,29 +758,42 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Willing to spend today:', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                  Text(
-                    currency.formatPrice(currentDayBudget),
-                    style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.green.shade700),
-                  ),
-                ],
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  const Text('Remaining Trip Wallet:', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                  Text(
-                    currency.formatPrice(remainingForFuture),
-                    style: GoogleFonts.poppins(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: remainingForFuture > 0 ? AppTheme.primaryPurple : Colors.red,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Willing to spend today:', style: TextStyle(fontSize: 11, color: Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        currency.formatPrice(currentDayBudget),
+                        style: GoogleFonts.poppins(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.green.shade700),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const Text('Remaining Trip Wallet:', style: TextStyle(fontSize: 11, color: Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        currency.formatPrice(remainingForFuture),
+                        style: GoogleFonts.poppins(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: remainingForFuture > 0 ? AppTheme.primaryPurple : Colors.red,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -991,7 +1015,8 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   ),
                   onPressed: () {
-                    final query = act['mapQuery'] as String? ?? '${act['title']} ${widget.destination}';
+                    final rawQuery = act['mapQuery'] as String? ?? '${act['title']}, ${widget.destination}';
+                    final query = rawQuery.contains('Pakistan') ? rawQuery : '$rawQuery, Pakistan';
                     _openMap(query);
                   },
                 ),

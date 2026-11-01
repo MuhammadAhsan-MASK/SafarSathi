@@ -45,7 +45,7 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with SingleTickerPr
   }
 
   Future<void> _openMap(String location, [String? name]) async {
-    final query = Uri.encodeComponent(name != null ? '$name $location' : location);
+    final query = Uri.encodeComponent(name != null ? '$name, $location, Pakistan' : '$location, Pakistan');
     final Uri uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$query');
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (mounted) {

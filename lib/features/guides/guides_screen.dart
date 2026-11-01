@@ -263,15 +263,16 @@ class _GuidesScreenState extends State<GuidesScreen> {
                 ),
                 const SizedBox(width: 8),
                 ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 100),
+                  constraints: const BoxConstraints(maxWidth: 110),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(
-                        currencyProvider.formatPrice(guide.dailyRatePkr),
-                        style: const TextStyle(color: AppTheme.primaryPurple, fontWeight: FontWeight.bold, fontSize: 14),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          currencyProvider.formatPrice(guide.dailyRatePkr),
+                          style: const TextStyle(color: AppTheme.primaryPurple, fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
                       ),
                       const Text('/ day', style: TextStyle(color: Colors.grey, fontSize: 11)),
                     ],

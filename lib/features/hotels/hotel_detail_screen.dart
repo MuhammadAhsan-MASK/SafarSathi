@@ -37,8 +37,8 @@ class _HotelDetailScreenState extends State<HotelDetailScreen> {
     }
   }
 
-  Future<void> _openMap(String location) async {
-    final encoded = Uri.encodeComponent(location);
+  Future<void> _openMap(String name, String location) async {
+    final encoded = Uri.encodeComponent('$name, $location, Pakistan');
     final Uri uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$encoded');
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (mounted) {
@@ -90,7 +90,7 @@ class _HotelDetailScreenState extends State<HotelDetailScreen> {
               IconButton(
                 icon: const Icon(Icons.map_outlined),
                 tooltip: 'View on Map',
-                onPressed: () => _openMap(hotel.location),
+                onPressed: () => _openMap(hotel.name, hotel.location),
               ),
               if (hotel.websiteUrl != null && hotel.websiteUrl!.isNotEmpty)
                 IconButton(

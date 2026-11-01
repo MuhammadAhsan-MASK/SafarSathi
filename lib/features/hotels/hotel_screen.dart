@@ -48,8 +48,8 @@ class _HotelScreenState extends State<HotelScreen> {
     }
   }
 
-  Future<void> _openMap(String location) async {
-    final encoded = Uri.encodeComponent(location);
+  Future<void> _openMap(String name, String location) async {
+    final encoded = Uri.encodeComponent('$name, $location, Pakistan');
     final Uri uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$encoded');
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (mounted) {
@@ -304,7 +304,7 @@ class _HotelScreenState extends State<HotelScreen> {
                             overflow: TextOverflow.ellipsis),
                       ),
                       GestureDetector(
-                        onTap: () => _openMap(hotel.location),
+                        onTap: () => _openMap(hotel.name, hotel.location),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
