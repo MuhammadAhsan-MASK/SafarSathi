@@ -117,9 +117,13 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                 children: [
                   const Icon(Icons.verified, color: Colors.green, size: 20),
                   const SizedBox(width: 8),
-                  Text(
-                    'Options Matched to Your Budget:',
-                    style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.bold),
+                  Expanded(
+                    child: Text(
+                      'Options Matched to Your Budget:',
+                      style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
               ),
@@ -174,7 +178,10 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                 height: 52,
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.route_outlined, size: 22),
-                  label: const Text('View Detailed Route & Daily Budget', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  label: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text('View Detailed Route & Daily Budget', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                  ),
                   onPressed: () => Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -248,16 +255,21 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
             ),
           ),
           const SizedBox(width: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: Colors.green.shade50,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.green.shade200),
-            ),
-            child: Text(
-              budgetCap,
-              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green.shade800),
+          Flexible(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.green.shade200),
+              ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  budgetCap,
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green.shade800),
+                ),
+              ),
             ),
           ),
         ],
@@ -724,10 +736,21 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Total Trip Budget', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black54)),
-              Text(
-                currency.formatPrice(widget.budget),
-                style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.primaryPurple),
+              Expanded(
+                child: Text(
+                  'Total Trip Budget',
+                  style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.black54),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  currency.formatPrice(widget.budget),
+                  style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.primaryPurple),
+                ),
               ),
             ],
           ),
