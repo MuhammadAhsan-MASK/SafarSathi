@@ -10,27 +10,28 @@ class TransportService {
     final r = route.toLowerCase();
     
     bool matchesCity(String text, String city) {
+      final t = text.trim().toLowerCase();
       final c = city.trim().toLowerCase();
       if (c.isEmpty || c == 'all' || c == 'all cities') return true;
-      if (text.contains(c)) return true;
+      if (t.contains(c) || c.contains(t)) return true;
 
       // Handle common Pakistani abbreviations & aliases
-      if ((c.contains('karachi') || c == 'khi') && (text.contains('karachi') || text.contains('khi'))) return true;
+      if ((c.contains('karachi') || c == 'khi') && (t.contains('karachi') || t.contains('khi'))) return true;
       if ((c.contains('islamabad') || c.contains('rawalpindi') || c == 'isb' || c == 'isd' || c == 'rwp') &&
-          (text.contains('islamabad') || text.contains('rawalpindi') || text.contains('isb') || text.contains('isd') || text.contains('rwp'))) {
+          (t.contains('islamabad') || t.contains('rawalpindi') || t.contains('isb') || t.contains('isd') || t.contains('rwp'))) {
         return true;
       }
-      if ((c.contains('lahore') || c == 'lhr') && (text.contains('lahore') || text.contains('lhr'))) return true;
-      if ((c.contains('peshawar') || c == 'pew') && (text.contains('peshawar') || text.contains('pew'))) return true;
-      if ((c.contains('skardu') || c == 'kdu') && (text.contains('skardu') || text.contains('kdu'))) return true;
+      if ((c.contains('lahore') || c == 'lhr') && (t.contains('lahore') || t.contains('lhr'))) return true;
+      if ((c.contains('peshawar') || c == 'pew') && (t.contains('peshawar') || t.contains('pew'))) return true;
+      if ((c.contains('skardu') || c == 'kdu') && (t.contains('skardu') || t.contains('kdu'))) return true;
       if ((c.contains('gilgit') || c.contains('hunza') || c == 'gil') &&
-          (text.contains('gilgit') || text.contains('hunza') || text.contains('gil'))) {
+          (t.contains('gilgit') || t.contains('hunza') || t.contains('gil'))) {
         return true;
       }
-      if (c.contains('swat') && text.contains('swat')) return true;
-      if (c.contains('quetta') && text.contains('quetta')) return true;
-      if (c.contains('multan') && text.contains('multan')) return true;
-      if (c.contains('murree') && text.contains('murree')) return true;
+      if (c.contains('swat') && t.contains('swat')) return true;
+      if (c.contains('quetta') && t.contains('quetta')) return true;
+      if (c.contains('multan') && t.contains('multan')) return true;
+      if (c.contains('murree') && t.contains('murree')) return true;
 
       return false;
     }

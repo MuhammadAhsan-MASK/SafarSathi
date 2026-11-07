@@ -14,7 +14,7 @@ class BudgetMatcherService {
     final dest = destination.trim().toLowerCase();
     if (dest.isEmpty) return true;
 
-    if (loc.contains(dest)) return true;
+    if (loc.contains(dest) || dest.contains(loc)) return true;
     for (var part in dest.split(RegExp(r'[, -]'))) {
       if (part.trim().length >= 3 && loc.contains(part.trim())) {
         return true;
@@ -32,16 +32,16 @@ class BudgetMatcherService {
     if ((dest.contains('lhr') || dest.contains('lahore')) && (loc.contains('lahore') || loc.contains('lhr'))) {
       return true;
     }
-    if (dest.contains('hunza') && (loc.contains('hunza') || loc.contains('karimabad') || loc.contains('attabad'))) {
+    if (dest.contains('hunza') && (loc.contains('hunza') || loc.contains('karimabad') || loc.contains('attabad') || loc.contains('aliabad'))) {
       return true;
     }
     if (dest.contains('skardu') && (loc.contains('skardu') || loc.contains('shigar') || loc.contains('kachura'))) {
       return true;
     }
-    if (dest.contains('swat') && (loc.contains('swat') || loc.contains('saidu') || loc.contains('mingora'))) {
+    if (dest.contains('swat') && (loc.contains('swat') || loc.contains('saidu') || loc.contains('mingora') || loc.contains('kalam'))) {
       return true;
     }
-    if (dest.contains('murree') && (loc.contains('murree') || loc.contains('bhurban'))) {
+    if (dest.contains('murree') && (loc.contains('murree') || loc.contains('bhurban') || loc.contains('jhika'))) {
       return true;
     }
 
@@ -51,7 +51,7 @@ class BudgetMatcherService {
   Future<List<Hotel>> getAffordableHotels(String destination, double maxPricePerNight) async {
     List<Hotel> allHotels = [...SeedData.initialHotels];
     try {
-      final snapshot = await _firestore.collection('hotels').get();
+      final snapshot = await _firestore.collection('hotels').get().timeout(const Duration(milliseconds: 1500));
       final firestoreHotels = snapshot.docs.map((doc) => Hotel.fromFirestore(doc)).toList();
       for (var fh in firestoreHotels) {
         if (!allHotels.any((h) => h.id == fh.id)) {
@@ -67,22 +67,30 @@ class BudgetMatcherService {
       return [];
     }
 
-    // Within destination, filter by budget if possible
-    final budgetMatches = destinationHotels.where((h) => (h.price > 0 ? h.price : 4000.0) <= maxPricePerNight).toList();
+    double getLowestPrice(Hotel h) {
+      if (h.typePrices.isNotEmpty) {
+        final minType = h.typePrices.values.reduce((a, b) => a < b ? a : b);
+        if (minType > 0) return minType;
+      }
+      return h.price > 0 ? h.price : 3500.0;
+    }
+
+    // Filter strictly by calculated budget cap
+    final budgetMatches = destinationHotels.where((h) => getLowestPrice(h) <= maxPricePerNight).toList();
     if (budgetMatches.isNotEmpty) {
-      budgetMatches.sort((a, b) => a.price.compareTo(b.price));
+      budgetMatches.sort((a, b) => getLowestPrice(a).compareTo(getLowestPrice(b)));
       return budgetMatches;
     }
 
-    // Return destination hotels sorted by price (NEVER fall back to other cities)
-    destinationHotels.sort((a, b) => a.price.compareTo(b.price));
+    // If budget cap is extremely tight, sort and return lowest available options
+    destinationHotels.sort((a, b) => getLowestPrice(a).compareTo(getLowestPrice(b)));
     return destinationHotels;
   }
 
   Future<List<Restaurant>> getAffordableRestaurants(String destination, double maxPricePerMeal) async {
     List<Restaurant> allRestaurants = [...SeedData.initialRestaurants];
     try {
-      final snapshot = await _firestore.collection('restaurants').get();
+      final snapshot = await _firestore.collection('restaurants').get().timeout(const Duration(milliseconds: 1500));
       final firestoreRests = snapshot.docs.map((doc) => Restaurant.fromFirestore(doc)).toList();
       for (var fr in firestoreRests) {
         if (!allRestaurants.any((r) => r.id == fr.id)) {
@@ -98,13 +106,21 @@ class BudgetMatcherService {
       return [];
     }
 
-    final budgetMatches = destinationRests.where((r) => (r.price > 0 ? r.price : 800.0) <= maxPricePerMeal).toList();
+    double getLowestMealPrice(Restaurant r) {
+      if (r.typePrices.isNotEmpty) {
+        final minPrice = r.typePrices.values.reduce((a, b) => a < b ? a : b);
+        if (minPrice > 0) return minPrice;
+      }
+      return r.price > 0 ? r.price : 600.0;
+    }
+
+    final budgetMatches = destinationRests.where((r) => getLowestMealPrice(r) <= maxPricePerMeal).toList();
     if (budgetMatches.isNotEmpty) {
-      budgetMatches.sort((a, b) => a.price.compareTo(b.price));
+      budgetMatches.sort((a, b) => getLowestMealPrice(a).compareTo(getLowestMealPrice(b)));
       return budgetMatches;
     }
 
-    destinationRests.sort((a, b) => a.price.compareTo(b.price));
+    destinationRests.sort((a, b) => getLowestMealPrice(a).compareTo(getLowestMealPrice(b)));
     return destinationRests;
   }
 
@@ -115,7 +131,7 @@ class BudgetMatcherService {
   }) async {
     List<TransportOption> allTrans = [...SeedData.initialTransports];
     try {
-      final snapshot = await _firestore.collection('transport').get();
+      final snapshot = await _firestore.collection('transport').get().timeout(const Duration(milliseconds: 1500));
       final firestoreTrans = snapshot.docs.map((doc) => TransportOption.fromFirestore(doc)).toList();
       for (var ft in firestoreTrans) {
         if (!allTrans.any((t) => t.id == ft.id)) {
@@ -124,33 +140,32 @@ class BudgetMatcherService {
       }
     } catch (_) {}
 
-    // Filter strictly by route: Origin -> Destination
+    // 1. Filter strictly by route: Origin -> Destination
     final routeMatches = allTrans.where((t) {
       return TransportService.isRouteMatch(t.route, source: origin, destination: destination);
     }).toList();
 
-    if (routeMatches.isEmpty) {
+    List<TransportOption> candidates = [];
+
+    if (routeMatches.isNotEmpty) {
+      candidates = routeMatches;
+    } else {
       // If no exact direct route, find any options containing destination or origin
       final partialMatches = allTrans.where((t) {
         return TransportService.isRouteMatch(t.route, source: origin) ||
                TransportService.isRouteMatch(t.route, destination: destination);
       }).toList();
       if (partialMatches.isNotEmpty) {
-        if (maxFare != null && maxFare > 0) {
-          final affordable = partialMatches.where((t) => t.fare <= maxFare).toList();
-          if (affordable.isNotEmpty) {
-            affordable.sort((a, b) => a.fare.compareTo(b.fare));
-            return affordable;
-          }
-        }
-        partialMatches.sort((a, b) => a.fare.compareTo(b.fare));
-        return partialMatches;
+        candidates = partialMatches;
+      } else {
+        // Fallback to intercity express options
+        candidates = allTrans;
       }
-      return [];
     }
 
+    // Filter strictly by calculated budget cap if possible
     if (maxFare != null && maxFare > 0) {
-      final affordable = routeMatches.where((t) => t.fare <= maxFare).toList();
+      final affordable = candidates.where((t) => t.fare <= maxFare).toList();
       if (affordable.isNotEmpty) {
         affordable.sort((a, b) => a.fare.compareTo(b.fare));
         return affordable;
@@ -158,14 +173,14 @@ class BudgetMatcherService {
     }
 
     // Sort: lowest fare first
-    routeMatches.sort((a, b) => a.fare.compareTo(b.fare));
-    return routeMatches;
+    candidates.sort((a, b) => a.fare.compareTo(b.fare));
+    return candidates;
   }
 
   Future<List<Attraction>> getAffordableAttractions(String destination, double maxActivityFee) async {
     List<Attraction> allAttractions = [...SeedData.initialAttractions];
     try {
-      final snapshot = await _firestore.collection('attractions').get();
+      final snapshot = await _firestore.collection('attractions').get().timeout(const Duration(milliseconds: 1500));
       final firestoreAttractions = snapshot.docs.map((doc) => Attraction.fromFirestore(doc)).toList();
       for (var fa in firestoreAttractions) {
         if (!allAttractions.any((a) => a.id == fa.id)) {
@@ -181,7 +196,7 @@ class BudgetMatcherService {
       return [];
     }
 
-    // Filter within budget if possible
+    // Filter strictly within calculated activity budget
     final budgetMatches = destinationAttractions.where((a) => a.fee <= maxActivityFee).toList();
     if (budgetMatches.isNotEmpty) {
       budgetMatches.sort((a, b) => a.fee.compareTo(b.fee));

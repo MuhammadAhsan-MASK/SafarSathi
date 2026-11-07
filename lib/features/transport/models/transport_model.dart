@@ -37,7 +37,7 @@ class TransportOption {
   });
 
   factory TransportOption.fromFirestore(DocumentSnapshot doc) {
-    Map data = doc.data() as Map<String, dynamic>;
+    final data = (doc.data() as Map<String, dynamic>?) ?? {};
     IconData icon;
     switch (data['category'] ?? 'bus') {
       case 'train':
@@ -50,22 +50,32 @@ class TransportOption {
         icon = Icons.directions_bus;
     }
 
+    final rawPrices = data['typePrices'];
+    final Map<String, double> parsedPrices = {};
+    if (rawPrices is Map) {
+      rawPrices.forEach((key, val) {
+        if (val is num) parsedPrices[key.toString()] = val.toDouble();
+      });
+    }
+
     return TransportOption(
       id: doc.id,
-      type: data['type'] ?? '',
-      route: data['route'] ?? '',
-      fare: (data['fare'] ?? 0).toDouble(),
-      time: data['time'] ?? '',
+      type: data['type']?.toString() ?? '',
+      route: data['route']?.toString() ?? '',
+      fare: (data['fare'] as num?)?.toDouble() ?? 0.0,
+      time: data['time']?.toString() ?? '',
       icon: icon,
-      imageUrl: data['imageUrl'],
-      websiteUrl: data['websiteUrl'],
-      vendorId: data['vendorId'] ?? '',
-      createdAt: data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : null,
-      typePrices: Map<String, double>.from(data['typePrices'] ?? {}),
-      category: data['category'] ?? 'bus',
-      departureTime: data['departureTime'] ?? '08:00',
-      availableSeats: (data['availableSeats'] ?? 15) as int,
-      operator: data['operator'] ?? '',
+      imageUrl: data['imageUrl']?.toString(),
+      websiteUrl: data['websiteUrl']?.toString(),
+      vendorId: data['vendorId']?.toString() ?? '',
+      createdAt: data['createdAt'] != null && data['createdAt'] is Timestamp
+          ? (data['createdAt'] as Timestamp).toDate()
+          : null,
+      typePrices: parsedPrices,
+      category: data['category']?.toString() ?? 'bus',
+      departureTime: data['departureTime']?.toString() ?? '08:00',
+      availableSeats: (data['availableSeats'] as num?)?.toInt() ?? 15,
+      operator: data['operator']?.toString() ?? '',
     );
   }
 

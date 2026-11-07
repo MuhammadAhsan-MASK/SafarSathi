@@ -13,6 +13,7 @@ import '../transport/models/transport_model.dart';
 import '../attractions/models/attraction_model.dart';
 import '../hotels/hotel_detail_screen.dart';
 import '../restaurants/restaurant_detail_screen.dart';
+import '../transport/transport_detail_screen.dart';
 
 class BudgetAnalysisScreen extends StatefulWidget {
   final String origin;
@@ -234,42 +235,37 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
 
   Widget _buildSectionHeader(String title, String budgetCap, IconData icon) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryPurple.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 17, color: AppTheme.primaryPurple),
+          ),
+          const SizedBox(width: 8),
           Expanded(
-            child: Row(
-              children: [
-                Icon(icon, size: 18, color: AppTheme.primaryPurple),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+            child: Text(
+              title,
+              style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.bold, color: const Color(0xFF1E293B)),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(width: 8),
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: Colors.green.shade50,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.green.shade200),
-              ),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  budgetCap,
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green.shade800),
-                ),
-              ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFECFDF5),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.35)),
+            ),
+            child: Text(
+              budgetCap,
+              style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.bold, color: const Color(0xFF047857)),
             ),
           ),
         ],
@@ -326,60 +322,67 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
         itemBuilder: (context, index) {
           final t = options[index];
           final isWithin = t.fare <= _maxTransportBudget;
-          return Card(
-            margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-            elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            child: Container(
-              width: 195,
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor: AppTheme.primaryPurple.withValues(alpha: 0.1),
-                        child: Icon(t.icon, color: AppTheme.primaryPurple, size: 18),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: isWithin ? Colors.green.shade50 : Colors.orange.shade50,
-                          borderRadius: BorderRadius.circular(8),
+          return InkWell(
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => TransportDetailScreen(option: t)),
+            ),
+            borderRadius: BorderRadius.circular(14),
+            child: Card(
+              margin: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              child: Container(
+                width: 195,
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundColor: AppTheme.primaryPurple.withValues(alpha: 0.1),
+                          child: Icon(t.icon, color: AppTheme.primaryPurple, size: 18),
                         ),
-                        child: Text(
-                          isWithin ? 'Within Budget' : 'Alternative',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: isWithin ? Colors.green.shade800 : Colors.orange.shade800,
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: isWithin ? Colors.green.shade50 : Colors.orange.shade50,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            isWithin ? 'Within Budget' : 'Alternative',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: isWithin ? Colors.green.shade800 : Colors.orange.shade800,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    t.type,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    t.route,
-                    style: const TextStyle(fontSize: 11, color: Colors.grey),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const Spacer(),
-                  Text(
-                    currency.formatPrice(t.fare),
-                    style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                ],
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      t.type,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      t.route,
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const Spacer(),
+                    Text(
+                      currency.formatPrice(t.fare),
+                      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                  ],
+                ),
               ),
             ),
           );
@@ -398,7 +401,10 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
         itemCount: hotels.length,
         itemBuilder: (context, index) {
           final h = hotels[index];
-          final isWithin = h.price <= _maxNightlyHotelBudget;
+          final effectivePrice = h.typePrices.isNotEmpty
+              ? h.typePrices.values.reduce((a, b) => a < b ? a : b)
+              : (h.price > 0 ? h.price : 3500.0);
+          final isWithin = effectivePrice <= _maxNightlyHotelBudget;
           return GestureDetector(
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => HotelDetailScreen(hotel: h))),
             child: Card(
@@ -433,7 +439,7 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              isWithin ? 'Within Budget' : 'Top Choice',
+                              isWithin ? 'Within Budget' : 'Alternative',
                               style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
                             ),
                           ),
@@ -453,7 +459,7 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            '${currency.formatPrice(h.price)} / night',
+                            '${currency.formatPrice(effectivePrice)} / night',
                             style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -481,7 +487,10 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
         itemCount: rests.length,
         itemBuilder: (context, index) {
           final r = rests[index];
-          final isWithin = r.price <= _maxMealBudget;
+          final effectivePrice = r.typePrices.isNotEmpty
+              ? r.typePrices.values.reduce((a, b) => a < b ? a : b)
+              : (r.price > 0 ? r.price : 600.0);
+          final isWithin = effectivePrice <= _maxMealBudget;
           return GestureDetector(
             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => RestaurantDetailScreen(restaurant: r))),
             child: Card(
@@ -516,7 +525,7 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                               borderRadius: BorderRadius.circular(6),
                             ),
                             child: Text(
-                              isWithin ? 'Within Budget' : 'Featured',
+                              isWithin ? 'Within Budget' : 'Alternative',
                               style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
                             ),
                           ),
@@ -536,7 +545,7 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                           ),
                           const SizedBox(height: 3),
                           Text(
-                            '~${currency.formatPrice(r.price)} / head',
+                            '~${currency.formatPrice(effectivePrice)} / meal',
                             style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
