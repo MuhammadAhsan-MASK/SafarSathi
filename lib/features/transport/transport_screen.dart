@@ -425,8 +425,13 @@ class _TransportScreenState extends State<TransportScreen> {
                       children: [
                         Icon(Icons.schedule, size: 12, color: Colors.grey.shade500),
                         const SizedBox(width: 3),
-                        Text('Departs ${option.departureTime}  •  ${option.time}',
-                            style: const TextStyle(color: Colors.grey, fontSize: 12)),
+                        Expanded(
+                          child: Text(
+                            'Departs ${option.departureTime}  •  ${option.time}',
+                            style: const TextStyle(color: Colors.grey, fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
                     ),
                   ],

@@ -213,7 +213,7 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with SingleTickerPr
               SizedBox(
                 height: 140,
                 width: double.infinity,
-                child: hotel.imageUrl != null && hotel.imageUrl!.isNotEmpty
+                child: hotel.imageUrl != null && hotel.imageUrl!.isNotEmpty && hotel.imageUrl!.startsWith('http')
                     ? Image.network(hotel.imageUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: Colors.grey[200]))
                     : Container(color: Colors.grey[200]),
               ),
@@ -310,7 +310,7 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with SingleTickerPr
               SizedBox(
                 height: 140,
                 width: double.infinity,
-                child: rest.imageUrl != null && rest.imageUrl!.isNotEmpty
+                child: rest.imageUrl != null && rest.imageUrl!.isNotEmpty && rest.imageUrl!.startsWith('http')
                     ? Image.network(rest.imageUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: Colors.grey[200]))
                     : Container(color: Colors.grey[200]),
               ),
@@ -407,7 +407,7 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with SingleTickerPr
               SizedBox(
                 height: 140,
                 width: double.infinity,
-                child: attraction.imageUrl != null && attraction.imageUrl!.isNotEmpty
+                child: attraction.imageUrl != null && attraction.imageUrl!.isNotEmpty && attraction.imageUrl!.startsWith('http')
                     ? Image.network(attraction.imageUrl!, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(color: Colors.grey[200]))
                     : Container(color: Colors.grey[200]),
               ),

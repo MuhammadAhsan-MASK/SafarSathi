@@ -73,7 +73,7 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
             expandedHeight: 250,
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
-              background: restaurant.imageUrl != null && restaurant.imageUrl!.isNotEmpty
+              background: restaurant.imageUrl != null && restaurant.imageUrl!.isNotEmpty && restaurant.imageUrl!.startsWith('http')
                   ? Image.network(
                       restaurant.imageUrl!,
                       fit: BoxFit.cover,

@@ -335,46 +335,59 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           // Top Bar with Greeting & Action Badges
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(45),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white.withAlpha(80), width: 1.5),
+              // User Greeting (Flexible so it takes remaining space safely)
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(45),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white.withAlpha(80), width: 1.5),
+                      ),
+                      child: const Icon(Icons.explore_rounded, color: Colors.white, size: 22),
                     ),
-                    child: const Icon(Icons.explore_rounded, color: Colors.white, size: 24),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Assalam o Alaikum 🇵🇰',
-                        style: GoogleFonts.poppins(
-                          fontSize: 12.5,
-                          color: Colors.white.withAlpha(220),
-                          fontWeight: FontWeight.w500,
-                        ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Assalam o Alaikum 🇵🇰',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: Colors.white.withAlpha(220),
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          Text(
+                            'Explore Pakistan',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.poppins(
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                              height: 1.2,
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        'Explore Pakistan',
-                        style: GoogleFonts.poppins(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                          height: 1.2,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 6),
+              // Action badges
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   // Emergency SOS button
                   InkWell(
@@ -389,16 +402,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         }
                       }
                     },
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(14),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                       decoration: BoxDecoration(
                         color: Colors.red.shade600,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(14),
                         boxShadow: [
                           BoxShadow(
                             color: Colors.red.withAlpha(100),
-                            blurRadius: 8,
+                            blurRadius: 6,
                             offset: const Offset(0, 2),
                           ),
                         ],
@@ -406,13 +419,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.sos_rounded, color: Colors.white, size: 16),
-                          SizedBox(width: 3),
+                          Icon(Icons.sos_rounded, color: Colors.white, size: 14),
+                          SizedBox(width: 2),
                           Text(
                             'SOS',
                             style: TextStyle(
                               color: Colors.white,
-                              fontSize: 11,
+                              fontSize: 10.5,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -420,30 +433,30 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   // Currency Selector
                   Consumer<CurrencyProvider>(
                     builder: (context, currencyProvider, child) {
                       return InkWell(
                         onTap: () => _showCurrencyPicker(context, currencyProvider),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(14),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                           decoration: BoxDecoration(
                             color: Colors.white.withAlpha(40),
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(14),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.currency_exchange, color: Colors.white, size: 14),
-                              const SizedBox(width: 4),
+                              const Icon(Icons.currency_exchange, color: Colors.white, size: 13),
+                              const SizedBox(width: 3),
                               Text(
                                 currencyProvider.selectedCurrency,
                                 style: GoogleFonts.poppins(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 12,
+                                  fontSize: 11,
                                 ),
                               ),
                             ],
@@ -452,18 +465,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       );
                     },
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   // Switch role
                   InkWell(
                     onTap: _handleQuickSwitch,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(16),
                     child: Container(
-                      padding: const EdgeInsets.all(7),
+                      padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
                         color: Colors.white.withAlpha(40),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 18),
+                      child: const Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 16),
                     ),
                   ),
                 ],
@@ -566,7 +579,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   borderRadius: BorderRadius.circular(18),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 10),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(18),
@@ -589,13 +602,17 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                           child: const Icon(Icons.add_location_alt_rounded, color: Color(0xFF5E17EB), size: 16),
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Plan New Trip',
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12.5,
-                            color: const Color(0xFF1E2022),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            'Plan Trip',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12.5,
+                              color: const Color(0xFF1E2022),
+                            ),
                           ),
                         ),
                       ],
@@ -603,13 +620,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: InkWell(
                   onTap: () => _showSurpriseMeSheet(context),
                   borderRadius: BorderRadius.circular(18),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                    padding: const EdgeInsets.symmetric(vertical: 13, horizontal: 10),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
                         colors: [Color(0xFFFF5252), Color(0xFFFF9100)],
@@ -630,12 +647,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         const Icon(Icons.casino_rounded, color: Colors.white, size: 18),
                         const SizedBox(width: 6),
-                        Text(
-                          'Surprise Me! 🎲',
-                          style: GoogleFonts.poppins(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12.5,
-                            color: Colors.white,
+                        Flexible(
+                          child: Text(
+                            'Surprise Me!',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12.5,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                       ],
@@ -695,9 +716,9 @@ class _HomeScreenState extends State<HomeScreen> {
             itemCount: services.length,
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 4,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 10,
-              childAspectRatio: 0.88,
+              mainAxisSpacing: 10,
+              crossAxisSpacing: 8,
+              childAspectRatio: 0.82,
             ),
             itemBuilder: (context, index) {
               final s = services[index];
@@ -721,6 +742,7 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -737,23 +759,25 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(9),
               decoration: BoxDecoration(
                 color: bgColor,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: color, size: 22),
+              child: Icon(icon, color: color, size: 20),
             ),
             const SizedBox(height: 6),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.poppins(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF2C3E50),
+            Flexible(
+              child: Text(
+                title,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.poppins(
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                  color: const Color(0xFF2C3E50),
+                ),
               ),
             ),
           ],

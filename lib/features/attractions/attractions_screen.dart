@@ -600,7 +600,7 @@ class _AttractionsScreenState extends State<AttractionsScreen> {
               SizedBox(
                 height: 190,
                 width: double.infinity,
-                child: attraction.imageUrl != null
+                child: (attraction.imageUrl != null && attraction.imageUrl!.isNotEmpty && attraction.imageUrl!.startsWith('http'))
                     ? Image.network(
                         attraction.imageUrl!,
                         fit: BoxFit.cover,
@@ -810,29 +810,41 @@ class _AttractionsScreenState extends State<AttractionsScreen> {
                   children: [
                     // Watch Video Button
                     Expanded(
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.smart_display_rounded, size: 18),
-                        label: const Text('Watch Video'),
+                      child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red.shade700,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           elevation: 0,
                         ),
                         onPressed: () => _showVideoPreviewSheet(context, attraction),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.smart_display_rounded, size: 16),
+                            SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                'Watch Video',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     // View on Map Button
                     Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.map_outlined, size: 18),
-                        label: const Text('View on Map'),
+                      child: OutlinedButton(
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppTheme.attractionColor,
                           side: const BorderSide(color: AppTheme.attractionColor),
-                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                         onPressed: () {
@@ -842,14 +854,32 @@ class _AttractionsScreenState extends State<AttractionsScreen> {
                             _openMap(attraction.location ?? attraction.city, attraction.name);
                           }
                         },
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.map_outlined, size: 16),
+                            SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                'View on Map',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     // Website Link (if present)
                     if (attraction.websiteUrl != null && attraction.websiteUrl!.isNotEmpty) ...[
                       const SizedBox(width: 8),
                       IconButton(
-                        icon: const Icon(Icons.language, color: AppTheme.attractionColor),
+                        icon: const Icon(Icons.language, color: AppTheme.attractionColor, size: 20),
                         tooltip: 'Official Portal',
+                        padding: const EdgeInsets.all(8),
+                        constraints: const BoxConstraints(minWidth: 38, minHeight: 38),
                         style: IconButton.styleFrom(
                           backgroundColor: const Color(0xFFF3E5F5),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -941,7 +971,7 @@ class _AttractionsScreenState extends State<AttractionsScreen> {
                   child: SizedBox(
                     height: 190,
                     width: double.infinity,
-                    child: attraction.imageUrl != null
+                    child: (attraction.imageUrl != null && attraction.imageUrl!.isNotEmpty && attraction.imageUrl!.startsWith('http'))
                         ? Image.network(
                             attraction.imageUrl!,
                             fit: BoxFit.cover,

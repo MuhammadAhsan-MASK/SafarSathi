@@ -27,14 +27,24 @@ class HotelService {
           double price = double.tryParse(row[9].toString().replaceAll(',', '')) ?? 0.0;
           double rating = double.tryParse(row[16].toString()) ?? 4.0;
 
+          const hotelImages = [
+            'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800',
+            'https://images.unsplash.com/photo-1542314831-c6a4d2757271?w=800',
+            'https://images.unsplash.com/photo-1551882547-ff40c0dffe19?w=800',
+            'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800',
+            'https://images.unsplash.com/photo-1571003123894-1f0594d2b5d9?w=800',
+            'https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800',
+          ];
+          final imgUrl = hotelImages[i % hotelImages.length];
+
           csvHotels.add(Hotel(
             id: idStr,
             name: nameStr,
             location: cityStr,
             price: price,
             rating: rating,
-            imageUrl: row.length > 17 ? row[17].toString() : null,
-            websiteUrl: row.length > 18 ? row[18].toString() : null,
+            imageUrl: imgUrl,
+            websiteUrl: null,
             vendorId: 'csv_data',
           ));
         }

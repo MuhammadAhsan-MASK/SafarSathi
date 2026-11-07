@@ -209,7 +209,7 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
             // Image with cuisine badge
             Stack(
               children: [
-                if (restaurant.imageUrl != null && restaurant.imageUrl!.isNotEmpty)
+                if (restaurant.imageUrl != null && restaurant.imageUrl!.isNotEmpty && restaurant.imageUrl!.startsWith('http'))
                   Image.network(
                     restaurant.imageUrl!,
                     height: 160,

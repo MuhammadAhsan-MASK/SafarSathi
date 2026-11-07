@@ -71,7 +71,7 @@ class _HotelDetailScreenState extends State<HotelDetailScreen> {
             expandedHeight: 250,
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
-              background: hotel.imageUrl != null && hotel.imageUrl!.isNotEmpty
+              background: hotel.imageUrl != null && hotel.imageUrl!.isNotEmpty && hotel.imageUrl!.startsWith('http')
                   ? Image.network(
                       hotel.imageUrl!,
                       fit: BoxFit.cover,

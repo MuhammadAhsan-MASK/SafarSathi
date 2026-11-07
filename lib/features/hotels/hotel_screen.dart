@@ -209,7 +209,7 @@ class _HotelScreenState extends State<HotelScreen> {
             // Image
             Stack(
               children: [
-                if (hotel.imageUrl != null && hotel.imageUrl!.isNotEmpty)
+                if (hotel.imageUrl != null && hotel.imageUrl!.isNotEmpty && hotel.imageUrl!.startsWith('http'))
                   Image.network(
                     hotel.imageUrl!,
                     height: 170,
