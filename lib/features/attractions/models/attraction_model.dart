@@ -13,7 +13,6 @@ class Attraction {
   final String? mapUrl;
   final String? websiteUrl;
   final String? videoUrl;
-  final String? offlineVideoAsset;
   final DateTime? createdAt;
 
   Attraction({
@@ -29,17 +28,8 @@ class Attraction {
     this.mapUrl,
     this.websiteUrl,
     this.videoUrl,
-    this.offlineVideoAsset,
     this.createdAt,
   });
-
-  /// Returns the offline asset video if available, or falls back to standard bundled sample
-  String get effectiveOfflineVideoAsset {
-    if (offlineVideoAsset != null && offlineVideoAsset!.isNotEmpty) {
-      return offlineVideoAsset!;
-    }
-    return 'assets/videos/pakistan_tour_sample.mp4';
-  }
 
   String get effectiveVideoUrl {
     final query = Uri.encodeComponent(name);
@@ -61,7 +51,6 @@ class Attraction {
       mapUrl: data['mapUrl'],
       websiteUrl: data['websiteUrl'],
       videoUrl: data['videoUrl'],
-      offlineVideoAsset: data['offlineVideoAsset'],
       createdAt: data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : null,
     );
   }
@@ -79,7 +68,6 @@ class Attraction {
       'mapUrl': mapUrl,
       'websiteUrl': websiteUrl,
       'videoUrl': videoUrl,
-      'offlineVideoAsset': offlineVideoAsset,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : null,
     };
   }
