@@ -51,6 +51,7 @@ dependencies:
   csv: ^6.0.0
   url_launcher: ^6.3.2
   flutter_tts: ^3.8.5
+  video_player: ^2.10.1
 
 dev_dependencies:
   flutter_test:
@@ -77,6 +78,7 @@ flutter:
 
   assets:
     - assets/hotels/
+    - assets/videos/
 
 flutter_launcher_icons:
   android: true

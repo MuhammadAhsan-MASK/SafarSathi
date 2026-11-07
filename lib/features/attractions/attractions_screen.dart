@@ -6,6 +6,7 @@ import '../../core/currency_provider.dart';
 import '../../core/favorites_provider.dart';
 import 'services/attraction_service.dart';
 import 'models/attraction_model.dart';
+import 'widgets/offline_video_player_sheet.dart';
 
 class AttractionsScreen extends StatefulWidget {
   final String? initialCity;
@@ -1034,18 +1035,38 @@ class _AttractionsScreenState extends State<AttractionsScreen> {
               style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4),
             ),
             const SizedBox(height: 18),
-            Row(
+            // Options: Offline Asset Video OR Online 4K YouTube Tour
+            Column(
               children: [
-                Expanded(
+                SizedBox(
+                  width: double.infinity,
                   child: ElevatedButton.icon(
-                    icon: const Icon(Icons.play_circle_fill, size: 20),
-                    label: const Text('Play Video Tour (YouTube)'),
+                    icon: const Icon(Icons.offline_pin_rounded, size: 20),
+                    label: const Text('Play Offline Video (No Internet)'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.red.shade700,
+                      backgroundColor: Colors.teal.shade700,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                       elevation: 1,
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _showOfflineVideoPlayer(context, attraction);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                    label: const Text('Watch 4K Tour on YouTube'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red.shade700,
+                      side: BorderSide(color: Colors.red.shade400),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
                     onPressed: () {
                       Navigator.pop(ctx);
@@ -1059,6 +1080,15 @@ class _AttractionsScreenState extends State<AttractionsScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showOfflineVideoPlayer(BuildContext context, Attraction attraction) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => OfflineVideoPlayerSheet(attraction: attraction),
     );
   }
 
