@@ -8,8 +8,39 @@ class GeminiService {
   // 🔑 Key is loaded from lib/core/app_secrets.dart (gitignored — never committed)
   static const String _apiKey = AppSecrets.geminiApiKey;
 
-  static const String _baseUrl =
-      'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+  static const List<String> _models = [
+    'gemini-3.5-flash-lite',
+    'gemini-3.1-flash-lite',
+    'gemini-3.5-flash',
+  ];
+
+  static Future<http.Response> _postGenerateContent(
+      Map<String, dynamic> body) async {
+    http.Response? lastResponse;
+    for (final model in _models) {
+      final uri = Uri.parse(
+          'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$_apiKey');
+      try {
+        final res = await http.post(
+          uri,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(body),
+        );
+        if (res.statusCode == 200) {
+          return res;
+        }
+        lastResponse = res;
+        // If 503 (high demand) or 404 (not found), try next available model
+        if (res.statusCode == 503 || res.statusCode == 404) {
+          continue;
+        }
+        return res;
+      } catch (e) {
+        debugPrint('Gemini model $model request error: $e');
+      }
+    }
+    return lastResponse ?? http.Response('{"error": "Unavailable"}', 503);
+  }
 
   static const String _systemPrompt = '''
 You are SafarBot, a friendly and knowledgeable AI travel assistant for SastaSafar — a Pakistan travel app.
@@ -50,20 +81,16 @@ If asked something outside travel/Pakistan, politely redirect to travel topics.
         });
       }
 
-      final response = await http.post(
-        Uri.parse('$_baseUrl?key=$_apiKey'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'system_instruction': {
-            'parts': [{'text': _systemPrompt}],
-          },
-          'contents': contents,
-          'generationConfig': {
-            'temperature': 0.8,
-            'maxOutputTokens': 512,
-          },
-        }),
-      );
+      final response = await _postGenerateContent({
+        'system_instruction': {
+          'parts': [{'text': _systemPrompt}],
+        },
+        'contents': contents,
+        'generationConfig': {
+          'temperature': 0.8,
+          'maxOutputTokens': 512,
+        },
+      });
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -111,27 +138,27 @@ Suggest ONE perfect Pakistan destination for them. Reply ONLY in this exact JSON
 ''';
 
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl?key=$_apiKey'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'contents': [
-            {
-              'role': 'user',
-              'parts': [{'text': prompt}],
-            }
-          ],
-          'generationConfig': {'temperature': 0.9, 'maxOutputTokens': 512},
-        }),
-      );
+      final response = await _postGenerateContent({
+        'contents': [
+          {
+            'role': 'user',
+            'parts': [{'text': prompt}],
+          }
+        ],
+        'generationConfig': {'temperature': 0.9, 'maxOutputTokens': 512},
+      });
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         if (data['candidates'] != null && data['candidates'].isNotEmpty) {
           final text = data['candidates'][0]['content']['parts'][0]['text'] as String;
-          final clean = text.replaceAll('```json', '').replaceAll('```', '').trim();
-          final map = jsonDecode(clean) as Map<String, dynamic>;
-          return map.map((k, v) => MapEntry(k, v.toString()));
+          final startIndex = text.indexOf('{');
+          final endIndex = text.lastIndexOf('}');
+          if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
+            final jsonStr = text.substring(startIndex, endIndex + 1);
+            final map = jsonDecode(jsonStr) as Map<String, dynamic>;
+            return map.map((k, v) => MapEntry(k, v.toString()));
+          }
         } else {
           debugPrint("API Error or rate limit: $data");
         }
@@ -223,23 +250,23 @@ Provide a highly customized and strictly categorized packing checklist. Reply ON
 ''';
 
     try {
-      final response = await http.post(
-        Uri.parse('$_baseUrl?key=$_apiKey'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'contents': [
-             {'role': 'user', 'parts': [{'text': prompt}]}
-          ],
-          'generationConfig': {'temperature': 0.8, 'maxOutputTokens': 800},
-        }),
-      );
+      final response = await _postGenerateContent({
+        'contents': [
+          {'role': 'user', 'parts': [{'text': prompt}]}
+        ],
+        'generationConfig': {'temperature': 0.8, 'maxOutputTokens': 800},
+      });
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final text = data['candidates'][0]['content']['parts'][0]['text'] as String;
-        final clean = text.replaceAll('```json', '').replaceAll('```', '').trim();
-        final List<dynamic> list = jsonDecode(clean);
-        return list.map((e) => e as Map<String, dynamic>).toList();
+        final startIndex = text.indexOf('[');
+        final endIndex = text.lastIndexOf(']');
+        if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
+          final jsonStr = text.substring(startIndex, endIndex + 1);
+          final List<dynamic> list = jsonDecode(jsonStr);
+          return list.map((e) => e as Map<String, dynamic>).toList();
+        }
       }
     } catch (e) {
       debugPrint("generatePackingList API error: $e");
