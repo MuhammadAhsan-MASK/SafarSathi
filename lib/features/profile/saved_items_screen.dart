@@ -7,6 +7,7 @@ import '../../core/theme.dart';
 import '../hotels/models/hotel_model.dart';
 import '../restaurants/models/restaurant_model.dart';
 import '../attractions/models/attraction_model.dart';
+import '../attractions/widgets/in_app_video_screen.dart';
 import '../hotels/hotel_screen.dart';
 import '../restaurants/restaurant_screen.dart';
 import '../attractions/attractions_screen.dart';
@@ -471,7 +472,12 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with SingleTickerPr
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                        onPressed: () => _launchUrl(attraction.effectiveVideoUrl),
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => InAppVideoScreen(attraction: attraction),
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),

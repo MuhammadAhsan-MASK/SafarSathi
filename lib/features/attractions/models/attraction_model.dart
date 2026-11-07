@@ -42,11 +42,8 @@ class Attraction {
   }
 
   String get effectiveVideoUrl {
-    if (videoUrl != null && videoUrl!.isNotEmpty) {
-      return videoUrl!;
-    }
-    final query = Uri.encodeComponent('$name $city Pakistan travel tour 4k');
-    return 'https://www.youtube.com/results?search_query=$query';
+    final query = Uri.encodeComponent(name);
+    return 'https://m.youtube.com/results?search_query=$query';
   }
 
   factory Attraction.fromFirestore(DocumentSnapshot doc) {
