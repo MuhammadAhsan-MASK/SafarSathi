@@ -92,7 +92,10 @@ class _OfflineVideoPlayerSheetState extends State<OfflineVideoPlayerSheet> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 6,
+                      runSpacing: 2,
                       children: [
                         Text(
                           'OFFLINE VIDEO TOUR',
@@ -103,7 +106,6 @@ class _OfflineVideoPlayerSheetState extends State<OfflineVideoPlayerSheet> {
                             letterSpacing: 0.5,
                           ),
                         ),
-                        const SizedBox(width: 6),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(

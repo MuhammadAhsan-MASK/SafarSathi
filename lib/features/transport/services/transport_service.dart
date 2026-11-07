@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import '../models/transport_model.dart';
 import '../../../core/seed_data.dart';
 
@@ -10,10 +11,10 @@ class TransportService {
     
     bool matchesCity(String text, String city) {
       final c = city.trim().toLowerCase();
-      if (c.isEmpty) return true;
+      if (c.isEmpty || c == 'all' || c == 'all cities') return true;
       if (text.contains(c)) return true;
 
-      // Handle common Pakistani abbreviations
+      // Handle common Pakistani abbreviations & aliases
       if ((c.contains('karachi') || c == 'khi') && (text.contains('karachi') || text.contains('khi'))) return true;
       if ((c.contains('islamabad') || c.contains('rawalpindi') || c == 'isb' || c == 'isd' || c == 'rwp') &&
           (text.contains('islamabad') || text.contains('rawalpindi') || text.contains('isb') || text.contains('isd') || text.contains('rwp'))) {
@@ -27,13 +28,15 @@ class TransportService {
         return true;
       }
       if (c.contains('swat') && text.contains('swat')) return true;
+      if (c.contains('quetta') && text.contains('quetta')) return true;
+      if (c.contains('multan') && text.contains('multan')) return true;
       if (c.contains('murree') && text.contains('murree')) return true;
 
       return false;
     }
 
-    final hasSource = source != null && source.trim().isNotEmpty;
-    final hasDest = destination != null && destination.trim().isNotEmpty;
+    final hasSource = source != null && source.trim().isNotEmpty && source.trim().toLowerCase() != 'all' && source.trim().toLowerCase() != 'all cities';
+    final hasDest = destination != null && destination.trim().isNotEmpty && destination.trim().toLowerCase() != 'all' && destination.trim().toLowerCase() != 'all cities';
 
     if (!hasSource && !hasDest) return true;
 
@@ -63,12 +66,38 @@ class TransportService {
 
   Stream<List<TransportOption>> getTransportOptions({String? source, String? destination, String? category}) async* {
     List<TransportOption> filterList(List<TransportOption> list) {
-      return list.where((t) {
+      final cat = category?.trim().toLowerCase();
+      final hasCat = cat != null && cat.isNotEmpty && cat != 'all';
+
+      var matched = list.where((t) {
         final routeOk = isRouteMatch(t.route, source: source, destination: destination);
-        final catOk = category == null || category.isEmpty || t.category == category;
+        final catOk = !hasCat || t.category.toLowerCase() == cat;
         return routeOk && catOk;
       }).toList();
+
+      // If exact route matching found options, return them
+      if (matched.isNotEmpty) return matched;
+
+      // Intelligent Connecting Route Fallback for unlisted pairs
+      final hasSource = source != null && source.trim().isNotEmpty && source.trim().toLowerCase() != 'all' && source.trim().toLowerCase() != 'all cities';
+      final hasDest = destination != null && destination.trim().isNotEmpty && destination.trim().toLowerCase() != 'all' && destination.trim().toLowerCase() != 'all cities';
+
+      if (hasSource && hasDest && source != destination) {
+        matched = _generateConnectingOptions(source, destination, cat);
+        if (matched.isNotEmpty) return matched;
+      }
+
+      // If still empty and category is 'train' for a mountain city, recommend bus & flight connections
+      final isMountainDest = destination != null && (destination.toLowerCase().contains('hunza') || destination.toLowerCase().contains('skardu') || destination.toLowerCase().contains('swat'));
+      if (isMountainDest && cat == 'train') {
+        return _generateMountainConnectingOptions(source ?? 'Islamabad', destination);
+      }
+
+      return matched;
     }
+
+    // Always immediately yield seed data for instantaneous UI rendering
+    yield filterList(SeedData.initialTransports);
 
     if (!SeedData.useSeedData) {
       try {
@@ -77,13 +106,10 @@ class TransportService {
           yield filterList(firestoreTransports);
         }
       } catch (_) {
-        yield [];
+        yield filterList(SeedData.initialTransports);
       }
       return;
     }
-
-    // Immediately yield seed transports matching route + category
-    yield filterList(SeedData.initialTransports);
 
     try {
       await for (final snapshot in _firestore.collection('transport').snapshots()) {
@@ -94,6 +120,91 @@ class TransportService {
     } catch (_) {
       yield filterList(SeedData.initialTransports);
     }
+  }
+
+  List<TransportOption> _generateConnectingOptions(String src, String dst, String? category) {
+    final list = <TransportOption>[];
+    final isFlight = category == null || category == 'flight' || category == 'all';
+    final isBus = category == null || category == 'bus' || category == 'all';
+    final isTrain = category == null || category == 'train' || category == 'all';
+
+    final isMountain = dst.toLowerCase().contains('hunza') || dst.toLowerCase().contains('skardu') || dst.toLowerCase().contains('swat');
+
+    if (isFlight && !dst.toLowerCase().contains('swat')) {
+      list.add(TransportOption(
+        id: 'conn_flight_${src}_$dst',
+        type: 'PIA / AirSial Connecting Flight',
+        route: '$src -> $dst (via Islamabad)',
+        fare: 34000,
+        time: '3h 45m',
+        icon: Icons.flight,
+        vendorId: 'pia_official',
+        websiteUrl: 'https://www.piac.com.pk/',
+        category: 'flight',
+        departureTime: '08:00',
+        availableSeats: 16,
+        operator: 'Connecting Flight (via ISB)',
+        typePrices: {'Economy': 34000, 'Business': 55000},
+      ));
+    }
+
+    if (isBus) {
+      list.add(TransportOption(
+        id: 'conn_bus_${src}_$dst',
+        type: 'Faisal Movers / Daewoo Luxury Transfer',
+        route: '$src -> $dst (Intercity Express)',
+        fare: 6200,
+        time: '14h 00m',
+        icon: Icons.directions_bus,
+        vendorId: 'faisal_movers',
+        websiteUrl: 'https://faisalmovers.com/',
+        category: 'bus',
+        departureTime: '09:00',
+        availableSeats: 20,
+        operator: 'Intercity Highway Service',
+        typePrices: {'Executive': 6200, 'Super Luxury': 7800},
+      ));
+    }
+
+    if (isTrain && !isMountain) {
+      list.add(TransportOption(
+        id: 'conn_train_${src}_$dst',
+        type: 'Pakistan Railways Intercity',
+        route: '$src -> $dst (Express Service)',
+        fare: 4200,
+        time: '16h 30m',
+        icon: Icons.train,
+        vendorId: 'pak_railways',
+        websiteUrl: 'https://pakrail.gov.pk/',
+        category: 'train',
+        departureTime: '10:30',
+        availableSeats: 35,
+        operator: 'Pakistan Railways',
+        typePrices: {'Economy': 2400, 'AC Std': 4200},
+      ));
+    }
+
+    return list;
+  }
+
+  List<TransportOption> _generateMountainConnectingOptions(String src, String dst) {
+    return [
+      TransportOption(
+        id: 'mtn_rail_natco_${src}_$dst',
+        type: 'Green Line + NATCO Mountain Transfer',
+        route: '$src -> $dst (Train to ISB + NATCO)',
+        fare: 9200,
+        time: '18h 00m',
+        icon: Icons.train,
+        vendorId: 'pak_railways',
+        websiteUrl: 'https://pakrail.gov.pk/',
+        category: 'train',
+        departureTime: '06:00',
+        availableSeats: 22,
+        operator: 'Pak Railways + NATCO Combined',
+        typePrices: {'Standard Combined': 9200, 'AC Sleeper + Deluxe': 14500},
+      ),
+    ];
   }
 
   Stream<List<TransportOption>> getTransportOptionsByVendor(String vendorId) {
