@@ -9,7 +9,7 @@ import '../transport/transport_screen.dart';
 import '../attractions/attractions_screen.dart';
 import '../lingo/lingo_screen.dart';
 import '../auth/role_selection_screen.dart';
-import '../../core/sos_service.dart';
+import '../news/widgets/live_travel_news_section.dart';
 import '../eco_tracker/eco_tracker_screen.dart';
 import '../guides/guides_screen.dart';
 import '../bargain/bargain_screen.dart';
@@ -27,6 +27,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _isSwitching = false;
+  final GlobalKey _newsSectionKey = GlobalKey();
 
   // ── Surprise Me ───────────────────────────────────────────────────────────
   void _showSurpriseMeSheet(BuildContext context) {
@@ -302,9 +303,14 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildPremiumHeader(context),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             _buildExploreServices(context),
-            const SizedBox(height: 24),
+            const SizedBox(height: 10),
+            KeyedSubtree(
+              key: _newsSectionKey,
+              child: const LiveTravelNewsSection(),
+            ),
+            const SizedBox(height: 14),
             _buildFeaturedDestinations(context),
             const SizedBox(height: 24),
             _buildEcoTrackerBanner(context),
@@ -389,40 +395,29 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Emergency SOS button
+                  // Live News Quick Jump Badge
                   InkWell(
-                    onTap: () async {
-                      try {
-                        await SOSService.triggerSOS();
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Failed to trigger SOS: $e'), backgroundColor: Colors.red),
-                          );
-                        }
-                      }
+                    onTap: () {
+                      _newsSectionKey.currentContext?.findRenderObject()?.showOnScreen(
+                        duration: const Duration(milliseconds: 500),
+                        curve: Curves.easeInOut,
+                      );
                     },
                     borderRadius: BorderRadius.circular(14),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
                       decoration: BoxDecoration(
-                        color: Colors.red.shade600,
+                        color: Colors.white.withAlpha(45),
                         borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.red.withAlpha(100),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                        border: Border.all(color: Colors.white.withAlpha(55)),
                       ),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.sos_rounded, color: Colors.white, size: 14),
-                          SizedBox(width: 2),
+                          Icon(Icons.campaign_rounded, color: Colors.amberAccent, size: 14),
+                          SizedBox(width: 4),
                           Text(
-                            'SOS',
+                            'Live News',
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 10.5,
