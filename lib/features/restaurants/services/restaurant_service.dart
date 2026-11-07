@@ -8,6 +8,17 @@ class RestaurantService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Stream<List<Restaurant>> getRestaurants() async* {
+    if (!SeedData.useSeedData) {
+      try {
+        await for (final snapshot in _firestore.collection('restaurants').snapshots()) {
+          yield snapshot.docs.map((doc) => Restaurant.fromFirestore(doc)).toList();
+        }
+      } catch (_) {
+        yield [];
+      }
+      return;
+    }
+
     yield SeedData.initialRestaurants;
 
     try {

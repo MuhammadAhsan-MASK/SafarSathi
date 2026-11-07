@@ -57,6 +57,17 @@ class HotelService {
   }
 
   Stream<List<Hotel>> getHotels() async* {
+    if (!SeedData.useSeedData) {
+      try {
+        await for (final snapshot in _firestore.collection('hotels').snapshots()) {
+          yield snapshot.docs.map((doc) => Hotel.fromFirestore(doc)).toList();
+        }
+      } catch (_) {
+        yield [];
+      }
+      return;
+    }
+
     List<Hotel> csvHotels = await _loadCsvHotels();
     
     // First yield initial authentic seed hotels + CSV immediately

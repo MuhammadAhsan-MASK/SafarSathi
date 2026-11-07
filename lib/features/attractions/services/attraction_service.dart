@@ -6,6 +6,18 @@ class AttractionService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Stream<List<Attraction>> getAttractions({String? city, String? type}) async* {
+    if (!SeedData.useSeedData) {
+      try {
+        await for (final snapshot in _firestore.collection('attractions').snapshots()) {
+          final firestoreList = snapshot.docs.map((doc) => Attraction.fromFirestore(doc)).toList();
+          yield _filter(firestoreList, city: city, type: type);
+        }
+      } catch (_) {
+        yield [];
+      }
+      return;
+    }
+
     // 1. Immediately yield filtered seed data
     yield _filter(SeedData.initialAttractions, city: city, type: type);
 

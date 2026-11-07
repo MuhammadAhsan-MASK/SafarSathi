@@ -70,6 +70,18 @@ class TransportService {
       }).toList();
     }
 
+    if (!SeedData.useSeedData) {
+      try {
+        await for (final snapshot in _firestore.collection('transport').snapshots()) {
+          final firestoreTransports = snapshot.docs.map((doc) => TransportOption.fromFirestore(doc)).toList();
+          yield filterList(firestoreTransports);
+        }
+      } catch (_) {
+        yield [];
+      }
+      return;
+    }
+
     // Immediately yield seed transports matching route + category
     yield filterList(SeedData.initialTransports);
 

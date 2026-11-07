@@ -9,10 +9,14 @@ import 'data/transport_data.dart';
 import 'data/attractions_data.dart';
 
 class SeedData {
-  static List<Hotel> get initialHotels => allHotels;
-  static List<Restaurant> get initialRestaurants => allRestaurants;
-  static List<TransportOption> get initialTransports => allTransports;
-  static List<Attraction> get initialAttractions => allAttractions;
+  /// Toggle to control whether hardcoded seed data is used.
+  /// Set to false to disable all seed/dummy data.
+  static const bool useSeedData = false;
+
+  static List<Hotel> get initialHotels => useSeedData ? allHotels : [];
+  static List<Restaurant> get initialRestaurants => useSeedData ? allRestaurants : [];
+  static List<TransportOption> get initialTransports => useSeedData ? allTransports : [];
+  static List<Attraction> get initialAttractions => useSeedData ? allAttractions : [];
 
   /// Seed all initial data into Cloud Firestore
   static Future<void> seedFirebase() async {
