@@ -32,16 +32,40 @@ class BudgetMatcherService {
     if ((dest.contains('lhr') || dest.contains('lahore')) && (loc.contains('lahore') || loc.contains('lhr'))) {
       return true;
     }
-    if (dest.contains('hunza') && (loc.contains('hunza') || loc.contains('karimabad') || loc.contains('attabad') || loc.contains('aliabad'))) {
+    if (dest.contains('hunza') && (loc.contains('hunza') || loc.contains('karimabad') || loc.contains('attabad') || loc.contains('aliabad') || loc.contains('passu') || loc.contains('duikar'))) {
       return true;
     }
-    if (dest.contains('skardu') && (loc.contains('skardu') || loc.contains('shigar') || loc.contains('kachura'))) {
+    if (dest.contains('skardu') && (loc.contains('skardu') || loc.contains('shigar') || loc.contains('kachura') || loc.contains('deosai') || loc.contains('satpara'))) {
       return true;
     }
-    if (dest.contains('swat') && (loc.contains('swat') || loc.contains('saidu') || loc.contains('mingora') || loc.contains('kalam'))) {
+    if (dest.contains('swat') && (loc.contains('swat') || loc.contains('saidu') || loc.contains('mingora') || loc.contains('kalam') || loc.contains('madyan') || loc.contains('marghazar'))) {
       return true;
     }
-    if (dest.contains('murree') && (loc.contains('murree') || loc.contains('bhurban') || loc.contains('jhika'))) {
+    if (dest.contains('murree') && (loc.contains('murree') || loc.contains('bhurban') || loc.contains('jhika') || loc.contains('galyat') || loc.contains('nathia'))) {
+      return true;
+    }
+    if ((dest.contains('naran') || dest.contains('kaghan')) && (loc.contains('naran') || loc.contains('kaghan') || loc.contains('shogran') || loc.contains('saif') || loc.contains('babusar'))) {
+      return true;
+    }
+    if (dest.contains('gilgit') && (loc.contains('gilgit') || loc.contains('chinar') || loc.contains('karakoram'))) {
+      return true;
+    }
+    if (dest.contains('chitral') && (loc.contains('chitral') || loc.contains('kalash') || loc.contains('ayun') || loc.contains('tirich'))) {
+      return true;
+    }
+    if (dest.contains('gwadar') && (loc.contains('gwadar') || loc.contains('marine') || loc.contains('makran') || loc.contains('ormara'))) {
+      return true;
+    }
+    if (dest.contains('multan') && (loc.contains('multan') || loc.contains('nishtar') || loc.contains('abdali'))) {
+      return true;
+    }
+    if (dest.contains('peshawar') && (loc.contains('peshawar') || loc.contains('khyber') || loc.contains('qissa'))) {
+      return true;
+    }
+    if (dest.contains('quetta') && (loc.contains('quetta') || loc.contains('zarghoon') || loc.contains('ziarat'))) {
+      return true;
+    }
+    if (dest.contains('faisalabad') && loc.contains('faisalabad')) {
       return true;
     }
 
@@ -63,16 +87,18 @@ class BudgetMatcherService {
     // Strictly match destination city ONLY
     final destinationHotels = allHotels.where((h) => _matchesCity(h.location, destination)).toList();
 
-    if (destinationHotels.isEmpty) {
-      return [];
-    }
-
     double getLowestPrice(Hotel h) {
       if (h.typePrices.isNotEmpty) {
         final minType = h.typePrices.values.reduce((a, b) => a < b ? a : b);
         if (minType > 0) return minType;
       }
       return h.price > 0 ? h.price : 3500.0;
+    }
+
+    if (destinationHotels.isEmpty) {
+      final fallback = [...allHotels];
+      fallback.sort((a, b) => getLowestPrice(a).compareTo(getLowestPrice(b)));
+      return fallback.take(5).toList();
     }
 
     // Filter strictly by calculated budget cap
@@ -102,16 +128,18 @@ class BudgetMatcherService {
     // Strictly match destination city ONLY
     final destinationRests = allRestaurants.where((r) => _matchesCity(r.location, destination)).toList();
 
-    if (destinationRests.isEmpty) {
-      return [];
-    }
-
     double getLowestMealPrice(Restaurant r) {
       if (r.typePrices.isNotEmpty) {
         final minPrice = r.typePrices.values.reduce((a, b) => a < b ? a : b);
         if (minPrice > 0) return minPrice;
       }
       return r.price > 0 ? r.price : 600.0;
+    }
+
+    if (destinationRests.isEmpty) {
+      final fallback = [...allRestaurants];
+      fallback.sort((a, b) => getLowestMealPrice(a).compareTo(getLowestMealPrice(b)));
+      return fallback.take(5).toList();
     }
 
     final budgetMatches = destinationRests.where((r) => getLowestMealPrice(r) <= maxPricePerMeal).toList();
@@ -150,15 +178,11 @@ class BudgetMatcherService {
     if (routeMatches.isNotEmpty) {
       candidates = routeMatches;
     } else {
-      // If no exact direct route, find any options containing destination or origin
-      final partialMatches = allTrans.where((t) {
-        return TransportService.isRouteMatch(t.route, source: origin) ||
-               TransportService.isRouteMatch(t.route, destination: destination);
-      }).toList();
-      if (partialMatches.isNotEmpty) {
-        candidates = partialMatches;
+      // Intelligently generate connecting intercity options for any unlisted city pair
+      final connecting = TransportService.generateConnectingOptions(origin, destination);
+      if (connecting.isNotEmpty) {
+        candidates = connecting;
       } else {
-        // Fallback to intercity express options
         candidates = allTrans;
       }
     }
@@ -193,7 +217,9 @@ class BudgetMatcherService {
     final destinationAttractions = allAttractions.where((a) => _matchesCity(a.city, destination) || _matchesCity(a.location ?? '', destination)).toList();
 
     if (destinationAttractions.isEmpty) {
-      return [];
+      final fallback = [...allAttractions];
+      fallback.sort((a, b) => a.fee.compareTo(b.fee));
+      return fallback.take(5).toList();
     }
 
     // Filter strictly within calculated activity budget

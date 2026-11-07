@@ -84,7 +84,7 @@ class TransportService {
       final hasDest = destination != null && destination.trim().isNotEmpty && destination.trim().toLowerCase() != 'all' && destination.trim().toLowerCase() != 'all cities';
 
       if (hasSource && hasDest && source != destination) {
-        matched = _generateConnectingOptions(source, destination, cat);
+        matched = generateConnectingOptions(source, destination, cat);
         if (matched.isNotEmpty) return matched;
       }
 
@@ -123,7 +123,7 @@ class TransportService {
     }
   }
 
-  List<TransportOption> _generateConnectingOptions(String src, String dst, String? category) {
+  static List<TransportOption> generateConnectingOptions(String src, String dst, [String? category]) {
     final list = <TransportOption>[];
     final isFlight = category == null || category == 'flight' || category == 'all';
     final isBus = category == null || category == 'bus' || category == 'all';

@@ -114,4 +114,25 @@ final List<Restaurant> allRestaurants = [
   Restaurant(id: 'monal_multan', name: 'Monal Restaurant Multan', cuisine: 'Pakistani BBQ & Karahi', price: 2200, location: 'Gulgasht Colony, Multan', vendorId: 'monal_official', imageUrl: 'https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?w=800', websiteUrl: 'https://monal.com.pk/', phone: '+92-61-6400056', typePrices: {'Chicken Karahi': 2200, 'Mix Grill': 3000}),
   Restaurant(id: 'burger_barbeque_multan', name: 'Burger Barbeque Multan', cuisine: 'Burgers & Fast Food', price: 900, location: 'Nishtar Road, Multan', vendorId: 'burger_bbq_mtn', imageUrl: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800', websiteUrl: 'https://www.google.com/maps/search/?api=1&query=Burger+Barbeque+Multan', phone: '+92-61-4558080', typePrices: {'Classic Burger': 700, 'Smash Burger': 950}),
   Restaurant(id: 'dha_food_court_multan', name: 'DHA Food Court Multan', cuisine: 'Multiple Cuisines', price: 1200, location: 'DHA Multan', vendorId: 'dha_food_mtn', imageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800', websiteUrl: 'https://dhamultan.pk/', phone: '+92-61-4700800', typePrices: {'Biryani': 1000, 'Chicken Handi': 1500}),
+
+  // ─────────────────────────────────────────────
+  // NARAN & KAGHAN
+  // ─────────────────────────────────────────────
+  Restaurant(id: 'moon_restaurant_naran', name: 'Moon Restaurant Naran', cuisine: 'Fresh River Trout & Desi', price: 950, location: 'Main Bazaar, Naran, Kaghan', vendorId: 'moon_naran', imageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=800', websiteUrl: 'https://ptdc.org.pk/', phone: '+92-997-430033', typePrices: {'Fried Trout': 1200, 'Chicken Karahi': 950, 'Daal Roti': 450}),
+  Restaurant(id: 'kaghan_food_point', name: 'Kaghan Valley Food Point', cuisine: 'Local Dhaba & Grills', price: 550, location: 'Bypass Road, Naran, Kaghan', vendorId: 'kaghan_food', imageUrl: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800', websiteUrl: 'https://ptdc.org.pk/', phone: '+92-997-430055', typePrices: {'Chicken Biryani': 450, 'Chapli Kebab': 350, 'Chai': 90}),
+
+  // ─────────────────────────────────────────────
+  // GILGIT
+  // ─────────────────────────────────────────────
+  Restaurant(id: 'madina_hotel_gilgit', name: 'Madina Restaurant Gilgit', cuisine: 'Balti Cuisine & BBQ', price: 500, location: 'Saddar Bazaar, Gilgit', vendorId: 'madina_glt', imageUrl: 'https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?w=800', websiteUrl: 'https://ptdc.org.pk/', phone: '+92-5811-455200', typePrices: {'Balti Chicken': 600, 'Daal Fry': 300, 'Naan': 60}),
+
+  // ─────────────────────────────────────────────
+  // CHITRAL
+  // ─────────────────────────────────────────────
+  Restaurant(id: 'chitral_traditional_food', name: 'Chitral Heritage Dining', cuisine: 'Chitrali Local & BBQ', price: 480, location: 'Ataliq Bazaar, Chitral', vendorId: 'chitral_food', imageUrl: 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800', websiteUrl: 'https://ptdc.org.pk/', phone: '+92-943-412210', description: 'Famous Chitrali Ghalmandi and mutton stew.', typePrices: {'Ghalmandi': 400, 'Local Stew': 550}),
+
+  // ─────────────────────────────────────────────
+  // GWADAR
+  // ─────────────────────────────────────────────
+  Restaurant(id: 'gwadar_fish_point', name: 'Gwadar Marine Fish Point', cuisine: 'Fresh Seafood & Grills', price: 750, location: 'Marine Drive, Gwadar', vendorId: 'gwadar_fish', imageUrl: 'https://images.unsplash.com/photo-1544025162-d76694265947?w=800', websiteUrl: 'https://ptdc.org.pk/', phone: '+92-86-4210333', description: 'Fresh Arabian Sea fish cooked to order right on the coast.', typePrices: {'Grilled Pomfret': 900, 'Fish Biryani': 650}),
 ];
