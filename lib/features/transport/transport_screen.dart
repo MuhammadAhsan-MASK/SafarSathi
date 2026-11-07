@@ -4,7 +4,7 @@ import '../../core/theme.dart';
 import '../../core/currency_provider.dart';
 import 'services/transport_service.dart';
 import 'models/transport_model.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'transport_detail_screen.dart';
 
 class TransportScreen extends StatefulWidget {
   const TransportScreen({super.key});
@@ -48,16 +48,6 @@ class _TransportScreenState extends State<TransportScreen> {
       _departure = _destination;
       _destination = temp;
     });
-  }
-
-  Future<void> _launchUrl(String urlString) async {
-    final Uri uri = Uri.parse(urlString);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Could not open $urlString')));
-      }
-    }
   }
 
   void _showCityPicker({required bool isDeparture}) {
@@ -508,7 +498,6 @@ class _TransportScreenState extends State<TransportScreen> {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -520,154 +509,169 @@ class _TransportScreenState extends State<TransportScreen> {
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header Row: Icon, Service info, Fare & Seats
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(option.icon, color: color, size: 24),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => TransportDetailScreen(option: option)),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header Row: Icon, Service info, Fare & Seats
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      option.type,
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (option.operator.isNotEmpty)
-                      Text(
-                        option.operator,
-                        style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Icon(Icons.directions, size: 12, color: color),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            option.route,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: color,
-                            ),
+                      child: Icon(option.icon, color: color, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            option.type,
+                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
+                          if (option.operator.isNotEmpty)
+                            Text(
+                              option.operator,
+                              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Icon(Icons.directions, size: 12, color: color),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  option.route,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: color,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Icon(Icons.schedule, size: 12, color: Colors.grey.shade500),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  'Departs ${option.departureTime}  •  ${option.time}',
+                                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                    const SizedBox(height: 2),
-                    Row(
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Icon(Icons.schedule, size: 12, color: Colors.grey.shade500),
-                        const SizedBox(width: 4),
-                        Expanded(
+                        Text(
+                          Provider.of<CurrencyProvider>(context).formatPrice(option.fare),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: color,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: seatsColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                           child: Text(
-                            'Departs ${option.departureTime}  •  ${option.time}',
-                            style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                            '$seats seats left',
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: seatsColor,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ],
                 ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    Provider.of<CurrencyProvider>(context).formatPrice(option.fare),
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: color,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: seatsColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Text(
-                      '$seats seats left',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: seatsColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+
+                // Tier tags (if provided)
+                if (option.typePrices.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  const Divider(height: 1),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: option.typePrices.entries.map((e) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: color.withValues(alpha: 0.07),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          '${e.key}: ${Provider.of<CurrencyProvider>(context, listen: false).formatPrice(e.value)}',
+                          style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ],
-              ),
-            ],
+
+                // Action Footer Row: Tap to open card prompt
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Tap card to view itinerary, amenities & policies',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Colors.grey.shade500,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Icon(Icons.arrow_forward_ios, size: 12, color: color),
+                  ],
+                ),
+              ],
+            ),
           ),
-
-          // Tier tags (if provided)
-          if (option.typePrices.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            const Divider(height: 1),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 6,
-              runSpacing: 4,
-              children: option.typePrices.entries.map((e) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.07),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Text(
-                    '${e.key}: ${Provider.of<CurrencyProvider>(context, listen: false).formatPrice(e.value)}',
-                    style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600),
-                  ),
-                );
-              }).toList(),
-            ),
-          ],
-
-          // Official website book button
-          if (option.websiteUrl != null && option.websiteUrl!.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                onPressed: () => _launchUrl(option.websiteUrl!),
-                icon: Icon(Icons.open_in_browser, size: 16, color: color),
-                label: Text(
-                  'Book via Official Website',
-                  style: TextStyle(color: color, fontSize: 13, fontWeight: FontWeight.w600),
-                ),
-                style: OutlinedButton.styleFrom(
-                  side: BorderSide(color: color.withValues(alpha: 0.4)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  padding: const EdgeInsets.symmetric(vertical: 9),
-                ),
-              ),
-            ),
-          ],
-        ],
+        ),
       ),
     );
   }
