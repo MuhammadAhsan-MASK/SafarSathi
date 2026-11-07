@@ -693,6 +693,37 @@ class _AttractionsScreenState extends State<AttractionsScreen> {
                   ],
                 ),
               ),
+              // Watch Video Tour overlay badge
+              Positioned(
+                bottom: 12,
+                left: 12,
+                child: GestureDetector(
+                  onTap: () => _showVideoPreviewSheet(context, attraction),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.75),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.play_circle_fill, color: Colors.redAccent, size: 16),
+                        SizedBox(width: 5),
+                        Text(
+                          'Watch Video Tour',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
 
@@ -774,20 +805,35 @@ class _AttractionsScreenState extends State<AttractionsScreen> {
                   const SizedBox(height: 14),
                 ],
 
-                // Action Bar: View on Map & Official Website
+                // Action Bar: Watch Video, View on Map & Official Website
                 Row(
                   children: [
-                    // View on Map Button
+                    // Watch Video Button
                     Expanded(
                       child: ElevatedButton.icon(
-                        icon: const Icon(Icons.map_outlined, size: 18),
-                        label: const Text('View on Map'),
+                        icon: const Icon(Icons.smart_display_rounded, size: 18),
+                        label: const Text('Watch Video'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.attractionColor,
+                          backgroundColor: Colors.red.shade700,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 10),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                           elevation: 0,
+                        ),
+                        onPressed: () => _showVideoPreviewSheet(context, attraction),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // View on Map Button
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.map_outlined, size: 18),
+                        label: const Text('View on Map'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.attractionColor,
+                          side: const BorderSide(color: AppTheme.attractionColor),
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         ),
                         onPressed: () {
                           if (attraction.mapUrl != null && attraction.mapUrl!.isNotEmpty) {
@@ -817,6 +863,171 @@ class _AttractionsScreenState extends State<AttractionsScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // Video Tour Bottom Sheet
+  void _showVideoPreviewSheet(BuildContext context, Attraction attraction) {
+    final videoUrl = attraction.effectiveVideoUrl;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(22),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 44,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.smart_display_rounded, color: Colors.red, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Video Tour & Sights Preview',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.red.shade700,
+                        ),
+                      ),
+                      Text(
+                        attraction.name,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            // Video Thumbnail card with play overlay
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: SizedBox(
+                    height: 190,
+                    width: double.infinity,
+                    child: attraction.imageUrl != null
+                        ? Image.network(
+                            attraction.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Container(color: Colors.grey[800]),
+                          )
+                        : Container(color: Colors.grey[800]),
+                  ),
+                ),
+                Container(
+                  height: 190,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    color: Colors.black.withValues(alpha: 0.35),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _launchUrl(videoUrl);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade600,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.red.withValues(alpha: 0.5),
+                          blurRadius: 15,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 36),
+                  ),
+                ),
+                Positioned(
+                  bottom: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.75),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      'Tap to Play 4K Video Tour',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Text(
+              'Watch authentic drone footage, travel guides, and walkthroughs of ${attraction.name} in ${attraction.city}, Pakistan to see what this destination looks like.',
+              style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.4),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.play_circle_fill, size: 20),
+                    label: const Text('Play Video Tour (YouTube)'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red.shade700,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      elevation: 1,
+                    ),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _launchUrl(videoUrl);
+                    },
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+          ],
+        ),
       ),
     );
   }

@@ -16,6 +16,7 @@ final List<Attraction> allAttractions = [
     history: 'Designed by Turkish architect Vedat Dalokay and completed in 1986, it was once the largest mosque in the world. Its tent-like structure is inspired by a Bedouin tent with four 88m minarets.',
     websiteUrl: 'https://cda.gov.pk/',
     mapUrl: 'https://www.google.com/maps/search/?api=1&query=Faisal+Mosque+Islamabad',
+    videoUrl: 'https://www.youtube.com/results?search_query=Faisal+Mosque+Islamabad+4K+drone+tour',
   ),
   Attraction(
     id: 'pakistan_monument_isb',
@@ -29,6 +30,7 @@ final List<Attraction> allAttractions = [
     history: 'Inaugurated in 2007, this national monument symbolizes Pakistan unity. Its blooming flower design features four large petals representing the four provinces and three smaller petals representing the territories.',
     websiteUrl: 'https://cda.gov.pk/',
     mapUrl: 'https://www.google.com/maps/search/?api=1&query=Pakistan+Monument+Islamabad',
+    videoUrl: 'https://www.youtube.com/results?search_query=Pakistan+Monument+Islamabad+drone+tour+4K',
   ),
   Attraction(
     id: 'daman_e_koh_isb',
@@ -42,6 +44,7 @@ final List<Attraction> allAttractions = [
     history: 'A scenic hilltop garden perched 2,400 feet above sea level in the Margalla Hills. Named after its Persian translation "foot of the mountain", it provides panoramic vistas over Islamabad and Faisal Mosque.',
     websiteUrl: 'https://cda.gov.pk/',
     mapUrl: 'https://www.google.com/maps/search/?api=1&query=Daman+e+Koh+Islamabad',
+    videoUrl: 'https://www.youtube.com/results?search_query=Daman+e+Koh+Margalla+Hills+Islamabad+4K+tour',
   ),
   Attraction(
     id: 'monal_pir_sohawa_isb',

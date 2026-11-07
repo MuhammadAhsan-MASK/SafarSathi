@@ -12,6 +12,7 @@ class Attraction {
   final String? history;
   final String? mapUrl;
   final String? websiteUrl;
+  final String? videoUrl;
   final DateTime? createdAt;
 
   Attraction({
@@ -26,8 +27,17 @@ class Attraction {
     this.history,
     this.mapUrl,
     this.websiteUrl,
+    this.videoUrl,
     this.createdAt,
   });
+
+  String get effectiveVideoUrl {
+    if (videoUrl != null && videoUrl!.isNotEmpty) {
+      return videoUrl!;
+    }
+    final query = Uri.encodeComponent('$name $city Pakistan travel tour 4k');
+    return 'https://www.youtube.com/results?search_query=$query';
+  }
 
   factory Attraction.fromFirestore(DocumentSnapshot doc) {
     Map data = doc.data() as Map<String, dynamic>;
@@ -43,6 +53,7 @@ class Attraction {
       history: data['history'],
       mapUrl: data['mapUrl'],
       websiteUrl: data['websiteUrl'],
+      videoUrl: data['videoUrl'],
       createdAt: data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : null,
     );
   }
@@ -59,6 +70,7 @@ class Attraction {
       'history': history,
       'mapUrl': mapUrl,
       'websiteUrl': websiteUrl,
+      'videoUrl': videoUrl,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : null,
     };
   }

@@ -459,25 +459,42 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with SingleTickerPr
                   ),
                 ],
                 const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.map_outlined, size: 15),
-                    label: const Text('View on Map'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.attractionColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.smart_display_rounded, size: 15),
+                        label: const Text('Video'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.red.shade700,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: () => _launchUrl(attraction.effectiveVideoUrl),
+                      ),
                     ),
-                    onPressed: () {
-                      if (attraction.mapUrl != null) {
-                        _launchUrl(attraction.mapUrl!);
-                      } else {
-                        _openMap(attraction.location ?? attraction.city, attraction.name);
-                      }
-                    },
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.map_outlined, size: 15),
+                        label: const Text('Map'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.attractionColor,
+                          side: const BorderSide(color: AppTheme.attractionColor),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: () {
+                          if (attraction.mapUrl != null) {
+                            _launchUrl(attraction.mapUrl!);
+                          } else {
+                            _openMap(attraction.location ?? attraction.city, attraction.name);
+                          }
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
