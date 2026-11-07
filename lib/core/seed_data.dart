@@ -10,8 +10,8 @@ import 'data/attractions_data.dart';
 
 class SeedData {
   /// Toggle to control whether hardcoded seed data is used.
-  /// Set to false to disable all seed/dummy data.
-  static const bool useSeedData = false;
+  /// Set to true to display authentic Pakistan travel routes, hotels, and attractions.
+  static const bool useSeedData = true;
 
   static List<Hotel> get initialHotels => useSeedData ? allHotels : [];
   static List<Restaurant> get initialRestaurants => useSeedData ? allRestaurants : [];

@@ -51,14 +51,23 @@ class _TransportScreenState extends State<TransportScreen> {
     return Scaffold(
       backgroundColor: AppTheme.transportBg,
       appBar: AppBar(
-        title: const Text('Transport & Routes'),
+        title: const Text(
+          'Transport & Routes',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
         backgroundColor: Colors.transparent,
         actions: [
           if (_step != TransportStep.selectType)
             TextButton.icon(
               onPressed: _reset,
-              icon: const Icon(Icons.refresh, color: Colors.white, size: 18),
-              label: const Text('Reset', style: TextStyle(color: Colors.white)),
+              icon: const Icon(Icons.refresh, color: Colors.white, size: 16),
+              label: const Text('Reset', style: TextStyle(color: Colors.white, fontSize: 12)),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
             ),
           _buildCurrencySelector(context),
         ],
@@ -222,19 +231,34 @@ class _TransportScreenState extends State<TransportScreen> {
                   GestureDetector(
                     onTap: () => setState(() => _step = TransportStep.selectDeparture),
                     child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Icon(Icons.arrow_back_ios, size: 14, color: Colors.grey),
-                        Text('From: $_departure',
-                            style: const TextStyle(color: Colors.grey, fontSize: 13)),
+                        const Icon(Icons.arrow_back_ios, size: 13, color: Colors.grey),
+                        const SizedBox(width: 4),
+                        Flexible(
+                          child: Text(
+                            'From: $_departure',
+                            style: const TextStyle(color: Colors.grey, fontSize: 13),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 if (_step == TransportStep.selectDestination) const SizedBox(height: 12),
                 Row(
                   children: [
-                    Icon(icon, color: AppTheme.primaryPurple),
+                    Icon(icon, color: AppTheme.primaryPurple, size: 22),
                     const SizedBox(width: 8),
-                    Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 20),
