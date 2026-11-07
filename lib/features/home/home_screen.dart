@@ -297,36 +297,22 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () async {
-          try {
-            await SOSService.triggerSOS();
-          } catch (e) {
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Failed to trigger SOS: $e'), backgroundColor: Colors.red),
-              );
-            }
-          }
-        },
-        backgroundColor: Colors.red.shade600,
-        icon: const Icon(Icons.sos_outlined, color: Colors.white),
-        label: const Text('SOS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-      ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildPremiumHeader(context),
-            const SizedBox(height: 30),
+            const SizedBox(height: 24),
             _buildExploreServices(context),
-            const SizedBox(height: 30),
+            const SizedBox(height: 24),
+            _buildFeaturedDestinations(context),
+            const SizedBox(height: 24),
             _buildEcoTrackerBanner(context),
-            const SizedBox(height: 30),
+            const SizedBox(height: 24),
             _buildRecentTrips(context),
-            const SizedBox(height: 30),
+            const SizedBox(height: 24),
             _buildServiceProviderBanner(context),
-            const SizedBox(height: 30),
+            const SizedBox(height: 36),
           ],
         ),
       ),
@@ -336,65 +322,128 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildPremiumHeader(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.only(top: 60, bottom: 40, left: 24, right: 24),
+      padding: const EdgeInsets.only(top: 56, bottom: 28, left: 20, right: 20),
       decoration: const BoxDecoration(
         gradient: AppTheme.primaryGradient,
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(40),
-          bottomRight: Radius.circular(40),
+          bottomLeft: Radius.circular(36),
+          bottomRight: Radius.circular(36),
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Top Bar with Greeting & Action Badges
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Welcome back,',
-                      style: GoogleFonts.poppins(
-                        fontSize: 16,
-                        color: Colors.white.withValues(alpha: 0.9),
-                      ),
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(45),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white.withAlpha(80), width: 1.5),
                     ),
-                    Text(
-                      'Ready to explore?',
-                      style: GoogleFonts.poppins(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                    child: const Icon(Icons.explore_rounded, color: Colors.white, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Assalam o Alaikum 🇵🇰',
+                        style: GoogleFonts.poppins(
+                          fontSize: 12.5,
+                          color: Colors.white.withAlpha(220),
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                      Text(
+                        'Explore Pakistan',
+                        style: GoogleFonts.poppins(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          height: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
               Row(
                 children: [
-                   Consumer<CurrencyProvider>(
+                  // Emergency SOS button
+                  InkWell(
+                    onTap: () async {
+                      try {
+                        await SOSService.triggerSOS();
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Failed to trigger SOS: $e'), backgroundColor: Colors.red),
+                          );
+                        }
+                      }
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade600,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.red.withAlpha(100),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.sos_rounded, color: Colors.white, size: 16),
+                          SizedBox(width: 3),
+                          Text(
+                            'SOS',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Currency Selector
+                  Consumer<CurrencyProvider>(
                     builder: (context, currencyProvider, child) {
                       return InkWell(
                         onTap: () => _showCurrencyPicker(context, currencyProvider),
-                        borderRadius: BorderRadius.circular(25),
+                        borderRadius: BorderRadius.circular(16),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                           decoration: BoxDecoration(
-                            color: Colors.white24,
-                            borderRadius: BorderRadius.circular(20),
+                            color: Colors.white.withAlpha(40),
+                            borderRadius: BorderRadius.circular(16),
                           ),
                           child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.currency_exchange, color: Colors.white, size: 18),
-                              const SizedBox(width: 6),
+                              const Icon(Icons.currency_exchange, color: Colors.white, size: 14),
+                              const SizedBox(width: 4),
                               Text(
                                 currencyProvider.selectedCurrency,
                                 style: GoogleFonts.poppins(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
-                                  fontSize: 14,
+                                  fontSize: 12,
                                 ),
                               ),
                             ],
@@ -404,76 +453,486 @@ class _HomeScreenState extends State<HomeScreen> {
                     },
                   ),
                   const SizedBox(width: 8),
+                  // Switch role
                   InkWell(
                     onTap: _handleQuickSwitch,
-                    child: const CircleAvatar(
-                      radius: 25,
-                      backgroundColor: Colors.white24,
-                      child: Icon(Icons.swap_horiz_rounded, color: Colors.white),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withAlpha(40),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.swap_horiz_rounded, color: Colors.white, size: 18),
                     ),
                   ),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 30),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const TripPlannerScreen()),
+
+          const SizedBox(height: 22),
+
+          // Search and City Chips
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withAlpha(20),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
             ),
-            icon: const Icon(Icons.add_circle_outline, size: 24),
-            label: const Text('Plan New Trip'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: AppTheme.primaryPurple,
-              minimumSize: const Size(double.infinity, 55),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.search_rounded, color: Color(0xFF5E17EB), size: 22),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Where in Pakistan are you traveling?',
+                        style: GoogleFonts.poppins(
+                          color: Colors.grey[700],
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      'Hunza',
+                      'Skardu',
+                      'Swat',
+                      'Lahore',
+                      'Murree',
+                      'Karachi',
+                      'Gwadar',
+                    ].map((city) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: InkWell(
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => AttractionsScreen(initialCity: city),
+                            ),
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF4F1FD),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              city,
+                              style: GoogleFonts.poppins(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF5E17EB),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 12),
-          // Surprise Me Button
-          GestureDetector(
-            onTap: () => _showSurpriseMeSheet(context),
-            child: Container(
-              width: double.infinity,
-              height: 52,
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFFF6B6B), Color(0xFFFFD93D)],
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFFF6B6B).withValues(alpha: 0.35),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  )
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.auto_awesome_rounded, color: Colors.white, size: 20),
-                  const SizedBox(width: 10),
-                  Flexible(
-                    child: Text(
-                      '✨ Surprise Me — AI Trip Suggester',
-                      style: GoogleFonts.poppins(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 13),
-                      overflow: TextOverflow.ellipsis,
+
+          const SizedBox(height: 14),
+
+          // Dual Action Buttons: AI Trip Planner & Surprise Me
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => const TripPlannerScreen()),
+                  ),
+                  borderRadius: BorderRadius.circular(18),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(20),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF5E17EB).withAlpha(20),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.add_location_alt_rounded, color: Color(0xFF5E17EB), size: 16),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Plan New Trip',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12.5,
+                            color: const Color(0xFF1E2022),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
+                ),
               ),
-            ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: InkWell(
+                  onTap: () => _showSurpriseMeSheet(context),
+                  borderRadius: BorderRadius.circular(18),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFFF5252), Color(0xFFFF9100)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(18),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFF5252).withAlpha(60),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.casino_rounded, color: Colors.white, size: 18),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Surprise Me! 🎲',
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12.5,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildExploreServices(BuildContext context) {
+    final services = [
+      {'title': 'Hotels', 'icon': Icons.hotel_rounded, 'color': AppTheme.hotelColor, 'bg': AppTheme.hotelBg, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HotelScreen()))},
+      {'title': 'Dining', 'icon': Icons.restaurant_rounded, 'color': AppTheme.foodColor, 'bg': AppTheme.foodBg, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RestaurantScreen()))},
+      {'title': 'Transport', 'icon': Icons.directions_bus_rounded, 'color': AppTheme.transportColor, 'bg': AppTheme.transportBg, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TransportScreen()))},
+      {'title': 'Attractions', 'icon': Icons.location_on_rounded, 'color': AppTheme.attractionColor, 'bg': AppTheme.attractionBg, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AttractionsScreen()))},
+      {'title': 'Safar Lingo', 'icon': Icons.translate_rounded, 'color': Colors.teal.shade700, 'bg': Colors.teal.shade50, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const LingoScreen()))},
+      {'title': 'Guides', 'icon': Icons.person_pin_circle_rounded, 'color': Colors.deepOrange.shade600, 'bg': Colors.orange.shade50, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GuidesScreen()))},
+      {'title': 'Bargain', 'icon': Icons.price_check_rounded, 'color': Colors.green.shade700, 'bg': Colors.green.shade50, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BargainScreen()))},
+      {'title': 'Eco-Tracker', 'icon': Icons.eco_rounded, 'color': const Color(0xFF00897B), 'bg': const Color(0xFFE0F2F1), 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EcoTrackerScreen()))},
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Explore Services',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1F2429),
+                ),
+              ),
+              Text(
+                'All-in-One Travel',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[500],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: services.length,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 4,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 10,
+              childAspectRatio: 0.88,
+            ),
+            itemBuilder: (context, index) {
+              final s = services[index];
+              return _buildServiceTile(
+                context,
+                s['title'] as String,
+                s['icon'] as IconData,
+                s['color'] as Color,
+                s['bg'] as Color,
+                s['onTap'] as VoidCallback,
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildServiceTile(BuildContext context, String title, IconData icon, Color color, Color bgColor, VoidCallback onTap) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFEFF0F6), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(6),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: bgColor,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF2C3E50),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeaturedDestinations(BuildContext context) {
+    final destinations = [
+      {
+        'name': 'Hunza Valley',
+        'city': 'Hunza',
+        'province': 'Gilgit-Baltistan',
+        'tag': 'Mountain Paradise',
+        'image': 'https://images.unsplash.com/photo-1596484552834-6a58f850e0a1?w=800',
+        'price': 'From PKR 15,000',
+      },
+      {
+        'name': 'Skardu',
+        'city': 'Skardu',
+        'province': 'Baltistan',
+        'tag': 'Gateway to K2',
+        'image': 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800',
+        'price': 'From PKR 20,000',
+      },
+      {
+        'name': 'Swat Valley',
+        'city': 'Swat',
+        'province': 'Khyber Pakhtunkhwa',
+        'tag': 'Switzerland of East',
+        'image': 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800',
+        'price': 'From PKR 10,000',
+      },
+      {
+        'name': 'Lahore',
+        'city': 'Lahore',
+        'province': 'Punjab',
+        'tag': 'Culture & Food Capital',
+        'image': 'https://images.unsplash.com/photo-1589182373726-e4f658ab50f0?w=800',
+        'price': 'From PKR 5,000',
+      },
+      {
+        'name': 'Murree Hills',
+        'city': 'Murree',
+        'province': 'Punjab / Hill Station',
+        'tag': 'Pines & Snow Retreat',
+        'image': 'https://images.unsplash.com/photo-1448375240586-882707db888b?w=800',
+        'price': 'From PKR 6,000',
+      },
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Featured Destinations',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1F2429),
+                ),
+              ),
+              InkWell(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const AttractionsScreen()),
+                ),
+                child: Text(
+                  'Explore All →',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF5E17EB),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 185,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: destinations.length,
+            itemBuilder: (context, index) {
+              final d = destinations[index];
+              return Container(
+                width: 210,
+                margin: const EdgeInsets.symmetric(horizontal: 5),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  image: DecorationImage(
+                    image: NetworkImage(d['image']!),
+                    fit: BoxFit.cover,
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(20),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AttractionsScreen(initialCity: d['city']),
+                      ),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(20),
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withAlpha(210),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withAlpha(60),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              d['tag']!,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          Text(
+                            d['name']!,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            '${d['province']} • ${d['price']}',
+                            style: GoogleFonts.poppins(
+                              color: Colors.white.withAlpha(210),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -481,32 +940,44 @@ class _HomeScreenState extends State<HomeScreen> {
     showModalBottomSheet(
       context: context,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
         return Container(
-          padding: const EdgeInsets.symmetric(vertical: 20),
+          padding: const EdgeInsets.all(22),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Select Currency',
-                style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold),
+                'Select Preferred Currency',
+                style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 14),
               ...currencyProvider.currencies.map((currency) {
                 final isSelected = currencyProvider.selectedCurrency == currency;
                 return ListTile(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  tileColor: isSelected ? const Color(0xFFF4F1FD) : null,
                   leading: Text(
-                    isSelected ? '✓' : '',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+                    isSelected ? '✓' : '•',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isSelected ? const Color(0xFF5E17EB) : Colors.grey,
+                      fontSize: 16,
+                    ),
                   ),
-                  title: Text(currency, style: GoogleFonts.poppins()),
+                  title: Text(
+                    currency,
+                    style: GoogleFonts.poppins(
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected ? const Color(0xFF5E17EB) : Colors.black87,
+                    ),
+                  ),
                   onTap: () {
                     currencyProvider.setCurrency(currency);
                     Navigator.pop(context);
                   },
-                  trailing: isSelected ? const Icon(Icons.check, color: AppTheme.primaryPurple) : null,
+                  trailing: isSelected ? const Icon(Icons.check_circle_rounded, color: Color(0xFF5E17EB)) : null,
                 );
               }),
             ],
@@ -518,25 +989,25 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildEcoTrackerBanner(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
       child: GestureDetector(
         onTap: () => Navigator.push(
           context,
           MaterialPageRoute(builder: (context) => const EcoTrackerScreen()),
         ),
         child: Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
+              colors: [Color(0xFF2E7D32), Color(0xFF1B5E20)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(22),
             boxShadow: [
               BoxShadow(
-                color: Colors.green.withValues(alpha: 0.3),
-                blurRadius: 10,
+                color: Colors.green.withAlpha(50),
+                blurRadius: 12,
                 offset: const Offset(0, 5),
               ),
             ],
@@ -546,111 +1017,38 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(15),
+                  color: Colors.white.withAlpha(40),
+                  borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Icon(Icons.eco_rounded, color: Colors.white, size: 28),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 14),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Carbon Footprint Tracker',
+                      'Eco-Friendly Traveler',
                       style: GoogleFonts.poppins(
-                        fontSize: 16,
+                        fontSize: 15,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
-                      'Travel green and earn Eco-Points!',
+                      'Track carbon footprint & earn green badges across Pakistan.',
                       style: GoogleFonts.poppins(
-                        fontSize: 12,
-                        color: Colors.white.withValues(alpha: 0.9),
+                        fontSize: 11.5,
+                        color: Colors.white.withAlpha(200),
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: Colors.white),
+              const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 14),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildExploreServices(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Explore Services',
-            style: GoogleFonts.poppins(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 20),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 16,
-            crossAxisSpacing: 16,
-            childAspectRatio: 1.3,
-            children: [
-              _buildServiceTile(context, 'Hotels', Icons.hotel_rounded, AppTheme.hotelColor, AppTheme.hotelBg, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HotelScreen()))),
-              _buildServiceTile(context, 'Restaurants', Icons.restaurant_rounded, AppTheme.foodColor, AppTheme.foodBg, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const RestaurantScreen()))),
-              _buildServiceTile(context, 'Transport', Icons.directions_bus_rounded, AppTheme.transportColor, AppTheme.transportBg, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TransportScreen()))),
-              _buildServiceTile(context, 'Attractions', Icons.location_on_rounded, AppTheme.attractionColor, AppTheme.attractionBg, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const AttractionsScreen()))),
-              _buildServiceTile(context, 'Safar Lingo', Icons.language_rounded, Colors.teal, Colors.teal[50]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const LingoScreen()))),
-              _buildServiceTile(context, 'Local Guides', Icons.person_pin_rounded, Colors.orange, Colors.orange[50]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const GuidesScreen()))),
-              _buildServiceTile(context, 'Bargain Engine', Icons.price_check_rounded, Colors.green, Colors.green[50]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const BargainScreen()))),
-              _buildServiceTile(context, 'Eco-Tracker', Icons.eco_rounded, Colors.teal.shade800, Colors.teal[50]!, () => Navigator.push(context, MaterialPageRoute(builder: (context) => const EcoTrackerScreen()))),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildServiceTile(BuildContext context, String title, IconData icon, Color color, Color bgColor, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: color.withValues(alpha: 0.2),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: Colors.white, size: 30),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.white,
-              ),
-            ),
-          ],
         ),
       ),
     );
@@ -661,37 +1059,70 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0),
           child: Text(
-            'Recent Trips',
+            'Your Travel Itineraries',
             style: GoogleFonts.poppins(
-              fontSize: 20,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
+              color: const Color(0xFF1F2429),
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Container(
-          margin: const EdgeInsets.symmetric(horizontal: 24),
-          padding: const EdgeInsets.all(24),
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.all(22),
           width: double.infinity,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(25),
-            border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: const Color(0xFFEFF0F6), width: 1.2),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withAlpha(8),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
           ),
           child: Column(
             children: [
-              Icon(Icons.map_outlined, color: Colors.grey.withValues(alpha: 0.4), size: 40),
-              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFF4F1FD),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.luggage_rounded, color: Color(0xFF5E17EB), size: 28),
+              ),
+              const SizedBox(height: 10),
               Text(
-                'No trips planned yet',
-                style: GoogleFonts.poppins(color: Colors.grey, fontWeight: FontWeight.w500),
+                'No Active Itinerary',
+                style: GoogleFonts.poppins(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: Colors.black87,
+                ),
               ),
               const SizedBox(height: 4),
               Text(
-                'Your upcoming adventures will appear here.',
-                style: GoogleFonts.poppins(color: Colors.grey[400], fontSize: 12),
+                'Use the AI Trip Planner to create a personalized day-by-day budget itinerary.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(color: Colors.grey[500], fontSize: 12),
+              ),
+              const SizedBox(height: 14),
+              OutlinedButton.icon(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const TripPlannerScreen()),
+                ),
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Create Itinerary'),
+                style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                ),
               ),
             ],
           ),
@@ -702,41 +1133,71 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildServiceProviderBanner(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+      padding: const EdgeInsets.symmetric(horizontal: 20.0),
       child: Container(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(22),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF3F51B5), Color(0xFF5C6BC0)],
+            colors: [Color(0xFF1E293B), Color(0xFF334155)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          borderRadius: BorderRadius.circular(25),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withAlpha(30),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
+            ),
+          ],
         ),
         child: Column(
           children: [
-            const Text(
-              'Are you a service provider?',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(30),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Partner with SastaSafar',
+                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        'List your Hotel, Restaurant, or Transport fleet.',
+                        style: TextStyle(color: Colors.white.withAlpha(180), fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Join our platform and reach thousands of travelers across Pakistan.',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xFF1E293B),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  elevation: 0,
+                ),
+                child: const Text('Register Business Profile', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: const Color(0xFF3F51B5),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-              ),
-              child: const Text('Register Your Business'),
             ),
           ],
         ),
