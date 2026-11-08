@@ -207,24 +207,29 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                 ),
                 child: const Icon(Icons.business_center_rounded, color: Colors.white, size: 22),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Text(
-                          'Service Provider 🇵🇰',
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: Colors.white.withValues(alpha: 0.9),
-                            fontWeight: FontWeight.w500,
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Service Provider 🇵🇰',
+                            style: GoogleFonts.poppins(
+                              fontSize: 12,
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 6),
-                        const Icon(Icons.verified_rounded, color: Colors.amberAccent, size: 14),
-                      ],
+                          const SizedBox(width: 4),
+                          const Icon(Icons.verified_rounded, color: Colors.amberAccent, size: 14),
+                        ],
+                      ),
                     ),
                     Text(
                       displayName,
@@ -239,11 +244,12 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
               InkWell(
                 onTap: _handleQuickSwitch,
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(20),
@@ -316,10 +322,15 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Business Overview',
-                style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+              Expanded(
+                child: Text(
+                  'Business Overview',
+                  style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
@@ -447,10 +458,15 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Add & Publish Services',
-                style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+              Expanded(
+                child: Text(
+                  'Add & Publish Services',
+                  style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
+              const SizedBox(width: 8),
               Text(
                 'Matches Traveler App',
                 style: GoogleFonts.poppins(fontSize: 11, color: AppTheme.primaryPurple, fontWeight: FontWeight.w600),
@@ -760,11 +776,14 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        Text(
-                          '${currency.formatPrice(h.price)} / night',
-                          style: GoogleFonts.poppins(color: Colors.green[700], fontWeight: FontWeight.bold, fontSize: 12),
+                        Expanded(
+                          child: Text(
+                            '${currency.formatPrice(h.price)} / night',
+                            style: GoogleFonts.poppins(color: Colors.green[700], fontWeight: FontWeight.bold, fontSize: 12),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        const Spacer(),
                         IconButton(
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
@@ -847,11 +866,14 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        Text(
-                          '${currency.formatPrice(t.fare)} / person',
-                          style: GoogleFonts.poppins(color: Colors.green[700], fontWeight: FontWeight.bold, fontSize: 12),
+                        Expanded(
+                          child: Text(
+                            '${currency.formatPrice(t.fare)} / person',
+                            style: GoogleFonts.poppins(color: Colors.green[700], fontWeight: FontWeight.bold, fontSize: 12),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        const Spacer(),
                         IconButton(
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
@@ -937,11 +959,14 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        Text(
-                          '~${currency.formatPrice(r.price)} / meal',
-                          style: GoogleFonts.poppins(color: Colors.green[700], fontWeight: FontWeight.bold, fontSize: 12),
+                        Expanded(
+                          child: Text(
+                            '~${currency.formatPrice(r.price)} / meal',
+                            style: GoogleFonts.poppins(color: Colors.green[700], fontWeight: FontWeight.bold, fontSize: 12),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        const Spacer(),
                         IconButton(
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
@@ -1026,11 +1051,14 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        Text(
-                          '${currency.formatPrice(g.dailyRatePkr)} / day',
-                          style: GoogleFonts.poppins(color: Colors.green[700], fontWeight: FontWeight.bold, fontSize: 12),
+                        Expanded(
+                          child: Text(
+                            '${currency.formatPrice(g.dailyRatePkr)} / day',
+                            style: GoogleFonts.poppins(color: Colors.green[700], fontWeight: FontWeight.bold, fontSize: 12),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        const Spacer(),
                         IconButton(
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
@@ -1138,7 +1166,8 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                 const SizedBox(height: 6),
                 DropdownButtonFormField<String>(
                   value: selectedCity,
-                  items: _pakistanCities.map((c) => DropdownMenuItem(value: c, child: Text(c, style: GoogleFonts.poppins(fontSize: 13)))).toList(),
+                  isExpanded: true,
+                  items: _pakistanCities.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis, style: GoogleFonts.poppins(fontSize: 13)))).toList(),
                   onChanged: (val) {
                     if (val != null) setModal(() => selectedCity = val);
                   },
@@ -1343,7 +1372,8 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                           const SizedBox(height: 4),
                           DropdownButtonFormField<String>(
                             value: origin,
-                            items: _pakistanCities.map((c) => DropdownMenuItem(value: c, child: Text(c, style: GoogleFonts.poppins(fontSize: 12.5)))).toList(),
+                            isExpanded: true,
+                            items: _pakistanCities.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis, style: GoogleFonts.poppins(fontSize: 12)))).toList(),
                             onChanged: (val) {
                               if (val != null) setModal(() => origin = val);
                             },
@@ -1352,7 +1382,7 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 8),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1361,7 +1391,8 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                           const SizedBox(height: 4),
                           DropdownButtonFormField<String>(
                             value: destination,
-                            items: _pakistanCities.map((c) => DropdownMenuItem(value: c, child: Text(c, style: GoogleFonts.poppins(fontSize: 12.5)))).toList(),
+                            isExpanded: true,
+                            items: _pakistanCities.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis, style: GoogleFonts.poppins(fontSize: 12)))).toList(),
                             onChanged: (val) {
                               if (val != null) setModal(() => destination = val);
                             },
@@ -1532,7 +1563,8 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                 const SizedBox(height: 6),
                 DropdownButtonFormField<String>(
                   value: selectedCity,
-                  items: _pakistanCities.map((c) => DropdownMenuItem(value: c, child: Text(c, style: GoogleFonts.poppins(fontSize: 13)))).toList(),
+                  isExpanded: true,
+                  items: _pakistanCities.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis, style: GoogleFonts.poppins(fontSize: 13)))).toList(),
                   onChanged: (val) {
                     if (val != null) setModal(() => selectedCity = val);
                   },
@@ -1547,7 +1579,8 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                 const SizedBox(height: 6),
                 DropdownButtonFormField<String>(
                   value: selectedCuisine,
-                  items: cuisines.map((c) => DropdownMenuItem(value: c, child: Text(c, style: GoogleFonts.poppins(fontSize: 12.5)))).toList(),
+                  isExpanded: true,
+                  items: cuisines.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis, style: GoogleFonts.poppins(fontSize: 12.5)))).toList(),
                   onChanged: (val) {
                     if (val != null) setModal(() => selectedCuisine = val);
                   },
@@ -1669,7 +1702,7 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
     final whatsappCtrl = TextEditingController(text: '923555123456');
     final bioCtrl = TextEditingController(text: 'Licensed local mountain guide. Safe high-altitude driver for families and solo travelers.');
 
-    String selectedRegion = 'Hunza Valley';
+    String selectedRegion = 'Hunza';
     String selectedRole = '4x4 Mountain Guide';
     bool isFemaleFriendly = true;
     String selectedImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400';
@@ -1719,7 +1752,8 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                 const SizedBox(height: 6),
                 DropdownButtonFormField<String>(
                   value: selectedRegion,
-                  items: _pakistanCities.map((c) => DropdownMenuItem(value: c, child: Text(c, style: GoogleFonts.poppins(fontSize: 13)))).toList(),
+                  isExpanded: true,
+                  items: _pakistanCities.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis, style: GoogleFonts.poppins(fontSize: 13)))).toList(),
                   onChanged: (val) {
                     if (val != null) setModal(() => selectedRegion = val);
                   },
@@ -1865,7 +1899,8 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
       hintText: hint,
       hintStyle: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[400]),
       prefixIcon: icon != null ? Icon(icon, color: AppTheme.primaryPurple, size: 18) : null,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      prefixIconConstraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
       filled: true,
       fillColor: Colors.grey[50],
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade300)),
