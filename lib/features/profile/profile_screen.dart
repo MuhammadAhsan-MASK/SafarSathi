@@ -7,7 +7,6 @@ import '../../core/currency_provider.dart';
 import '../auth/user_role_service.dart';
 import 'saved_items_screen.dart';
 import 'info_screens.dart';
-import '../../core/seed_data.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -134,27 +133,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           }),
                           _buildSettingTile(Icons.help_outline, 'Help & Support', onTap: () {
                             Navigator.push(context, MaterialPageRoute(builder: (context) => const InfoScreen(title: 'Help & Support', content: StaticContent.helpSupport)));
-                          }),
-                        ],
-                      ),
-                      _buildSection(
-                        'Developer Tools',
-                        [
-                          _buildSettingTile(Icons.data_object, 'Seed Real FYP Data', onTap: () async {
-                            final messenger = ScaffoldMessenger.of(context);
-                            messenger.showSnackBar(
-                              const SnackBar(content: Text('Seeding Database... This may take a moment.')),
-                            );
-                            try {
-                              await SeedData.seedFirebase();
-                              messenger.showSnackBar(
-                                const SnackBar(content: Text('Database seeded! All hotels, restaurants, transports & attractions updated.')),
-                              );
-                            } catch (e) {
-                              messenger.showSnackBar(
-                                SnackBar(content: Text('Failed to seed database: $e')),
-                              );
-                            }
                           }),
                         ],
                       ),
