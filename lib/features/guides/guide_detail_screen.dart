@@ -739,6 +739,7 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
             runSpacing: 6,
             children: guide.specialties.map((spec) {
               return Container(
+                constraints: const BoxConstraints(maxWidth: 300),
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                 decoration: BoxDecoration(
                   color: Colors.purple.shade50,
@@ -750,9 +751,13 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
                   children: [
                     Icon(Icons.check_circle_outline, size: 13, color: Colors.purple.shade700),
                     const SizedBox(width: 4),
-                    Text(
-                      spec,
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.purple.shade800),
+                    Flexible(
+                      child: Text(
+                        spec,
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.purple.shade800),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),

@@ -421,6 +421,7 @@ class _GuidesScreenState extends State<GuidesScreen> {
                   children: [
                     // Rating & Trips
                     Container(
+                      constraints: const BoxConstraints(maxWidth: 260),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.amber.shade50,
@@ -431,9 +432,13 @@ class _GuidesScreenState extends State<GuidesScreen> {
                         children: [
                           const Icon(Icons.star, color: Colors.amber, size: 13),
                           const SizedBox(width: 3),
-                          Text(
-                            '${guide.rating} (${guide.tripCount} trips)',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                          Flexible(
+                            child: Text(
+                              '${guide.rating} (${guide.tripCount} trips)',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.amber.shade900),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),
@@ -441,6 +446,7 @@ class _GuidesScreenState extends State<GuidesScreen> {
 
                     // Experience
                     Container(
+                      constraints: const BoxConstraints(maxWidth: 260),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.blue.shade50,
@@ -451,9 +457,13 @@ class _GuidesScreenState extends State<GuidesScreen> {
                         children: [
                           Icon(Icons.access_time_filled, color: Colors.blue.shade700, size: 12),
                           const SizedBox(width: 4),
-                          Text(
-                            guide.experience,
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blue.shade800),
+                          Flexible(
+                            child: Text(
+                              guide.experience,
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.blue.shade800),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),
@@ -461,6 +471,7 @@ class _GuidesScreenState extends State<GuidesScreen> {
 
                     // Car details badge
                     Container(
+                      constraints: const BoxConstraints(maxWidth: 260),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: Colors.deepOrange.shade50,
@@ -471,11 +482,13 @@ class _GuidesScreenState extends State<GuidesScreen> {
                         children: [
                           Icon(Icons.directions_car, color: Colors.deepOrange.shade700, size: 12),
                           const SizedBox(width: 4),
-                          Text(
-                            guide.car,
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.deepOrange.shade800),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          Flexible(
+                            child: Text(
+                              guide.car,
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.deepOrange.shade800),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ),
