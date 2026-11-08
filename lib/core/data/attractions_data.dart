@@ -651,7 +651,7 @@ final List<Attraction> allAttractions = [
     type: 'Mountain & Adventure',
     fee: 0,
     vendorId: 'hunza_tourism',
-    imageUrl: 'https://images.unsplash.com/photo-1542314831-c6a4d2757271?w=800',
+    imageUrl: 'https://images.unsplash.com/photo-1589182373726-e4f658ab50f0?w=800',
     location: 'Duikar Village, Altit, Hunza',
     history: 'Perched at 2,850m, it is the highest inhabited settlement in the valley, famous worldwide for sunrise and sunset illumination across Ladyfinger Peak, Rakaposhi, and Golden Peak.',
     websiteUrl: 'https://visitgilgitbaltistan.gov.pk/',

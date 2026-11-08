@@ -1094,7 +1094,7 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
 
     final hotelImagePresets = [
       ('Luxury Facade', 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800'),
-      ('Hill Resort', 'https://images.unsplash.com/photo-1542314831-c6a4d2757271?w=800'),
+      ('Hill Resort', 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800'),
       ('Lakeside', 'https://images.unsplash.com/photo-1551882547-ff40c0dffe19?w=800'),
       ('Boutique Stay', 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800'),
       ('Clean Guest House', 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800'),
