@@ -27,7 +27,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   bool _isSwitching = false;
-  final GlobalKey _newsSectionKey = GlobalKey();
 
   // ── Surprise Me ───────────────────────────────────────────────────────────
   void _showSurpriseMeSheet(BuildContext context) {
@@ -306,10 +305,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 20),
             _buildExploreServices(context),
             const SizedBox(height: 10),
-            KeyedSubtree(
-              key: _newsSectionKey,
-              child: const LiveTravelNewsSection(),
-            ),
+            const LiveTravelNewsSection(),
             const SizedBox(height: 14),
             _buildFeaturedDestinations(context),
             const SizedBox(height: 24),
@@ -395,40 +391,6 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Live News Quick Jump Badge
-                  InkWell(
-                    onTap: () {
-                      _newsSectionKey.currentContext?.findRenderObject()?.showOnScreen(
-                        duration: const Duration(milliseconds: 500),
-                        curve: Curves.easeInOut,
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(14),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withAlpha(45),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: Colors.white.withAlpha(55)),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.campaign_rounded, color: Colors.amberAccent, size: 14),
-                          SizedBox(width: 4),
-                          Text(
-                            'Live News',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 10.5,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
                   // Currency Selector
                   Consumer<CurrencyProvider>(
                     builder: (context, currencyProvider, child) {

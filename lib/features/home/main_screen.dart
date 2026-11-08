@@ -3,9 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import '../auth/role_selection_screen.dart';
 import '../../core/theme.dart';
 import 'home_screen.dart';
-import '../hotels/hotel_screen.dart';
-import '../restaurants/restaurant_screen.dart';
-import '../transport/transport_screen.dart';
 import '../profile/profile_screen.dart';
 import '../auth/user_role_service.dart';
 import '../provider/provider_dashboard.dart';
@@ -24,9 +21,6 @@ class _MainScreenState extends State<MainScreen> {
 
   final List<Widget> _travelerScreens = [
     const HomeScreen(),
-    const HotelScreen(),
-    const RestaurantScreen(),
-    const TransportScreen(),
     const ProfileScreen(),
   ];
 
@@ -155,21 +149,6 @@ class _MainScreenState extends State<MainScreen> {
                       icon: Icon(Icons.explore_outlined, size: 22),
                       activeIcon: Icon(Icons.explore_rounded, size: 24),
                       label: 'Discover',
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.hotel_outlined, size: 22),
-                      activeIcon: Icon(Icons.hotel_rounded, size: 24),
-                      label: 'Hotels',
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.restaurant_outlined, size: 22),
-                      activeIcon: Icon(Icons.restaurant_rounded, size: 24),
-                      label: 'Dining',
-                    ),
-                    BottomNavigationBarItem(
-                      icon: Icon(Icons.directions_bus_outlined, size: 22),
-                      activeIcon: Icon(Icons.directions_bus_rounded, size: 24),
-                      label: 'Transport',
                     ),
                     BottomNavigationBarItem(
                       icon: Icon(Icons.person_outline_rounded, size: 22),
