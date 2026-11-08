@@ -369,26 +369,29 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.explore_rounded, size: 14, color: Colors.amberAccent),
-                        const SizedBox(width: 6),
-                        Text(
-                          'Discover Pakistan • Budget-Friendly Travel',
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.explore_rounded, size: 14, color: Colors.amberAccent),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Discover Pakistan • Budget-Friendly Travel',
+                            style: GoogleFonts.poppins(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.white,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -455,23 +458,31 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
               unselectedLabelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w500, fontSize: 14),
               tabs: const [
                 Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.login_rounded, size: 16),
-                      SizedBox(width: 8),
-                      Text('Sign In'),
-                    ],
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.login_rounded, size: 16),
+                        SizedBox(width: 6),
+                        Text('Sign In'),
+                      ],
+                    ),
                   ),
                 ),
                 Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.person_add_alt_1_rounded, size: 16),
-                      SizedBox(width: 8),
-                      Text('Create Account'),
-                    ],
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.person_add_alt_1_rounded, size: 16),
+                        SizedBox(width: 6),
+                        Text('Sign Up'),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -483,7 +494,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             duration: const Duration(milliseconds: 250),
             curve: Curves.easeInOut,
             child: SizedBox(
-              height: isLoginTab ? 370 : 540,
+              height: isLoginTab ? 395 : 565,
               child: TabBarView(
                 controller: _tabController,
                 physics: const NeverScrollableScrollPhysics(), // tab clicked to switch
@@ -771,20 +782,26 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   }
 
   Widget _buildSecurityBadge() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        const Icon(Icons.shield_outlined, size: 14, color: Color(0xFF10B981)),
-        const SizedBox(width: 6),
-        Text(
-          '256-Bit SSL Encrypted • Verified Pakistani Partners',
-          style: GoogleFonts.poppins(
-            fontSize: 11,
-            color: const Color(0xFF64748B),
-            fontWeight: FontWeight.w500,
-          ),
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.shield_outlined, size: 14, color: Color(0xFF10B981)),
+            const SizedBox(width: 6),
+            Text(
+              '256-Bit SSL Encrypted • Verified Pakistani Partners',
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                color: const Color(0xFF64748B),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
