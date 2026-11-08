@@ -1119,6 +1119,7 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
     final execPriceCtrl = TextEditingController(text: '6500');
     String selectedCity = _pakistanCities.first;
     String selectedImageUrl = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800';
+    final photoUrlCtrl = TextEditingController(text: selectedImageUrl);
 
     final hotelImagePresets = [
       ('Luxury Facade', 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800'),
@@ -1199,15 +1200,89 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                 _buildInputField('Website / Booking Link (Optional)', websiteCtrl, 'https://...', Icons.language_outlined),
                 const SizedBox(height: 14),
 
-                Text('Select Photo Style', style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                Text('Hotel Photo / Cover Image', style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: photoUrlCtrl,
+                  style: GoogleFonts.poppins(fontSize: 13),
+                  onChanged: (val) {
+                    setModal(() => selectedImageUrl = val.trim());
+                  },
+                  decoration: _inputDecoration('Paste your own photo URL (https://...)', Icons.add_photo_alternate_outlined),
+                ),
                 const SizedBox(height: 8),
+                if (selectedImageUrl.isNotEmpty) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      height: 130,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.network(
+                            selectedImageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.broken_image_outlined, color: Colors.grey, size: 28),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Enter a direct image link (JPEG, PNG, WebP) to preview',
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey.shade600),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.65),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.remove_red_eye_rounded, size: 12, color: Colors.white),
+                                  const SizedBox(width: 4),
+                                  Text('Live Preview', style: GoogleFonts.poppins(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                Text('Or pick from high-quality presets:', style: GoogleFonts.poppins(fontSize: 11.5, color: Colors.grey[600])),
+                const SizedBox(height: 6),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: hotelImagePresets.map((p) {
                       final isSel = selectedImageUrl == p.$2;
                       return GestureDetector(
-                        onTap: () => setModal(() => selectedImageUrl = p.$2),
+                        onTap: () => setModal(() {
+                          selectedImageUrl = p.$2;
+                          photoUrlCtrl.text = p.$2;
+                        }),
                         child: Container(
                           margin: const EdgeInsets.only(right: 10),
                           padding: const EdgeInsets.all(4),
@@ -1242,6 +1317,8 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                       'Executive Suite': double.tryParse(execPriceCtrl.text) ?? (baseP * 1.8),
                     };
 
+                    final finalImg = photoUrlCtrl.text.trim().isNotEmpty ? photoUrlCtrl.text.trim() : selectedImageUrl;
+
                     await _hotelService.addHotel(Hotel(
                       id: '',
                       name: nameCtrl.text.trim(),
@@ -1249,7 +1326,7 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                       price: baseP,
                       rating: 4.8,
                       vendorId: uid,
-                      imageUrl: selectedImageUrl,
+                      imageUrl: finalImg,
                       phone: phoneCtrl.text.trim(),
                       websiteUrl: websiteCtrl.text.trim().isNotEmpty ? websiteCtrl.text.trim() : null,
                       description: descCtrl.text.trim(),
@@ -1507,6 +1584,7 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
     String selectedCity = _pakistanCities.first;
     String selectedCuisine = 'Pakistani BBQ & Karahi';
     String selectedImageUrl = 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800';
+    final photoUrlCtrl = TextEditingController(text: selectedImageUrl);
 
     final cuisines = [
       'Pakistani BBQ & Karahi',
@@ -1621,15 +1699,89 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                 _buildInputField('Phone for Table Booking', phoneCtrl, '+92 300 9876543', Icons.phone_outlined),
                 const SizedBox(height: 14),
 
-                Text('Select Venue Photo', style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                Text('Restaurant Photo / Cover Image', style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: photoUrlCtrl,
+                  style: GoogleFonts.poppins(fontSize: 13),
+                  onChanged: (val) {
+                    setModal(() => selectedImageUrl = val.trim());
+                  },
+                  decoration: _inputDecoration('Paste your own photo URL (https://...)', Icons.add_photo_alternate_outlined),
+                ),
                 const SizedBox(height: 8),
+                if (selectedImageUrl.isNotEmpty) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      height: 130,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.network(
+                            selectedImageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.broken_image_outlined, color: Colors.grey, size: 28),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Enter a direct image link (JPEG, PNG, WebP) to preview',
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey.shade600),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.65),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.remove_red_eye_rounded, size: 12, color: Colors.white),
+                                  const SizedBox(width: 4),
+                                  Text('Live Preview', style: GoogleFonts.poppins(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                Text('Or pick from cuisine presets:', style: GoogleFonts.poppins(fontSize: 11.5, color: Colors.grey[600])),
+                const SizedBox(height: 6),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: foodImagePresets.map((p) {
                       final isSel = selectedImageUrl == p.$2;
                       return GestureDetector(
-                        onTap: () => setModal(() => selectedImageUrl = p.$2),
+                        onTap: () => setModal(() {
+                          selectedImageUrl = p.$2;
+                          photoUrlCtrl.text = p.$2;
+                        }),
                         child: Container(
                           margin: const EdgeInsets.only(right: 10),
                           padding: const EdgeInsets.all(4),
@@ -1662,6 +1814,8 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                       dish3NameCtrl.text.trim(): double.tryParse(dish3PriceCtrl.text) ?? 1600,
                     };
 
+                    final finalImg = photoUrlCtrl.text.trim().isNotEmpty ? photoUrlCtrl.text.trim() : selectedImageUrl;
+
                     await _restaurantService.addRestaurant(Restaurant(
                       id: '',
                       name: nameCtrl.text.trim(),
@@ -1669,7 +1823,7 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                       price: baseP,
                       location: fullLocation,
                       vendorId: uid,
-                      imageUrl: selectedImageUrl,
+                      imageUrl: finalImg,
                       phone: phoneCtrl.text.trim(),
                       typePrices: typeMap,
                     ));
@@ -1706,6 +1860,7 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
     String selectedRole = '4x4 Mountain Guide';
     bool isFemaleFriendly = true;
     String selectedImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400';
+    final photoUrlCtrl = TextEditingController(text: selectedImageUrl);
 
     final guideImagePresets = [
       ('Male Guide 1', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400'),
@@ -1795,15 +1950,89 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                 ),
                 const SizedBox(height: 14),
 
-                Text('Select Profile Photo', style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                Text('Guide Profile Photo', style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: photoUrlCtrl,
+                  style: GoogleFonts.poppins(fontSize: 13),
+                  onChanged: (val) {
+                    setModal(() => selectedImageUrl = val.trim());
+                  },
+                  decoration: _inputDecoration('Paste your own photo URL (https://...)', Icons.add_photo_alternate_outlined),
+                ),
                 const SizedBox(height: 8),
+                if (selectedImageUrl.isNotEmpty) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      height: 120,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.network(
+                            selectedImageUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.broken_image_outlined, color: Colors.grey, size: 28),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      'Enter a direct photo link to preview',
+                                      textAlign: TextAlign.center,
+                                      style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey.shade600),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.65),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.remove_red_eye_rounded, size: 12, color: Colors.white),
+                                  const SizedBox(width: 4),
+                                  Text('Live Preview', style: GoogleFonts.poppins(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+                Text('Or pick from guide presets:', style: GoogleFonts.poppins(fontSize: 11.5, color: Colors.grey[600])),
+                const SizedBox(height: 6),
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: guideImagePresets.map((p) {
                       final isSel = selectedImageUrl == p.$2;
                       return GestureDetector(
-                        onTap: () => setModal(() => selectedImageUrl = p.$2),
+                        onTap: () => setModal(() {
+                          selectedImageUrl = p.$2;
+                          photoUrlCtrl.text = p.$2;
+                        }),
                         child: Container(
                           margin: const EdgeInsets.only(right: 10),
                           padding: const EdgeInsets.all(4),
@@ -1832,6 +2061,8 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                     final uid = FirebaseAuth.instance.currentUser?.uid ?? 'provider_user';
                     final rateP = double.tryParse(dailyRateCtrl.text) ?? 7000;
 
+                    final finalImg = photoUrlCtrl.text.trim().isNotEmpty ? photoUrlCtrl.text.trim() : selectedImageUrl;
+
                     await _guideService.addGuide(LocalGuide(
                       id: '',
                       name: nameCtrl.text.trim(),
@@ -1840,7 +2071,7 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                       rating: 4.9,
                       dailyRatePkr: rateP,
                       tripCount: 45,
-                      imageUrl: selectedImageUrl,
+                      imageUrl: finalImg,
                       isVerified: true,
                       isFemaleFriendly: isFemaleFriendly,
                       experience: expCtrl.text.trim(),
