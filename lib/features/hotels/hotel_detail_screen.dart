@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/currency_provider.dart';
+import '../../core/widgets/app_image.dart';
 import 'models/hotel_model.dart';
 import '../../core/theme.dart';
 
@@ -71,14 +72,11 @@ class _HotelDetailScreenState extends State<HotelDetailScreen> {
             expandedHeight: 250,
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
-              background: hotel.imageUrl != null && hotel.imageUrl!.isNotEmpty && hotel.imageUrl!.startsWith('http')
-                  ? Image.network(
-                      hotel.imageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          Container(color: Colors.grey[300], child: const Center(child: Icon(Icons.broken_image, size: 50))),
-                    )
-                  : Container(color: Colors.grey[300], child: const Icon(Icons.image, size: 50, color: Colors.grey)),
+              background: AppImage(
+                url: hotel.imageUrl,
+                fit: BoxFit.cover,
+                errorWidget: Container(color: Colors.grey[300], child: const Icon(Icons.image, size: 50, color: Colors.grey)),
+              ),
             ),
             actions: [
               if (hotel.phone != null && hotel.phone!.isNotEmpty)

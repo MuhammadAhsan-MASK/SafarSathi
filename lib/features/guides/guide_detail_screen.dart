@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/currency_provider.dart';
 import '../../core/theme.dart';
+import '../../core/widgets/app_image.dart';
 import 'models/guide_model.dart';
 
 class GuideDetailScreen extends StatefulWidget {
@@ -295,15 +296,13 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
           // Image / Avatar
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
-            child: guide.imageUrl != null && guide.imageUrl!.isNotEmpty
-                ? Image.network(
-                    guide.imageUrl!,
-                    width: 76,
-                    height: 76,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _defaultAvatar(guide),
-                  )
-                : _defaultAvatar(guide),
+            child: AppImage(
+              url: guide.imageUrl,
+              width: 76,
+              height: 76,
+              fit: BoxFit.cover,
+              errorWidget: _defaultAvatar(guide),
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(

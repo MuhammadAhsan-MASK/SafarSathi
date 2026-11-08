@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../core/currency_provider.dart';
 import '../../core/favorites_provider.dart';
+import '../../core/widgets/app_image.dart';
 import 'services/hotel_service.dart';
 import 'models/hotel_model.dart';
 import 'hotel_detail_screen.dart';
@@ -209,24 +210,17 @@ class _HotelScreenState extends State<HotelScreen> {
             // Image
             Stack(
               children: [
-                if (hotel.imageUrl != null && hotel.imageUrl!.isNotEmpty && hotel.imageUrl!.startsWith('http'))
-                  Image.network(
-                    hotel.imageUrl!,
-                    height: 170,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      height: 170,
-                      color: Colors.grey[200],
-                      child: const Center(child: Icon(Icons.broken_image, size: 40, color: Colors.grey)),
-                    ),
-                  )
-                else
-                  Container(
+                AppImage(
+                  url: hotel.imageUrl,
+                  height: 170,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorWidget: Container(
                     height: 170,
                     color: Colors.grey[200],
                     child: const Center(child: Icon(Icons.hotel, size: 40, color: Colors.grey)),
                   ),
+                ),
                 // Favorite button (top-left)
                 Positioned(
                   top: 10,

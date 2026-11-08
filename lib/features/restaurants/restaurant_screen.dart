@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../core/currency_provider.dart';
 import '../../core/favorites_provider.dart';
+import '../../core/widgets/app_image.dart';
 import 'services/restaurant_service.dart';
 import 'models/restaurant_model.dart';
 import 'restaurant_detail_screen.dart';
@@ -209,24 +210,17 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
             // Image with cuisine badge
             Stack(
               children: [
-                if (restaurant.imageUrl != null && restaurant.imageUrl!.isNotEmpty && restaurant.imageUrl!.startsWith('http'))
-                  Image.network(
-                    restaurant.imageUrl!,
-                    height: 160,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      height: 160,
-                      color: Colors.grey[200],
-                      child: const Center(child: Icon(Icons.broken_image, size: 40, color: Colors.grey)),
-                    ),
-                  )
-                else
-                  Container(
+                AppImage(
+                  url: restaurant.imageUrl,
+                  height: 160,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  errorWidget: Container(
                     height: 160,
                     color: Colors.grey[200],
                     child: const Center(child: Icon(Icons.restaurant, size: 40, color: Colors.grey)),
                   ),
+                ),
                 // Cuisine badge
                 Positioned(
                   top: 10,

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme.dart';
 import '../../core/currency_provider.dart';
+import '../../core/widgets/app_image.dart';
 import 'models/guide_model.dart';
 import 'services/guide_service.dart';
 import 'guide_detail_screen.dart';
@@ -329,15 +330,13 @@ class _GuidesScreenState extends State<GuidesScreen> {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(14),
-                      child: guide.imageUrl != null && guide.imageUrl!.isNotEmpty
-                          ? Image.network(
-                              guide.imageUrl!,
-                              width: 58,
-                              height: 58,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => _defaultCardAvatar(guide),
-                            )
-                          : _defaultCardAvatar(guide),
+                      child: AppImage(
+                        url: guide.imageUrl,
+                        width: 58,
+                        height: 58,
+                        fit: BoxFit.cover,
+                        errorWidget: _defaultCardAvatar(guide),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(

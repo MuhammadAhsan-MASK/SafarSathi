@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/currency_provider.dart';
+import '../../core/widgets/app_image.dart';
 import 'models/restaurant_model.dart';
 import '../../core/theme.dart';
 
@@ -73,14 +74,11 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
             expandedHeight: 250,
             pinned: true,
             flexibleSpace: FlexibleSpaceBar(
-              background: restaurant.imageUrl != null && restaurant.imageUrl!.isNotEmpty && restaurant.imageUrl!.startsWith('http')
-                  ? Image.network(
-                      restaurant.imageUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          Container(color: Colors.grey[300], child: const Center(child: Icon(Icons.broken_image, size: 50))),
-                    )
-                  : Container(color: Colors.grey[300], child: const Icon(Icons.restaurant, size: 50, color: Colors.grey)),
+              background: AppImage(
+                url: restaurant.imageUrl,
+                fit: BoxFit.cover,
+                errorWidget: Container(color: Colors.grey[300], child: const Icon(Icons.restaurant, size: 50, color: Colors.grey)),
+              ),
             ),
             actions: [
               if (restaurant.phone != null && restaurant.phone!.isNotEmpty)
@@ -146,7 +144,7 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                   const SizedBox(height: 12),
                   // Price per person banner + Reservation CTA
                   Container(
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(14),
@@ -155,27 +153,37 @@ class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('Estimated Cost', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                            Text(
-                              '~${currencyProvider.formatPrice(restaurant.price)} / person',
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.deepOrange),
-                            ),
-                          ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Estimated Cost', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  '~${currencyProvider.formatPrice(restaurant.price)} / person',
+                                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.deepOrange),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         if (restaurant.phone != null && restaurant.phone!.isNotEmpty)
-                          ElevatedButton.icon(
-                            icon: const Icon(Icons.phone, size: 16),
-                            label: const Text('Reserve Table'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green.shade700,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: ElevatedButton.icon(
+                              icon: const Icon(Icons.phone, size: 15),
+                              label: const Text('Reserve Table'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green.shade700,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                              onPressed: () => _callPhone(restaurant.phone!),
                             ),
-                            onPressed: () => _callPhone(restaurant.phone!),
                           ),
                       ],
                     ),

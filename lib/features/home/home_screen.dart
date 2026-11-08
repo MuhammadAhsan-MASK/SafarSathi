@@ -1370,9 +1370,13 @@ class _SurpriseMeResultSheetState extends State<_SurpriseMeResultSheet>
                       const Icon(Icons.calendar_today_outlined,
                           color: Colors.white70, size: 14),
                       const SizedBox(width: 6),
-                      Text(r['bestTime'] ?? '',
+                      Flexible(
+                        child: Text(
+                          r['bestTime'] ?? '',
                           style: GoogleFonts.poppins(
-                              color: Colors.white, fontSize: 12)),
+                              color: Colors.white, fontSize: 12),
+                        ),
+                      ),
                     ],
                   ),
                 ),

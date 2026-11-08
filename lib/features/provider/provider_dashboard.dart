@@ -1,7 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import '../../core/widgets/app_image.dart';
 import '../../core/theme.dart';
 import '../../core/currency_provider.dart';
 import '../hotels/services/hotel_service.dart';
@@ -59,6 +63,115 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
     'Gwadar',
     'Neelum Valley',
   ];
+
+  Future<String?> _pickImageFromGallery() async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+      );
+      if (pickedFile == null) return null;
+
+      try {
+        final appDir = await getApplicationDocumentsDirectory();
+        final fileName = 'provider_${DateTime.now().millisecondsSinceEpoch}_${pickedFile.name}';
+        final savedFile = await File(pickedFile.path).copy('${appDir.path}/$fileName');
+        return savedFile.path;
+      } catch (_) {
+        return pickedFile.path;
+      }
+    } catch (e) {
+      debugPrint('Error picking image from gallery: $e');
+      return null;
+    }
+  }
+
+  Widget _buildGalleryImagePicker({
+    required String title,
+    required String? imagePath,
+    required VoidCallback onTap,
+  }) {
+    final hasImage = imagePath != null && imagePath.trim().isNotEmpty;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 8),
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            height: 140,
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: hasImage ? Colors.grey.shade100 : AppTheme.primaryPurple.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: hasImage ? Colors.grey.shade300 : AppTheme.primaryPurple.withValues(alpha: 0.35),
+                width: 1.5,
+              ),
+            ),
+            child: hasImage
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(13),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        AppImage(url: imagePath, fit: BoxFit.cover),
+                        Positioned(
+                          bottom: 10,
+                          right: 10,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.7),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.photo_library_rounded, size: 13, color: Colors.white),
+                                const SizedBox(width: 5),
+                                Text(
+                                  'Change Photo',
+                                  style: GoogleFonts.poppins(fontSize: 11, color: Colors.white, fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryPurple.withValues(alpha: 0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.add_photo_alternate_rounded, size: 28, color: AppTheme.primaryPurple),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Select Photo from Gallery',
+                        style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.primaryPurple),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Tap to open phone gallery',
+                        style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
 
   void _handleQuickSwitch() async {
     final roleService = UserRoleService();
@@ -745,12 +858,12 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  h.imageUrl ?? 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800',
+                child: AppImage(
+                  url: h.imageUrl ?? 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800',
                   width: 85,
                   height: 85,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(width: 85, height: 85, color: Colors.grey[200], child: const Icon(Icons.hotel)),
+                  errorWidget: Container(width: 85, height: 85, color: Colors.grey[200], child: const Icon(Icons.hotel)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -927,12 +1040,12 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  r.imageUrl ?? 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800',
+                child: AppImage(
+                  url: r.imageUrl ?? 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800',
                   width: 85,
                   height: 85,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(width: 85, height: 85, color: Colors.grey[200], child: const Icon(Icons.restaurant)),
+                  errorWidget: Container(width: 85, height: 85, color: Colors.grey[200], child: const Icon(Icons.restaurant)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -1020,12 +1133,12 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  g.imageUrl ?? 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
+                child: AppImage(
+                  url: g.imageUrl ?? 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
                   width: 85,
                   height: 85,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(width: 85, height: 85, color: Colors.grey[200], child: const Icon(Icons.person)),
+                  errorWidget: Container(width: 85, height: 85, color: Colors.grey[200], child: const Icon(Icons.person)),
                 ),
               ),
               const SizedBox(width: 12),
@@ -1118,16 +1231,7 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
     final dlxPriceCtrl = TextEditingController(text: '4800');
     final execPriceCtrl = TextEditingController(text: '6500');
     String selectedCity = _pakistanCities.first;
-    String selectedImageUrl = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800';
-    final photoUrlCtrl = TextEditingController(text: selectedImageUrl);
-
-    final hotelImagePresets = [
-      ('Luxury Facade', 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800'),
-      ('Hill Resort', 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?w=800'),
-      ('Lakeside', 'https://images.unsplash.com/photo-1551882547-ff40c0dffe19?w=800'),
-      ('Boutique Stay', 'https://images.unsplash.com/photo-1590490360182-c33d57733427?w=800'),
-      ('Clean Guest House', 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=800'),
-    ];
+    String selectedImageUrl = '';
 
     showModalBottomSheet(
       context: context,
@@ -1200,104 +1304,15 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                 _buildInputField('Website / Booking Link (Optional)', websiteCtrl, 'https://...', Icons.language_outlined),
                 const SizedBox(height: 14),
 
-                Text('Hotel Photo / Cover Image', style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: photoUrlCtrl,
-                  style: GoogleFonts.poppins(fontSize: 13),
-                  onChanged: (val) {
-                    setModal(() => selectedImageUrl = val.trim());
+                _buildGalleryImagePicker(
+                  title: 'Hotel Photo',
+                  imagePath: selectedImageUrl,
+                  onTap: () async {
+                    final path = await _pickImageFromGallery();
+                    if (path != null) {
+                      setModal(() => selectedImageUrl = path);
+                    }
                   },
-                  decoration: _inputDecoration('Paste your own photo URL (https://...)', Icons.add_photo_alternate_outlined),
-                ),
-                const SizedBox(height: 8),
-                if (selectedImageUrl.isNotEmpty) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      height: 130,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Image.network(
-                            selectedImageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.broken_image_outlined, color: Colors.grey, size: 28),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Enter a direct image link (JPEG, PNG, WebP) to preview',
-                                      textAlign: TextAlign.center,
-                                      style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey.shade600),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.65),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.remove_red_eye_rounded, size: 12, color: Colors.white),
-                                  const SizedBox(width: 4),
-                                  Text('Live Preview', style: GoogleFonts.poppins(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600)),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                ],
-                Text('Or pick from high-quality presets:', style: GoogleFonts.poppins(fontSize: 11.5, color: Colors.grey[600])),
-                const SizedBox(height: 6),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: hotelImagePresets.map((p) {
-                      final isSel = selectedImageUrl == p.$2;
-                      return GestureDetector(
-                        onTap: () => setModal(() {
-                          selectedImageUrl = p.$2;
-                          photoUrlCtrl.text = p.$2;
-                        }),
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 10),
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: isSel ? AppTheme.primaryPurple : Colors.transparent, width: 2),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(p.$2, width: 65, height: 50, fit: BoxFit.cover),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
                 ),
                 const SizedBox(height: 14),
                 _buildInputField('Description & Amenities', descCtrl, 'Free WiFi, AC, Breakfast...', Icons.description_outlined, maxLines: 2),
@@ -1317,7 +1332,9 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                       'Executive Suite': double.tryParse(execPriceCtrl.text) ?? (baseP * 1.8),
                     };
 
-                    final finalImg = photoUrlCtrl.text.trim().isNotEmpty ? photoUrlCtrl.text.trim() : selectedImageUrl;
+                    final finalImg = selectedImageUrl.trim().isNotEmpty
+                        ? selectedImageUrl.trim()
+                        : 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800';
 
                     await _hotelService.addHotel(Hotel(
                       id: '',
@@ -1583,8 +1600,7 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
 
     String selectedCity = _pakistanCities.first;
     String selectedCuisine = 'Pakistani BBQ & Karahi';
-    String selectedImageUrl = 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800';
-    final photoUrlCtrl = TextEditingController(text: selectedImageUrl);
+    String selectedImageUrl = '';
 
     final cuisines = [
       'Pakistani BBQ & Karahi',
@@ -1593,14 +1609,6 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
       'Fresh River Trout & Seafood',
       'Fast Food & Grills',
       'Traditional Sweets & Bakery',
-    ];
-
-    final foodImagePresets = [
-      ('BBQ & Grill', 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800'),
-      ('Rooftop Dining', 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800'),
-      ('Waterfront Deck', 'https://images.unsplash.com/photo-1550966871-3ed3cdb5ed0c?w=800'),
-      ('Mountain View Cafe', 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800'),
-      ('Fresh River Trout', 'https://images.unsplash.com/photo-1544025162-d76694265947?w=800'),
     ];
 
     showModalBottomSheet(
@@ -1699,104 +1707,15 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                 _buildInputField('Phone for Table Booking', phoneCtrl, '+92 300 9876543', Icons.phone_outlined),
                 const SizedBox(height: 14),
 
-                Text('Restaurant Photo / Cover Image', style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: photoUrlCtrl,
-                  style: GoogleFonts.poppins(fontSize: 13),
-                  onChanged: (val) {
-                    setModal(() => selectedImageUrl = val.trim());
+                _buildGalleryImagePicker(
+                  title: 'Restaurant Photo',
+                  imagePath: selectedImageUrl,
+                  onTap: () async {
+                    final path = await _pickImageFromGallery();
+                    if (path != null) {
+                      setModal(() => selectedImageUrl = path);
+                    }
                   },
-                  decoration: _inputDecoration('Paste your own photo URL (https://...)', Icons.add_photo_alternate_outlined),
-                ),
-                const SizedBox(height: 8),
-                if (selectedImageUrl.isNotEmpty) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      height: 130,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Image.network(
-                            selectedImageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.broken_image_outlined, color: Colors.grey, size: 28),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Enter a direct image link (JPEG, PNG, WebP) to preview',
-                                      textAlign: TextAlign.center,
-                                      style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey.shade600),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.65),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.remove_red_eye_rounded, size: 12, color: Colors.white),
-                                  const SizedBox(width: 4),
-                                  Text('Live Preview', style: GoogleFonts.poppins(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600)),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                ],
-                Text('Or pick from cuisine presets:', style: GoogleFonts.poppins(fontSize: 11.5, color: Colors.grey[600])),
-                const SizedBox(height: 6),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: foodImagePresets.map((p) {
-                      final isSel = selectedImageUrl == p.$2;
-                      return GestureDetector(
-                        onTap: () => setModal(() {
-                          selectedImageUrl = p.$2;
-                          photoUrlCtrl.text = p.$2;
-                        }),
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 10),
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: isSel ? AppTheme.primaryPurple : Colors.transparent, width: 2),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(p.$2, width: 65, height: 50, fit: BoxFit.cover),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
                 ),
                 const SizedBox(height: 24),
 
@@ -1814,7 +1733,9 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                       dish3NameCtrl.text.trim(): double.tryParse(dish3PriceCtrl.text) ?? 1600,
                     };
 
-                    final finalImg = photoUrlCtrl.text.trim().isNotEmpty ? photoUrlCtrl.text.trim() : selectedImageUrl;
+                    final finalImg = selectedImageUrl.trim().isNotEmpty
+                        ? selectedImageUrl.trim()
+                        : 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800';
 
                     await _restaurantService.addRestaurant(Restaurant(
                       id: '',
@@ -1859,15 +1780,7 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
     String selectedRegion = 'Hunza';
     String selectedRole = '4x4 Mountain Guide';
     bool isFemaleFriendly = true;
-    String selectedImageUrl = 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400';
-    final photoUrlCtrl = TextEditingController(text: selectedImageUrl);
-
-    final guideImagePresets = [
-      ('Male Guide 1', 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400'),
-      ('Male Guide 2', 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400'),
-      ('Female Guide', 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400'),
-      ('Senior Trek Lead', 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400'),
-    ];
+    String selectedImageUrl = '';
 
     showModalBottomSheet(
       context: context,
@@ -1950,104 +1863,15 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                 ),
                 const SizedBox(height: 14),
 
-                Text('Guide Profile Photo', style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 6),
-                TextField(
-                  controller: photoUrlCtrl,
-                  style: GoogleFonts.poppins(fontSize: 13),
-                  onChanged: (val) {
-                    setModal(() => selectedImageUrl = val.trim());
+                _buildGalleryImagePicker(
+                  title: 'Guide Profile Photo',
+                  imagePath: selectedImageUrl,
+                  onTap: () async {
+                    final path = await _pickImageFromGallery();
+                    if (path != null) {
+                      setModal(() => selectedImageUrl = path);
+                    }
                   },
-                  decoration: _inputDecoration('Paste your own photo URL (https://...)', Icons.add_photo_alternate_outlined),
-                ),
-                const SizedBox(height: 8),
-                if (selectedImageUrl.isNotEmpty) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      height: 120,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade300),
-                      ),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          Image.network(
-                            selectedImageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => Center(
-                              child: Padding(
-                                padding: const EdgeInsets.all(12),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.broken_image_outlined, color: Colors.grey, size: 28),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'Enter a direct photo link to preview',
-                                      textAlign: TextAlign.center,
-                                      style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey.shade600),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.65),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.remove_red_eye_rounded, size: 12, color: Colors.white),
-                                  const SizedBox(width: 4),
-                                  Text('Live Preview', style: GoogleFonts.poppins(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600)),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                ],
-                Text('Or pick from guide presets:', style: GoogleFonts.poppins(fontSize: 11.5, color: Colors.grey[600])),
-                const SizedBox(height: 6),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: guideImagePresets.map((p) {
-                      final isSel = selectedImageUrl == p.$2;
-                      return GestureDetector(
-                        onTap: () => setModal(() {
-                          selectedImageUrl = p.$2;
-                          photoUrlCtrl.text = p.$2;
-                        }),
-                        child: Container(
-                          margin: const EdgeInsets.only(right: 10),
-                          padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(
-                            border: Border.all(color: isSel ? AppTheme.primaryPurple : Colors.transparent, width: 2),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(p.$2, width: 50, height: 50, fit: BoxFit.cover),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
                 ),
                 const SizedBox(height: 14),
                 _buildInputField('Bio / About Me', bioCtrl, 'Local history, photography spots...', Icons.edit_note_outlined, maxLines: 2),
@@ -2061,7 +1885,9 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                     final uid = FirebaseAuth.instance.currentUser?.uid ?? 'provider_user';
                     final rateP = double.tryParse(dailyRateCtrl.text) ?? 7000;
 
-                    final finalImg = photoUrlCtrl.text.trim().isNotEmpty ? photoUrlCtrl.text.trim() : selectedImageUrl;
+                    final finalImg = selectedImageUrl.trim().isNotEmpty
+                        ? selectedImageUrl.trim()
+                        : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400';
 
                     await _guideService.addGuide(LocalGuide(
                       id: '',
