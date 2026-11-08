@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 class LocalGuide {
   final String id;
   final String name;
@@ -20,6 +22,7 @@ class LocalGuide {
   final List<String> specialties;
   final String carSeatingCapacity;
   final bool isOffroadReady;
+  final String? vendorId;
 
   LocalGuide({
     required this.id,
@@ -41,7 +44,58 @@ class LocalGuide {
     this.specialties = const ['Local History', 'Sightseeing', 'Scenic Photography'],
     this.carSeatingCapacity = '4 Passengers',
     this.isOffroadReady = true,
+    this.vendorId,
   });
+
+  factory LocalGuide.fromFirestore(DocumentSnapshot doc) {
+    final data = (doc.data() as Map<String, dynamic>?) ?? {};
+    return LocalGuide(
+      id: doc.id,
+      name: data['name']?.toString() ?? '',
+      role: data['role']?.toString() ?? 'Tour Guide',
+      region: data['region']?.toString() ?? 'General',
+      rating: (data['rating'] as num?)?.toDouble() ?? 4.8,
+      dailyRatePkr: (data['dailyRatePkr'] as num?)?.toDouble() ?? 5000.0,
+      tripCount: (data['tripCount'] as num?)?.toInt() ?? 10,
+      imageUrl: data['imageUrl']?.toString(),
+      isVerified: data['isVerified'] ?? true,
+      isFemaleFriendly: data['isFemaleFriendly'] ?? false,
+      experience: data['experience']?.toString() ?? '5 Years Experience',
+      car: data['car']?.toString() ?? 'Toyota 4x4 AC',
+      contactNumber: data['contactNumber']?.toString() ?? '+92 300 0000000',
+      whatsappNumber: data['whatsappNumber']?.toString() ?? '923000000000',
+      bio: data['bio']?.toString() ?? 'Verified local guide across Pakistan.',
+      languages: List<String>.from(data['languages'] ?? ['Urdu', 'English']),
+      specialties: List<String>.from(data['specialties'] ?? ['Sightseeing']),
+      carSeatingCapacity: data['carSeatingCapacity']?.toString() ?? '4 Passengers',
+      isOffroadReady: data['isOffroadReady'] ?? true,
+      vendorId: data['vendorId']?.toString(),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'role': role,
+      'region': region,
+      'rating': rating,
+      'dailyRatePkr': dailyRatePkr,
+      'tripCount': tripCount,
+      'imageUrl': imageUrl,
+      'isVerified': isVerified,
+      'isFemaleFriendly': isFemaleFriendly,
+      'experience': experience,
+      'car': car,
+      'contactNumber': contactNumber,
+      'whatsappNumber': whatsappNumber,
+      'bio': bio,
+      'languages': languages,
+      'specialties': specialties,
+      'carSeatingCapacity': carSeatingCapacity,
+      'isOffroadReady': isOffroadReady,
+      'vendorId': vendorId,
+    };
+  }
 }
 
 class GuideMockService {

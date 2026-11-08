@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -5,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme.dart';
 import '../../core/currency_provider.dart';
 import 'models/guide_model.dart';
+import 'services/guide_service.dart';
 import 'guide_detail_screen.dart';
 
 class GuidesScreen extends StatefulWidget {
@@ -15,8 +17,10 @@ class GuidesScreen extends StatefulWidget {
 }
 
 class _GuidesScreenState extends State<GuidesScreen> {
-  final List<LocalGuide> _allGuides = GuideMockService.fetchMockGuides();
+  final GuideService _guideService = GuideService();
+  List<LocalGuide> _allGuides = GuideMockService.fetchMockGuides();
   late List<LocalGuide> _filteredGuides;
+  StreamSubscription? _guideSub;
   String _selectedRegion = 'All';
   String _searchQuery = '';
   bool _onlySafeForFemales = false;
@@ -42,6 +46,20 @@ class _GuidesScreenState extends State<GuidesScreen> {
   void initState() {
     super.initState();
     _filteredGuides = _allGuides;
+    _guideSub = _guideService.getGuides().listen((guides) {
+      if (mounted) {
+        setState(() {
+          _allGuides = guides;
+          _filterGuides();
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _guideSub?.cancel();
+    super.dispose();
   }
 
   void _filterGuides() {
