@@ -15,10 +15,20 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
   final _originController = TextEditingController(text: 'Karachi');
   final _destinationController = TextEditingController(text: 'Islamabad');
   final _budgetController = TextEditingController(text: '50000');
+  final _travelersController = TextEditingController(text: '1');
   DateTime? _startDate;
   DateTime? _endDate;
   int _travelers = 1;
   bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _originController.dispose();
+    _destinationController.dispose();
+    _budgetController.dispose();
+    _travelersController.dispose();
+    super.dispose();
+  }
 
   final List<String> _popularOrigins = [
     'Karachi',
@@ -159,7 +169,7 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
                   const SizedBox(height: 20),
 
                   // ── Travelers ─────────────────────────────────────────────
-                  _buildTravelersDropdown(),
+                  _buildTravelersInput(),
                   const SizedBox(height: 20),
 
                   // ── Budget ────────────────────────────────────────────────
@@ -204,6 +214,15 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
                             const SnackBar(content: Text('Departure and destination city must be different')),
                           );
                           return;
+                        }
+
+                        // Sync travelers from controller
+                        final parsedTravelers = int.tryParse(_travelersController.text.replaceAll(RegExp(r'[^0-9]'), ''));
+                        if (parsedTravelers != null && parsedTravelers > 0) {
+                          _travelers = parsedTravelers.clamp(1, 100);
+                        } else {
+                          _travelers = 1;
+                          _travelersController.text = '1';
                         }
 
                         double parsedBudget = 0;
@@ -584,29 +603,156 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
     );
   }
 
-  Widget _buildTravelersDropdown() {
+  Widget _buildTravelersInput() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Number of Travelers', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey[700])),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Amount of Members / Travelers',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: AppTheme.primaryPurple.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$_travelers ${_travelers == 1 ? 'Member' : 'Members'}',
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: AppTheme.primaryPurple,
+                ),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 8),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(15),
             border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<int>(
-              value: _travelers,
-              isExpanded: true,
-              items: [1, 2, 3, 4, 5].map((e) => DropdownMenuItem(value: e, child: Text('$e ${e == 1 ? 'Person' : 'People'}'))).toList(),
-              onChanged: (val) => setState(() => _travelers = val!),
-            ),
+          child: Row(
+            children: [
+              IconButton(
+                tooltip: 'Decrease',
+                icon: const Icon(Icons.remove_circle_outline_rounded, color: AppTheme.primaryPurple),
+                onPressed: _travelers > 1
+                    ? () {
+                        setState(() {
+                          _travelers--;
+                          _travelersController.text = _travelers.toString();
+                        });
+                      }
+                    : null,
+              ),
+              Expanded(
+                child: TextField(
+                  controller: _travelersController,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1E293B),
+                  ),
+                  decoration: const InputDecoration(
+                    hintText: 'Enter amount of members',
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onChanged: (val) {
+                    final parsed = int.tryParse(val.replaceAll(RegExp(r'[^0-9]'), ''));
+                    setState(() {
+                      if (parsed != null && parsed > 0) {
+                        _travelers = parsed.clamp(1, 100);
+                      } else {
+                        _travelers = 1;
+                      }
+                    });
+                  },
+                ),
+              ),
+              IconButton(
+                tooltip: 'Increase',
+                icon: const Icon(Icons.add_circle_outline_rounded, color: AppTheme.primaryPurple),
+                onPressed: () {
+                  setState(() {
+                    _travelers++;
+                    _travelersController.text = _travelers.toString();
+                  });
+                },
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _buildMemberChip(1, 'Solo (1)'),
+              _buildMemberChip(2, 'Couple (2)'),
+              _buildMemberChip(4, 'Family (4)'),
+              _buildMemberChip(6, 'Group of 6'),
+              _buildMemberChip(10, 'Group of 10'),
+              _buildMemberChip(15, '15 Members'),
+            ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildMemberChip(int count, String label) {
+    final isSelected = _travelers == count;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8.0),
+      child: ChoiceChip(
+        label: Text(label),
+        selected: isSelected,
+        onSelected: (selected) {
+          if (selected) {
+            setState(() {
+              _travelers = count;
+              _travelersController.text = count.toString();
+            });
+          }
+        },
+        labelStyle: GoogleFonts.poppins(
+          fontSize: 11,
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+          color: isSelected ? Colors.white : Colors.grey.shade700,
+        ),
+        selectedColor: AppTheme.primaryPurple,
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: isSelected ? AppTheme.primaryPurple : Colors.grey.shade300,
+          ),
+        ),
+        showCheckmark: false,
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      ),
     );
   }
 
