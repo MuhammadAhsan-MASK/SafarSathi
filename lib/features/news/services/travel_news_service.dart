@@ -1,7 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/travel_news_model.dart';
 
 class TravelNewsService {
+  /// Stream live travel advisories combining Admin-broadcasted alerts from Firestore
+  /// with default NDMA/PMD verified feeds.
+  static Stream<List<TravelNewsItem>> getLiveAdvisoriesStream() {
+    try {
+      return FirebaseFirestore.instance
+          .collection('travel_advisories')
+          .snapshots()
+          .map((snapshot) {
+            final adminBroadcasts = snapshot.docs
+                .where((doc) {
+                  final data = doc.data();
+                  return data['isActive'] == null || data['isActive'] == true;
+                })
+                .map((doc) => TravelNewsItem.fromFirestore(doc.data(), doc.id))
+                .toList();
+
+            // Sort admin broadcasts: warnings first, then newest
+            adminBroadcasts.sort((a, b) {
+              if (a.safetyStatus == TravelSafetyStatus.warning && b.safetyStatus != TravelSafetyStatus.warning) return -1;
+              if (b.safetyStatus == TravelSafetyStatus.warning && a.safetyStatus != TravelSafetyStatus.warning) return 1;
+              return b.updatedAt.compareTo(a.updatedAt);
+            });
+
+            final defaultList = getLiveAdvisories();
+            // Avoid duplicate places if admin broadcasted for that exact place
+            final broadcastPlaceNames = adminBroadcasts.map((e) => e.placeName.toLowerCase().trim()).toSet();
+            final remainingDefaults = defaultList.where((d) => !broadcastPlaceNames.contains(d.placeName.toLowerCase().trim())).toList();
+
+            return [...adminBroadcasts, ...remainingDefaults];
+          }).handleError((err) {
+            debugPrint('Firestore live advisories stream error: $err');
+            return getLiveAdvisories();
+          });
+    } catch (e) {
+      debugPrint('Firestore offline or not initialized: $e');
+      return Stream.value(getLiveAdvisories());
+    }
+  }
+
   static List<TravelNewsItem> getLiveAdvisories() {
     final now = DateTime.now();
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../models/travel_news_model.dart';
@@ -14,6 +15,7 @@ class LiveTravelNewsSection extends StatefulWidget {
 
 class _LiveTravelNewsSectionState extends State<LiveTravelNewsSection> {
   late List<TravelNewsItem> _advisories;
+  StreamSubscription<List<TravelNewsItem>>? _advisoriesSubscription;
   String _selectedFilter = 'All';
   String _searchQuery = '';
   bool _isRefreshing = false;
@@ -37,10 +39,19 @@ class _LiveTravelNewsSectionState extends State<LiveTravelNewsSection> {
     super.initState();
     _lastRefreshed = DateTime.now();
     _advisories = TravelNewsService.getLiveAdvisories();
+    _advisoriesSubscription = TravelNewsService.getLiveAdvisoriesStream().listen((items) {
+      if (mounted) {
+        setState(() {
+          _advisories = items;
+          _lastRefreshed = DateTime.now();
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _advisoriesSubscription?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -382,15 +393,28 @@ class _LiveTravelNewsSectionState extends State<LiveTravelNewsSection> {
   }
 
   Widget _buildLiveTickerBanner() {
+    String tickerText = 'NDMA: Babusar Pass closed for winter • KKH clear • Murree fog alert • Skardu flights normal';
+    bool isUrgentAlert = false;
+
+    final urgent = _advisories.where((a) => a.isBroadcast || a.safetyStatus == TravelSafetyStatus.warning).toList();
+    if (urgent.isNotEmpty) {
+      final top = urgent.first;
+      tickerText = top.isBroadcast
+          ? '🚨 LIVE BROADCAST [${top.placeName}]: ${top.headline}'
+          : '⚠️ ADVISORY [${top.placeName}]: ${top.headline}';
+      isUrgentAlert = true;
+    }
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       decoration: BoxDecoration(
-        color: const Color(0xFF0F172A),
+        color: isUrgentAlert ? const Color(0xFF7F1D1D) : const Color(0xFF0F172A),
         borderRadius: BorderRadius.circular(14),
+        border: isUrgentAlert ? Border.all(color: Colors.redAccent.withValues(alpha: 0.6)) : null,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
+            color: (isUrgentAlert ? Colors.red : Colors.black).withValues(alpha: 0.15),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -398,16 +422,20 @@ class _LiveTravelNewsSectionState extends State<LiveTravelNewsSection> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.campaign_rounded, color: Colors.amberAccent, size: 19),
+          Icon(
+            isUrgentAlert ? Icons.warning_amber_rounded : Icons.campaign_rounded,
+            color: isUrgentAlert ? Colors.redAccent : Colors.amberAccent,
+            size: 19,
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'NDMA: Babusar Pass closed for winter • KKH clear • Murree fog alert • Skardu flights normal',
+              tickerText,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: GoogleFonts.poppins(
                 fontSize: 11.5,
-                fontWeight: FontWeight.w500,
+                fontWeight: isUrgentAlert ? FontWeight.w600 : FontWeight.w500,
                 color: Colors.white,
               ),
             ),
@@ -417,7 +445,7 @@ class _LiveTravelNewsSectionState extends State<LiveTravelNewsSection> {
             _formatCurrentTime(_lastRefreshed).split('•').last.trim(),
             style: GoogleFonts.poppins(
               fontSize: 10,
-              color: Colors.white60,
+              color: Colors.white70,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -456,6 +484,35 @@ class _LiveTravelNewsSectionState extends State<LiveTravelNewsSection> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Admin Broadcast Tag (if published by Admin Command Center)
+            if (item.isBroadcast) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.cell_tower_rounded, size: 12, color: Colors.red.shade700),
+                    const SizedBox(width: 4),
+                    Text(
+                      'ADMIN LIVE BROADCAST',
+                      style: GoogleFonts.poppins(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.red.shade700,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             // Top Row: Region & Safety Pill
             Row(
               children: [
