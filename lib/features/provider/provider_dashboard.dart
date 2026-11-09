@@ -1003,7 +1003,14 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                         const SizedBox(width: 5),
                         _buildVerificationBadge(t.isVerified),
                         const SizedBox(width: 6),
-                        Text(t.departureTime, style: GoogleFonts.poppins(fontSize: 10.5, color: Colors.grey[600])),
+                        Expanded(
+                          child: Text(
+                            t.departureTime,
+                            style: GoogleFonts.poppins(fontSize: 10.5, color: Colors.grey[600]),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 4),

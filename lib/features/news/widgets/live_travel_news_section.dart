@@ -375,7 +375,7 @@ class _LiveTravelNewsSectionState extends State<LiveTravelNewsSection> {
             )
           else
             SizedBox(
-              height: 295,
+              height: 315,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
@@ -459,8 +459,8 @@ class _LiveTravelNewsSectionState extends State<LiveTravelNewsSection> {
       onTap: () => TravelAdvisoryDetailSheet.show(context, item),
       borderRadius: BorderRadius.circular(22),
       child: Container(
-        width: 290,
-        padding: const EdgeInsets.all(16),
+        width: 300,
+        padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(22),
@@ -573,11 +573,11 @@ class _LiveTravelNewsSectionState extends State<LiveTravelNewsSection> {
               ),
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
 
             // Weather & Temperature Strip
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
                 color: const Color(0xFFF8F9FE),
                 borderRadius: BorderRadius.circular(12),
@@ -585,12 +585,12 @@ class _LiveTravelNewsSectionState extends State<LiveTravelNewsSection> {
               ),
               child: Row(
                 children: [
-                  Icon(item.weatherIcon, size: 20, color: Colors.amber.shade700),
-                  const SizedBox(width: 8),
+                  Icon(item.weatherIcon, size: 18, color: Colors.amber.shade700),
+                  const SizedBox(width: 6),
                   Text(
                     '${item.currentTemp}${item.tempUnit}',
                     style: GoogleFonts.poppins(
-                      fontSize: 15,
+                      fontSize: 14,
                       fontWeight: FontWeight.bold,
                       color: const Color(0xFF0F172A),
                     ),
@@ -602,26 +602,34 @@ class _LiveTravelNewsSectionState extends State<LiveTravelNewsSection> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.poppins(
-                        fontSize: 11,
+                        fontSize: 10.5,
                         color: const Color(0xFF64748B),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
-                  Text(
-                    'Wind: ${item.windSpeed}',
-                    style: GoogleFonts.poppins(fontSize: 10, color: Colors.grey.shade600),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerRight,
+                      child: Text(
+                        'Wind: ${item.windSpeed}',
+                        style: GoogleFonts.poppins(fontSize: 10, color: Colors.grey.shade600),
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
 
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
 
             // Disaster & Road status snippet
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -642,7 +650,7 @@ class _LiveTravelNewsSectionState extends State<LiveTravelNewsSection> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 5),
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -665,7 +673,7 @@ class _LiveTravelNewsSectionState extends State<LiveTravelNewsSection> {
               ),
             ),
 
-            const Divider(height: 16, color: Color(0xFFF1F5F9)),
+            const Divider(height: 12, color: Color(0xFFF1F5F9)),
 
             // Footer: Updated time + Action arrow
             Row(
@@ -680,15 +688,18 @@ class _LiveTravelNewsSectionState extends State<LiveTravelNewsSection> {
                       color: const Color(0xFF64748B),
                       fontWeight: FontWeight.w500,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                const SizedBox(width: 6),
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Report',
+                      'Details',
                       style: GoogleFonts.poppins(
-                        fontSize: 11.5,
+                        fontSize: 11,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.primaryPurple,
                       ),

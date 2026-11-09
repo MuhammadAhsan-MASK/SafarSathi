@@ -655,12 +655,17 @@ class TravelAdvisoryDetailSheet extends StatelessWidget {
             children: [
               const Icon(Icons.schedule_rounded, size: 13, color: Color(0xFF64748B)),
               const SizedBox(width: 5),
-              Text(
-                'Report Timestamp: ${item.fullDateString}',
-                style: GoogleFonts.poppins(
-                  fontSize: 10.5,
-                  color: const Color(0xFF64748B),
-                  fontWeight: FontWeight.w500,
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'Report Timestamp: ${item.fullDateString}',
+                    style: GoogleFonts.poppins(
+                      fontSize: 10.5,
+                      color: const Color(0xFF64748B),
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                 ),
               ),
             ],
