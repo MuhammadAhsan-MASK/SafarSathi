@@ -15,6 +15,8 @@ import '../guides/guides_screen.dart';
 import '../bargain/bargain_screen.dart';
 import '../budget/smart_packing_screen.dart';
 import '../budget/split_bill_screen.dart';
+import '../budget/models/saved_trip_model.dart';
+import '../budget/services/saved_trips_service.dart';
 
 import 'package:provider/provider.dart';
 import '../../core/currency_provider.dart';
@@ -1040,77 +1042,232 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildRecentTrips(BuildContext context) {
+    final currency = Provider.of<CurrencyProvider>(context, listen: false);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20.0),
-          child: Text(
-            'Your Travel Itineraries',
-            style: GoogleFonts.poppins(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: const Color(0xFF1F2429),
-            ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Your Saved Trips & Khata',
+                style: GoogleFonts.poppins(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1F2429),
+                ),
+              ),
+              InkWell(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SplitBillScreen()),
+                ),
+                child: Text(
+                  'Open Khata →',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryPurple,
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 12),
-        Container(
-          margin: const EdgeInsets.symmetric(horizontal: 20),
-          padding: const EdgeInsets.all(22),
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: const Color(0xFFEFF0F6), width: 1.2),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(8),
-                blurRadius: 10,
-                offset: const Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(14),
-                decoration: const BoxDecoration(
-                  color: Color(0xFFF4F1FD),
-                  shape: BoxShape.circle,
+        FutureBuilder<List<SavedTrip>>(
+          future: SavedTripsService().getSavedTrips(),
+          builder: (context, snapshot) {
+            final trips = snapshot.data ?? [];
+            if (trips.isEmpty) {
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 20),
+                padding: const EdgeInsets.all(22),
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(22),
+                  border: Border.all(color: const Color(0xFFEFF0F6), width: 1.2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(8),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
                 ),
-                child: const Icon(Icons.luggage_rounded, color: Color(0xFF5E17EB), size: 28),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'No Active Itinerary',
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                  color: Colors.black87,
+                child: Column(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF4F1FD),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.luggage_rounded, color: Color(0xFF5E17EB), size: 28),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'No Active Itinerary',
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 15,
+                        color: Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Use the AI Trip Planner to create a personalized day-by-day budget itinerary.',
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.poppins(color: Colors.grey[500], fontSize: 12),
+                    ),
+                    const SizedBox(height: 14),
+                    OutlinedButton.icon(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const TripPlannerScreen()),
+                      ),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text('Create Itinerary'),
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                      ),
+                    ),
+                  ],
                 ),
+              );
+            }
+
+            final activeTrip = trips.firstWhere((t) => t.isCurrent, orElse: () => trips.first);
+
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.all(18),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: AppTheme.primaryPurple.withValues(alpha: 0.25), width: 1.4),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primaryPurple.withValues(alpha: 0.08),
+                    blurRadius: 16,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              const SizedBox(height: 4),
-              Text(
-                'Use the AI Trip Planner to create a personalized day-by-day budget itinerary.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(color: Colors.grey[500], fontSize: 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryPurple.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '● ACTIVE SAVED TRIP',
+                          style: GoogleFonts.poppins(
+                            color: AppTheme.primaryPurple,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        currency.formatPrice(activeTrip.budget),
+                        style: GoogleFonts.poppins(
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF0F172A),
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    activeTrip.title,
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: const Color(0xFF1E293B),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(Icons.route_rounded, size: 14, color: Color(0xFF64748B)),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${activeTrip.origin} ➔ ${activeTrip.destination}',
+                        style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF64748B)),
+                      ),
+                      const SizedBox(width: 8),
+                      Text('•', style: TextStyle(color: Colors.grey[400])),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${activeTrip.durationDays} Days (${activeTrip.travelers} People)',
+                        style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF64748B)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => SplitBillScreen(initialTrip: activeTrip),
+                            ),
+                          ),
+                          icon: const Icon(Icons.receipt_long_rounded, size: 16),
+                          label: const Text('Safar Khata', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryPurple,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(vertical: 9),
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => SmartPackingScreen(
+                                destination: activeTrip.destination,
+                                duration: '${activeTrip.durationDays} Days',
+                              ),
+                            ),
+                          ),
+                          icon: const Icon(Icons.backpack_outlined, size: 16),
+                          label: const Text('Packing', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppTheme.primaryPurple,
+                            side: const BorderSide(color: AppTheme.primaryPurple),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            padding: const EdgeInsets.symmetric(vertical: 9),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(height: 14),
-              OutlinedButton.icon(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const TripPlannerScreen()),
-                ),
-                icon: const Icon(Icons.add_rounded, size: 18),
-                label: const Text('Create Itinerary'),
-                style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ],
     );

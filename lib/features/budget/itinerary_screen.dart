@@ -6,6 +6,9 @@ import '../../core/currency_provider.dart';
 import '../../core/pdf_service.dart';
 import '../../core/theme.dart';
 import 'smart_packing_screen.dart';
+import 'split_bill_screen.dart';
+import 'models/saved_trip_model.dart';
+import 'services/saved_trips_service.dart';
 
 class ItineraryScreen extends StatefulWidget {
   final String origin;
@@ -1048,15 +1051,50 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
             // Bookmark / Save
             IconButton(
               icon: Icon(_isSaved ? Icons.bookmark : Icons.bookmark_border, color: _isSaved ? Colors.green : Colors.grey[700]),
-              tooltip: 'Save Route',
-              onPressed: () {
+              tooltip: 'Save Trip & Route',
+              onPressed: () async {
                 setState(() => _isSaved = !_isSaved);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(_isSaved ? 'Trip route saved to favorites!' : 'Removed from saved'),
-                    backgroundColor: _isSaved ? Colors.green : Colors.grey[800],
-                  ),
-                );
+                if (_isSaved) {
+                  final newTrip = SavedTrip(
+                    id: 'trip_${widget.destination.toLowerCase().replaceAll(RegExp(r'\s+'), '_')}_${DateTime.now().millisecondsSinceEpoch}',
+                    title: '${widget.destination} Tour',
+                    destination: widget.destination,
+                    origin: widget.origin,
+                    startDate: widget.startDate,
+                    endDate: widget.endDate,
+                    budget: widget.budget,
+                    travelers: widget.travelers,
+                    companions: ['Ali', 'Hamza', 'Me'],
+                    isCurrent: true,
+                  );
+                  await SavedTripsService().saveTrip(newTrip);
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Trip "${newTrip.title}" saved! Visible in Safar Khata.'),
+                      backgroundColor: Colors.green,
+                      action: SnackBarAction(
+                        label: 'Open Khata',
+                        textColor: Colors.white,
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => SplitBillScreen(initialTrip: newTrip),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: const Text('Removed from favorites'),
+                      backgroundColor: Colors.grey[800],
+                    ),
+                  );
+                }
               },
             ),
             const SizedBox(width: 6),

@@ -7,19 +7,29 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme.dart';
 import '../../core/currency_provider.dart';
 import 'models/group_expense_model.dart';
+import 'models/saved_trip_model.dart';
+import 'services/saved_trips_service.dart';
+import 'smart_packing_screen.dart';
 
 class SplitBillScreen extends StatefulWidget {
-  const SplitBillScreen({super.key});
+  final SavedTrip? initialTrip;
+
+  const SplitBillScreen({super.key, this.initialTrip});
 
   @override
   State<SplitBillScreen> createState() => _SplitBillScreenState();
 }
 
 class _SplitBillScreenState extends State<SplitBillScreen> {
+  final SavedTripsService _tripsService = SavedTripsService();
+  final GroupSplitService _splitService = GroupSplitService();
+
+  List<SavedTrip> _savedTrips = [];
+  SavedTrip? _activeTrip;
+
   final List<Person> _people = [];
   final List<GroupExpense> _expenses = [];
   final Set<String> _settledKeys = {};
-  final GroupSplitService _splitService = GroupSplitService();
   bool _isLoading = true;
 
   final Map<String, (IconData, Color)> _categoryMeta = {
@@ -34,20 +44,70 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
   @override
   void initState() {
     super.initState();
-    _loadFromStorage();
+    _initializeData();
   }
 
-  Future<void> _loadFromStorage() async {
+  Future<void> _initializeData() async {
+    setState(() => _isLoading = true);
+    final trips = await _tripsService.getSavedTrips();
+    _savedTrips = trips;
+
+    if (widget.initialTrip != null) {
+      _activeTrip = trips.firstWhere(
+        (t) => t.id == widget.initialTrip!.id,
+        orElse: () => widget.initialTrip!,
+      );
+    } else if (trips.isNotEmpty) {
+      _activeTrip = trips.firstWhere((t) => t.isCurrent, orElse: () => trips.first);
+    }
+
+    if (_activeTrip != null) {
+      await _loadTripKhata(_activeTrip!);
+    } else {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadTripKhata(SavedTrip trip) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final peopleJson = prefs.getString('safar_split_people');
-      final expensesJson = prefs.getString('safar_split_expenses');
-      final settledJson = prefs.getStringList('safar_split_settled');
+      final peopleKey = 'safar_split_people_${trip.id}';
+      final expensesKey = 'safar_split_expenses_${trip.id}';
+      final settledKey = 'safar_split_settled_${trip.id}';
+
+      final peopleJson = prefs.getString(peopleKey);
+      final expensesJson = prefs.getString(expensesKey);
+      final settledList = prefs.getStringList(settledKey);
+
+      _people.clear();
+      _expenses.clear();
+      _settledKeys.clear();
 
       if (peopleJson != null) {
         final List<dynamic> pList = jsonDecode(peopleJson);
-        _people.clear();
         _people.addAll(pList.map((m) => Person.fromMap(Map<String, dynamic>.from(m))));
+      } else {
+        // Fallback for default Murree trip to check legacy storage or populate companions
+        if (trip.id == 'trip_murree_hills') {
+          final legacyPeople = prefs.getString('safar_split_people');
+          final legacyExpenses = prefs.getString('safar_split_expenses');
+          if (legacyPeople != null && legacyExpenses != null) {
+            final List<dynamic> lp = jsonDecode(legacyPeople);
+            final List<dynamic> le = jsonDecode(legacyExpenses);
+            _people.addAll(lp.map((m) => Person.fromMap(Map<String, dynamic>.from(m))));
+            _expenses.addAll(le.map((m) => GroupExpense.fromMap(Map<String, dynamic>.from(m))));
+          } else {
+            _seedDefaultSampleForTrip(trip);
+          }
+        } else {
+          // Initialize people from trip companions list
+          for (final name in trip.companions) {
+            _people.add(Person(
+              id: 'p_${name.toLowerCase().replaceAll(RegExp(r'\s+'), '_')}',
+              name: name,
+            ));
+          }
+        }
       }
 
       if (expensesJson != null) {
@@ -56,92 +116,103 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
         _expenses.addAll(eList.map((m) => GroupExpense.fromMap(Map<String, dynamic>.from(m))));
       }
 
-      if (settledJson != null) {
-        _settledKeys.clear();
-        _settledKeys.addAll(settledJson);
+      if (settledList != null) {
+        _settledKeys.addAll(settledList);
       }
     } catch (e) {
-      debugPrint('Error loading split bill storage: $e');
+      debugPrint('Error loading trip khata: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  Future<void> _saveToStorage() async {
+  void _seedDefaultSampleForTrip(SavedTrip trip) {
+    _people.clear();
+    final ali = Person(id: 'p1', name: 'Ali');
+    final hamza = Person(id: 'p2', name: 'Hamza');
+    final ahsan = Person(id: 'p3', name: 'Ahsan');
+    _people.addAll([ali, hamza, ahsan]);
+
+    _expenses.clear();
+    _expenses.addAll([
+      GroupExpense(
+        id: 'e1',
+        description: 'Hiace Fuel (Islamabad to Murree & Patriata)',
+        amount: 8500,
+        paidBy: ali,
+        splitAmong: [ali, hamza, ahsan],
+        category: 'Fuel & Transport',
+        date: DateTime.now().subtract(const Duration(days: 1)),
+      ),
+      GroupExpense(
+        id: 'e2',
+        description: 'Pine View Hotel (2 Deluxe Rooms)',
+        amount: 22000,
+        paidBy: ahsan,
+        splitAmong: [ali, hamza, ahsan],
+        category: 'Hotel & Stay',
+        date: DateTime.now().subtract(const Duration(hours: 18)),
+      ),
+      GroupExpense(
+        id: 'e3',
+        description: 'Mall Road Karahi Dinner & Kashmiri Chai',
+        amount: 6200,
+        paidBy: hamza,
+        splitAmong: [ali, hamza, ahsan],
+        category: 'Food & Dining',
+        date: DateTime.now().subtract(const Duration(hours: 8)),
+      ),
+      GroupExpense(
+        id: 'e4',
+        description: 'Patriata Chairlift & Cable Car Tickets',
+        amount: 4500,
+        paidBy: ali,
+        splitAmong: [ali, hamza, ahsan],
+        category: 'Tolls & Tickets',
+        date: DateTime.now().subtract(const Duration(hours: 3)),
+      ),
+    ]);
+    _settledKeys.clear();
+  }
+
+  Future<void> _saveCurrentTripKhata() async {
+    if (_activeTrip == null) return;
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('safar_split_people', jsonEncode(_people.map((p) => p.toMap()).toList()));
-      await prefs.setString('safar_split_expenses', jsonEncode(_expenses.map((e) => e.toMap()).toList()));
-      await prefs.setStringList('safar_split_settled', _settledKeys.toList());
+      final peopleKey = 'safar_split_people_${_activeTrip!.id}';
+      final expensesKey = 'safar_split_expenses_${_activeTrip!.id}';
+      final settledKey = 'safar_split_settled_${_activeTrip!.id}';
+
+      await prefs.setString(peopleKey, jsonEncode(_people.map((p) => p.toMap()).toList()));
+      await prefs.setString(expensesKey, jsonEncode(_expenses.map((e) => e.toMap()).toList()));
+      await prefs.setStringList(settledKey, _settledKeys.toList());
     } catch (e) {
-      debugPrint('Error saving split bill storage: $e');
+      debugPrint('Error saving trip khata: $e');
     }
   }
 
-  void _loadSampleTrip() {
+  Future<void> _switchTrip(SavedTrip trip) async {
+    if (_activeTrip?.id == trip.id) return;
+    await _saveCurrentTripKhata();
     setState(() {
-      _people.clear();
-      final ali = Person(id: 'p1', name: 'Ali');
-      final hamza = Person(id: 'p2', name: 'Hamza');
-      final ahsan = Person(id: 'p3', name: 'Ahsan');
-      _people.addAll([ali, hamza, ahsan]);
-
-      _expenses.clear();
-      _expenses.addAll([
-        GroupExpense(
-          id: 'e1',
-          description: 'Hiace Fuel (Islamabad to Naran)',
-          amount: 14000,
-          paidBy: ali,
-          splitAmong: [ali, hamza, ahsan],
-          category: 'Fuel & Transport',
-          date: DateTime.now().subtract(const Duration(days: 1)),
-        ),
-        GroupExpense(
-          id: 'e2',
-          description: 'Pine Top Resort Hotel (2 Rooms)',
-          amount: 28000,
-          paidBy: ahsan,
-          splitAmong: [ali, hamza, ahsan],
-          category: 'Hotel & Stay',
-          date: DateTime.now().subtract(const Duration(hours: 18)),
-        ),
-        GroupExpense(
-          id: 'e3',
-          description: 'Riverside Trout Dinner & Chai',
-          amount: 6500,
-          paidBy: hamza,
-          splitAmong: [ali, hamza, ahsan],
-          category: 'Food & Dining',
-          date: DateTime.now().subtract(const Duration(hours: 6)),
-        ),
-        GroupExpense(
-          id: 'e4',
-          description: 'Babusar Top Jeep Safari',
-          amount: 7500,
-          paidBy: ali,
-          splitAmong: [ali, hamza, ahsan],
-          category: 'Tolls & Tickets',
-          date: DateTime.now().subtract(const Duration(hours: 2)),
-        ),
-      ]);
-      _settledKeys.clear();
+      _isLoading = true;
+      _activeTrip = trip;
     });
-    _saveToStorage();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Row(
-          children: [
-            Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
-            SizedBox(width: 8),
-            Text('Sample Murree/Naran group trip loaded!'),
-          ],
+    await _tripsService.setCurrentTrip(trip.id);
+    final updatedTrips = await _tripsService.getSavedTrips();
+    setState(() => _savedTrips = updatedTrips);
+    await _loadTripKhata(trip);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Switched Safar Khata to "${trip.title}"'),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        backgroundColor: AppTheme.primaryPurple,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-    );
+      );
+    }
   }
 
   void _addPerson() {
@@ -185,7 +256,7 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
                     name: name,
                   ));
                 });
-                _saveToStorage();
+                _saveCurrentTripKhata();
                 Navigator.pop(ctx);
               }
             },
@@ -247,7 +318,8 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
                         controller: descCtrl,
                         decoration: InputDecoration(
                           labelText: 'Description',
-                          hintText: 'e.g. Fuel, Hotel, Trout Fish, Jeep',
+                          hintText: 'e.g. Petrol, Hotel Stay, Dinner',
+                          prefixIcon: const Icon(Icons.edit_note_rounded),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                       ),
@@ -257,59 +329,56 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         decoration: InputDecoration(
                           labelText: 'Amount (PKR)',
-                          hintText: 'e.g. 8500',
-                          prefixText: 'Rs. ',
+                          hintText: 'e.g. 5000',
+                          prefixIcon: const Icon(Icons.payments_outlined),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<Person>(
-                        decoration: InputDecoration(
-                          labelText: 'Paid By',
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        value: selectedPayer,
-                        items: _people.map((p) => DropdownMenuItem(value: p, child: Text(p.name))).toList(),
-                        onChanged: (p) {
-                          if (p != null) setDialogState(() => selectedPayer = p);
-                        },
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
+                        value: selectedCategory,
                         decoration: InputDecoration(
                           labelText: 'Category',
+                          prefixIcon: Icon(_categoryMeta[selectedCategory]?.$1 ?? Icons.receipt_long_rounded),
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        value: selectedCategory,
                         items: _categoryMeta.keys.map((cat) {
-                          final meta = _categoryMeta[cat]!;
-                          return DropdownMenuItem(
-                            value: cat,
-                            child: Row(
-                              children: [
-                                Icon(meta.$1, size: 16, color: meta.$2),
-                                const SizedBox(width: 8),
-                                Text(cat, style: GoogleFonts.poppins(fontSize: 13)),
-                              ],
-                            ),
-                          );
+                          return DropdownMenuItem(value: cat, child: Text(cat));
                         }).toList(),
-                        onChanged: (cat) {
-                          if (cat != null) setDialogState(() => selectedCategory = cat);
+                        onChanged: (val) {
+                          if (val != null) {
+                            setDialogState(() => selectedCategory = val);
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<Person>(
+                        value: selectedPayer,
+                        decoration: InputDecoration(
+                          labelText: 'Paid By',
+                          prefixIcon: const Icon(Icons.person_rounded),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        items: _people.map((p) {
+                          return DropdownMenuItem(value: p, child: Text(p.name));
+                        }).toList(),
+                        onChanged: (val) {
+                          if (val != null) {
+                            setDialogState(() => selectedPayer = val);
+                          }
                         },
                       ),
                       const SizedBox(height: 14),
-                      Text('Split Among (${splitParticipants.length}/${_people.length})',
-                          style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.bold)),
+                      Text('Split Equally Among:', style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 6),
                       Wrap(
                         spacing: 6,
                         runSpacing: 4,
                         children: _people.map((p) {
-                          final isSelected = splitParticipants.contains(p);
+                          final isIncluded = splitParticipants.contains(p);
                           return FilterChip(
-                            label: Text(p.name),
-                            selected: isSelected,
+                            label: Text(p.name, style: TextStyle(color: isIncluded ? AppTheme.primaryPurple : Colors.black87)),
+                            selected: isIncluded,
                             onSelected: (selected) {
                               setDialogState(() {
                                 if (selected) {
@@ -349,7 +418,7 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
                           date: DateTime.now(),
                         ));
                       });
-                      _saveToStorage();
+                      _saveCurrentTripKhata();
                       Navigator.pop(ctx);
                     }
                   },
@@ -368,6 +437,167 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
     );
   }
 
+  void _showCreateTripDialog() {
+    final titleCtrl = TextEditingController();
+    final destCtrl = TextEditingController(text: 'Hunza Valley');
+    final originCtrl = TextEditingController(text: 'Islamabad');
+    final budgetCtrl = TextEditingController(text: '65000');
+    final companionsCtrl = TextEditingController(text: 'Ali, Hamza, Ahsan');
+    int days = 4;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDlgState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryPurple.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.add_location_alt_rounded, color: AppTheme.primaryPurple, size: 22),
+                ),
+                const SizedBox(width: 10),
+                Text('Save New Trip', style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.bold)),
+              ],
+            ),
+            content: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.9,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: titleCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Trip Title',
+                        hintText: 'e.g. Skardu Road Trip 2026',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: originCtrl,
+                            decoration: InputDecoration(
+                              labelText: 'From',
+                              hintText: 'Islamabad',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: destCtrl,
+                            decoration: InputDecoration(
+                              labelText: 'Destination',
+                              hintText: 'Skardu',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: budgetCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: 'Est. Budget (PKR)',
+                              hintText: '50000',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: DropdownButtonFormField<int>(
+                            value: days,
+                            decoration: InputDecoration(
+                              labelText: 'Duration',
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            items: [2, 3, 4, 5, 7, 10].map((d) {
+                              return DropdownMenuItem(value: d, child: Text('$d Days'));
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) setDlgState(() => days = val);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: companionsCtrl,
+                      decoration: InputDecoration(
+                        labelText: 'Companions (comma separated)',
+                        hintText: 'Ali, Bilal, Meer',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+              ElevatedButton(
+                onPressed: () async {
+                  final dest = destCtrl.text.trim();
+                  if (dest.isEmpty) return;
+
+                  final title = titleCtrl.text.trim().isNotEmpty
+                      ? titleCtrl.text.trim()
+                      : '$dest Adventure';
+                  final origin = originCtrl.text.trim().isNotEmpty ? originCtrl.text.trim() : 'Islamabad';
+                  final budget = double.tryParse(budgetCtrl.text.trim()) ?? 50000.0;
+                  final rawComps = companionsCtrl.text.split(',');
+                  final comps = rawComps.map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
+                  if (comps.isEmpty) comps.add('Me');
+
+                  final newTrip = SavedTrip(
+                    id: 'trip_${DateTime.now().millisecondsSinceEpoch}',
+                    title: title,
+                    destination: dest,
+                    origin: origin,
+                    startDate: DateTime.now(),
+                    endDate: DateTime.now().add(Duration(days: days)),
+                    budget: budget,
+                    travelers: comps.length,
+                    companions: comps,
+                    isCurrent: true,
+                  );
+
+                  await _tripsService.saveTrip(newTrip);
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  await _initializeData();
+                  await _switchTrip(newTrip);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryPurple,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text('Save & Open Khata'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   void _shareKhataSummary(BuildContext context) {
     if (_expenses.isEmpty) return;
 
@@ -377,7 +607,11 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
     final double avgPerPerson = _people.isNotEmpty ? totalSpent / _people.length : 0.0;
 
     final buffer = StringBuffer();
-    buffer.writeln('🏔️ SafarSathi - Group Trip Khata Summary');
+    buffer.writeln('🏔️ SafarSathi - Safar Khata Summary');
+    if (_activeTrip != null) {
+      buffer.writeln('📍 Trip: ${_activeTrip!.title} (${_activeTrip!.origin} ➔ ${_activeTrip!.destination})');
+      buffer.writeln('⏱️ Duration: ${_activeTrip!.durationDays} Days • Est Budget: ${currency.formatPrice(_activeTrip!.budget)}');
+    }
     buffer.writeln('👥 Trip Members: ${_people.map((p) => p.name).join(', ')}');
     buffer.writeln('💰 Total Spent: ${currency.formatPrice(totalSpent)}');
     buffer.writeln('📊 Average / Person: ${currency.formatPrice(avgPerPerson)}');
@@ -404,7 +638,7 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
           children: [
             Icon(Icons.copy_rounded, color: Colors.white, size: 18),
             SizedBox(width: 8),
-            Text('Trip settlement summary copied to clipboard! Ready to paste on WhatsApp.'),
+            Text('Trip settlement summary copied! Ready to paste on WhatsApp.'),
           ],
         ),
         backgroundColor: const Color(0xFF10B981),
@@ -451,20 +685,41 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
           PopupMenuButton<String>(
             icon: const Icon(Icons.more_vert_rounded),
             onSelected: (val) {
-              if (val == 'sample') {
-                _loadSampleTrip();
+              if (val == 'new_trip') {
+                _showCreateTripDialog();
+              } else if (val == 'packing') {
+                if (_activeTrip != null) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => SmartPackingScreen(
+                        destination: _activeTrip!.destination,
+                        duration: '${_activeTrip!.durationDays} Days',
+                      ),
+                    ),
+                  );
+                }
+              } else if (val == 'sample') {
+                if (_activeTrip != null) {
+                  setState(() {
+                    _seedDefaultSampleForTrip(_activeTrip!);
+                  });
+                  _saveCurrentTripKhata();
+                }
               } else if (val == 'clear') {
                 setState(() {
                   _people.clear();
                   _expenses.clear();
                   _settledKeys.clear();
                 });
-                _saveToStorage();
+                _saveCurrentTripKhata();
               }
             },
             itemBuilder: (_) => [
-              const PopupMenuItem(value: 'sample', child: Text('⚡ Load Sample Trip')),
-              const PopupMenuItem(value: 'clear', child: Text('🗑️ Clear All Data', style: TextStyle(color: Colors.red))),
+              const PopupMenuItem(value: 'new_trip', child: Text('🗺️ Add New Trip Khata')),
+              const PopupMenuItem(value: 'packing', child: Text('🎒 AI Packing Checklist')),
+              const PopupMenuItem(value: 'sample', child: Text('⚡ Reload Sample Expenses')),
+              const PopupMenuItem(value: 'clear', child: Text('🗑️ Clear Trip Expenses', style: TextStyle(color: Colors.red))),
             ],
           ),
         ],
@@ -475,10 +730,13 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
               length: 2,
               child: Column(
                 children: [
-                  // KPI Header Card
+                  // 1. Saved Trips Horizontal Selector
+                  _buildSavedTripsBar(context, currency),
+
+                  // 2. Executive KPI Header Card
                   _buildExecutiveKpiHeader(currency, totalSpent, avgPerPerson, topPayerName, topPayerAmount),
 
-                  // Modern Tab Bar
+                  // 3. Tab Bar
                   Container(
                     margin: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
@@ -528,7 +786,7 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
                       child: const Icon(Icons.receipt_long_rounded, color: AppTheme.primaryPurple),
                     ),
                     title: Text('Add New Expense', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
-                    subtitle: const Text('Record fuel, hotel, dining, or tickets'),
+                    subtitle: Text('Record in ${_activeTrip?.title ?? 'Trip'}'),
                     onTap: () {
                       Navigator.pop(ctx);
                       _addExpense();
@@ -548,6 +806,20 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
                       _addPerson();
                     },
                   ),
+                  const Divider(),
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: AppTheme.primaryOrange.withValues(alpha: 0.1), shape: BoxShape.circle),
+                      child: const Icon(Icons.add_location_alt_rounded, color: AppTheme.primaryOrange),
+                    ),
+                    title: Text('Save Another Trip', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+                    subtitle: const Text('Create a new trip khata for a different route'),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showCreateTripDialog();
+                    },
+                  ),
                 ],
               ),
             ),
@@ -560,15 +832,211 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
     );
   }
 
+  Widget _buildSavedTripsBar(BuildContext context, CurrencyProvider currency) {
+    return Container(
+      padding: const EdgeInsets.only(top: 12, bottom: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.luggage_rounded, size: 16, color: AppTheme.primaryPurple),
+                    const SizedBox(width: 6),
+                    Text(
+                      'YOUR SAVED TRIPS (${_savedTrips.length})',
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.8,
+                        color: const Color(0xFF475569),
+                      ),
+                    ),
+                  ],
+                ),
+                InkWell(
+                  onTap: _showCreateTripDialog,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.add_rounded, size: 15, color: AppTheme.primaryPurple),
+                        const SizedBox(width: 2),
+                        Text(
+                          '+ New Trip',
+                          style: GoogleFonts.poppins(
+                            color: AppTheme.primaryPurple,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 98,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: _savedTrips.length + 1,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (context, index) {
+                if (index == _savedTrips.length) {
+                  // Add New Trip Card
+                  return InkWell(
+                    onTap: _showCreateTripDialog,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      width: 110,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFCBD5E1), style: BorderStyle.solid),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryPurple.withValues(alpha: 0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.add_rounded, color: AppTheme.primaryPurple, size: 20),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            '+ Add Trip',
+                            style: GoogleFonts.poppins(fontSize: 11.5, fontWeight: FontWeight.bold, color: AppTheme.primaryPurple),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                final trip = _savedTrips[index];
+                final isSelected = _activeTrip?.id == trip.id;
+
+                return InkWell(
+                  onTap: () => _switchTrip(trip),
+                  borderRadius: BorderRadius.circular(16),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: 200,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isSelected ? Colors.white : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelected ? AppTheme.primaryPurple : const Color(0xFFE2E8F0),
+                        width: isSelected ? 2 : 1,
+                      ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: AppTheme.primaryPurple.withValues(alpha: 0.15),
+                                blurRadius: 10,
+                                offset: const Offset(0, 3),
+                              )
+                            ]
+                          : null,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: isSelected
+                                    ? AppTheme.primaryPurple.withValues(alpha: 0.12)
+                                    : Colors.grey.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                isSelected ? '● ACTIVE TRIP' : 'SWITCH TRIP',
+                                style: GoogleFonts.poppins(
+                                  color: isSelected ? AppTheme.primaryPurple : const Color(0xFF64748B),
+                                  fontSize: 8.5,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            Icon(
+                              isSelected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                              size: 16,
+                              color: isSelected ? AppTheme.primaryPurple : const Color(0xFF94A3B8),
+                            ),
+                          ],
+                        ),
+                        Text(
+                          trip.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12.5,
+                            color: isSelected ? const Color(0xFF1E293B) : const Color(0xFF475569),
+                          ),
+                        ),
+                        Row(
+                          children: [
+                            const Icon(Icons.route_rounded, size: 12, color: Color(0xFF64748B)),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                '${trip.origin} ➔ ${trip.destination}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(fontSize: 10, color: const Color(0xFF64748B)),
+                              ),
+                            ),
+                            Text(
+                              '${trip.durationDays}d',
+                              style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryOrange),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildExecutiveKpiHeader(
       CurrencyProvider currency, double total, double avg, String topName, double topAmt) {
+    final trip = _activeTrip;
+    final budget = trip?.budget ?? 50000;
+    final isOverBudget = total > budget;
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF6A1B9A), Color(0xFF8E24AA)],
+          colors: [Color(0xFF5B108E), Color(0xFF7E22CE)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -584,46 +1052,123 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Active Trip Title & Packing Shortcut
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'GROUP TRIP SPENDING',
-                style: GoogleFonts.poppins(
-                  color: Colors.white70,
-                  fontSize: 11,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 0.8,
+              Expanded(
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_on_rounded, size: 15, color: Colors.amberAccent),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        trip != null ? trip.title : 'Current Trip Khata',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          color: Colors.white,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
+              if (trip != null)
+                InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => SmartPackingScreen(
+                          destination: trip.destination,
+                          duration: '${trip.durationDays} Days',
+                        ),
+                      ),
+                    );
+                  },
                   borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.backpack_outlined, size: 12, color: Colors.white),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Packing List',
+                          style: GoogleFonts.poppins(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
-                child: Text(
-                  '${_people.length} Companions',
-                  style: GoogleFonts.poppins(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.bold),
+            ],
+          ),
+          const SizedBox(height: 8),
+
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'TOTAL KHATA SPENT',
+                    style: GoogleFonts.poppins(
+                      color: Colors.white70,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    currency.formatPrice(total),
+                    style: GoogleFonts.poppins(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: isOverBudget ? Colors.red.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text('Trip Budget', style: GoogleFonts.poppins(color: Colors.white70, fontSize: 9.5)),
+                    Text(
+                      currency.formatPrice(budget),
+                      style: GoogleFonts.poppins(
+                        color: isOverBudget ? const Color(0xFFFCA5A5) : const Color(0xFF86EFAC),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 6),
-          Text(
-            currency.formatPrice(total),
-            style: GoogleFonts.poppins(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           Row(
             children: [
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
@@ -631,17 +1176,17 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Avg / Person', style: GoogleFonts.poppins(color: Colors.white70, fontSize: 10)),
+                      Text('Avg / Person (${_people.length})', style: GoogleFonts.poppins(color: Colors.white70, fontSize: 9.5)),
                       Text(currency.formatPrice(avg),
-                          style: GoogleFonts.poppins(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                          style: GoogleFonts.poppins(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
                     ],
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: BoxDecoration(
                     color: Colors.black.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(12),
@@ -649,12 +1194,12 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Top Payer', style: GoogleFonts.poppins(color: Colors.white70, fontSize: 10)),
+                      Text('Top Payer', style: GoogleFonts.poppins(color: Colors.white70, fontSize: 9.5)),
                       Text(
                         topName == 'None' ? '--' : '$topName (${currency.formatPrice(topAmt)})',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(color: Colors.amberAccent, fontSize: 12.5, fontWeight: FontWeight.bold),
+                        style: GoogleFonts.poppins(color: Colors.amberAccent, fontSize: 11.5, fontWeight: FontWeight.bold),
                       ),
                     ],
                   ),
@@ -681,18 +1226,25 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
                 child: const Icon(Icons.people_alt_rounded, size: 48, color: AppTheme.primaryPurple),
               ),
               const SizedBox(height: 16),
-              Text('Start Your Trip Khata', style: GoogleFonts.poppins(fontSize: 17, fontWeight: FontWeight.bold)),
+              Text('Start "${_activeTrip?.title ?? 'Trip'}" Khata', style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
               Text(
-                'Add your travel companions and record shared fuel, hotel, and dining bills to automatically calculate who owes whom.',
+                'Add companions and record shared fuel, hotel, and dining bills to automatically track who owes whom.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(fontSize: 12.5, color: const Color(0xFF64748B)),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
               OutlinedButton.icon(
-                onPressed: _loadSampleTrip,
+                onPressed: () {
+                  if (_activeTrip != null) {
+                    setState(() {
+                      _seedDefaultSampleForTrip(_activeTrip!);
+                    });
+                    _saveCurrentTripKhata();
+                  }
+                },
                 icon: const Icon(Icons.bolt_rounded, color: AppTheme.primaryOrange),
-                label: const Text('Load Sample Murree Weekend Trip'),
+                label: const Text('Load Sample Pakistani Trip Expenses'),
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppTheme.primaryOrange,
                   side: const BorderSide(color: AppTheme.primaryOrange),
@@ -707,21 +1259,21 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 90),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 90),
       children: [
         // Trip Members Bar
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Trip Members (${_people.length})', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 14)),
+            Text('Trip Members (${_people.length})', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13.5)),
             InkWell(
               onTap: _addPerson,
-              child: Text('+ Add Person',
-                  style: GoogleFonts.poppins(color: AppTheme.primaryPurple, fontWeight: FontWeight.bold, fontSize: 12.5)),
+              child: Text('+ Add Member',
+                  style: GoogleFonts.poppins(color: AppTheme.primaryPurple, fontWeight: FontWeight.bold, fontSize: 12)),
             ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 6),
         Wrap(
           spacing: 8,
           runSpacing: 6,
@@ -732,7 +1284,7 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
                 child: Text(p.name.substring(0, 1).toUpperCase(),
                     style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
               ),
-              label: Text(p.name, style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500)),
+              label: Text(p.name, style: GoogleFonts.poppins(fontSize: 11.5, fontWeight: FontWeight.w500)),
               backgroundColor: Colors.white,
               elevation: 1,
               shadowColor: Colors.black12,
@@ -743,16 +1295,16 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
                   _people.remove(p);
                   _expenses.removeWhere((e) => e.paidBy == p || e.splitAmong.contains(p));
                 });
-                _saveToStorage();
+                _saveCurrentTripKhata();
               },
             );
           }).toList(),
         ),
 
-        const Divider(height: 28),
+        const Divider(height: 24),
 
         // Shared Expenses List
-        Text('Shared Expenses (${_expenses.length})', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 14)),
+        Text('Shared Expenses (${_expenses.length})', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13.5)),
         const SizedBox(height: 8),
 
         if (_expenses.isEmpty)
@@ -760,7 +1312,7 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
             child: Center(
-              child: Text('No expenses recorded yet. Tap "+ Record Khata" below.',
+              child: Text('No expenses recorded for this trip yet. Tap "+ Record Khata" below.',
                   style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey)),
             ),
           )
@@ -778,16 +1330,16 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
                 border: Border.all(color: const Color(0xFFF1F5F9)),
               ),
               child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
                 leading: Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(9),
                   decoration: BoxDecoration(
                     color: meta.$2.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(meta.$1, color: meta.$2, size: 20),
+                  child: Icon(meta.$1, color: meta.$2, size: 19),
                 ),
-                title: Text(e.description, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                title: Text(e.description, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13)),
                 subtitle: Text(
                   'Paid by ${e.paidBy.name} • Split: ${e.splitAmong.length} people',
                   style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF64748B)),
@@ -797,14 +1349,14 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
                   children: [
                     Text(
                       currency.formatPrice(e.amount),
-                      style: GoogleFonts.poppins(color: const Color(0xFF1E293B), fontWeight: FontWeight.bold, fontSize: 13.5),
+                      style: GoogleFonts.poppins(color: const Color(0xFF1E293B), fontWeight: FontWeight.bold, fontSize: 13),
                     ),
                     const SizedBox(width: 4),
                     IconButton(
                       icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent),
                       onPressed: () {
                         setState(() => _expenses.remove(e));
-                        _saveToStorage();
+                        _saveCurrentTripKhata();
                       },
                     ),
                   ],
@@ -855,14 +1407,14 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
     }
 
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 90),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 90),
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Optimized Cash Transfers', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.bold)),
+            Text('Optimized Cash Transfers', style: GoogleFonts.poppins(fontSize: 13.5, fontWeight: FontWeight.bold)),
             Text('${settlements.length} transfers needed',
-                style: GoogleFonts.poppins(fontSize: 12, color: AppTheme.primaryPurple, fontWeight: FontWeight.w600)),
+                style: GoogleFonts.poppins(fontSize: 11.5, color: AppTheme.primaryPurple, fontWeight: FontWeight.w600)),
           ],
         ),
         const SizedBox(height: 10),
@@ -871,11 +1423,11 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
           final isDone = _settledKeys.contains(key);
 
           return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: isDone ? const Color(0xFFF1FDF5) : Colors.white,
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(
                 color: isDone ? const Color(0xFFA7F3D0) : const Color(0xFFE2E8F0),
                 width: 1.2,
@@ -883,34 +1435,33 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 10,
-                  offset: const Offset(0, 3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
               ],
             ),
             child: Row(
               children: [
-                // Debtor Avatar
                 CircleAvatar(
-                  radius: 20,
+                  radius: 18,
                   backgroundColor: isDone ? Colors.green.shade100 : Colors.red.shade100,
                   child: Text(
                     s.fromPerson.name.substring(0, 1).toUpperCase(),
                     style: TextStyle(
                       color: isDone ? Colors.green.shade800 : Colors.red.shade800,
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: 13,
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       RichText(
                         text: TextSpan(
-                          style: GoogleFonts.poppins(fontSize: 13.5, color: const Color(0xFF1E293B)),
+                          style: GoogleFonts.poppins(fontSize: 13, color: const Color(0xFF1E293B)),
                           children: [
                             TextSpan(text: s.fromPerson.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                             const TextSpan(text: ' owes '),
@@ -918,11 +1469,11 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
                         currency.formatPrice(s.amount),
                         style: GoogleFonts.poppins(
-                          fontSize: 15,
+                          fontSize: 14.5,
                           fontWeight: FontWeight.bold,
                           color: isDone ? const Color(0xFF059669) : const Color(0xFFE11D48),
                         ),
@@ -939,7 +1490,7 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
                         _settledKeys.add(key);
                       }
                     });
-                    _saveToStorage();
+                    _saveCurrentTripKhata();
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
@@ -953,7 +1504,7 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
                       children: [
                         Icon(
                           isDone ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
-                          size: 15,
+                          size: 14,
                           color: isDone ? Colors.white : Colors.grey.shade700,
                         ),
                         const SizedBox(width: 4),

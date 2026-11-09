@@ -7,6 +7,7 @@ import '../../core/currency_provider.dart';
 import '../auth/user_role_service.dart';
 import 'saved_items_screen.dart';
 import 'info_screens.dart';
+import '../budget/split_bill_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -86,7 +87,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         _buildSection(
                           'My Trip Library',
                           [
-                            _buildEmptyState('No trips added yet', Icons.map_outlined),
+                            _buildSettingTile(
+                              Icons.luggage_rounded,
+                              'Saved Trips & Safar Khata',
+                              onTap: () {
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => const SplitBillScreen()));
+                              },
+                            ),
                           ],
                         ),
                       ] else ...[
@@ -256,25 +263,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Text(title, style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           ...children,
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(String message, IconData icon) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(30),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: Colors.grey.withValues(alpha: 0.3), size: 40),
-          const SizedBox(height: 12),
-          Text(message, style: GoogleFonts.poppins(color: Colors.grey, fontSize: 14)),
         ],
       ),
     );
