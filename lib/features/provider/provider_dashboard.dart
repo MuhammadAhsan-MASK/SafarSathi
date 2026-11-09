@@ -842,6 +842,35 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
     );
   }
 
+  Widget _buildVerificationBadge(bool isVerified) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+      decoration: BoxDecoration(
+        color: isVerified ? Colors.green.withValues(alpha: 0.12) : Colors.orange.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            isVerified ? Icons.check_circle_rounded : Icons.hourglass_top_rounded,
+            size: 9,
+            color: isVerified ? Colors.green.shade800 : Colors.orange.shade800,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            isVerified ? 'LIVE' : 'PENDING',
+            style: GoogleFonts.poppins(
+              color: isVerified ? Colors.green.shade800 : Colors.orange.shade800,
+              fontSize: 8.5,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHotelCard(Hotel h) {
     final currency = Provider.of<CurrencyProvider>(context, listen: false);
     return Card(
@@ -878,6 +907,8 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                           decoration: BoxDecoration(color: AppTheme.hotelColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
                           child: Text('HOTEL', style: GoogleFonts.poppins(color: AppTheme.hotelColor, fontSize: 9.5, fontWeight: FontWeight.bold)),
                         ),
+                        const SizedBox(width: 5),
+                        _buildVerificationBadge(h.isVerified),
                         const Spacer(),
                         const Icon(Icons.star_rounded, color: Colors.amber, size: 14),
                         Text(' ${h.rating.toStringAsFixed(1)}', style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.bold)),
@@ -969,6 +1000,8 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                           decoration: BoxDecoration(color: AppTheme.transportColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
                           child: Text(t.category.toUpperCase(), style: GoogleFonts.poppins(color: AppTheme.transportColor, fontSize: 9.5, fontWeight: FontWeight.bold)),
                         ),
+                        const SizedBox(width: 5),
+                        _buildVerificationBadge(t.isVerified),
                         const SizedBox(width: 6),
                         Text(t.departureTime, style: GoogleFonts.poppins(fontSize: 10.5, color: Colors.grey[600])),
                       ],
@@ -1060,6 +1093,8 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                           decoration: BoxDecoration(color: AppTheme.foodColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
                           child: Text('DINING', style: GoogleFonts.poppins(color: AppTheme.foodColor, fontSize: 9.5, fontWeight: FontWeight.bold)),
                         ),
+                        const SizedBox(width: 5),
+                        _buildVerificationBadge(r.isVerified),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(r.cuisine, style: GoogleFonts.poppins(fontSize: 10.5, color: Colors.grey[600]), overflow: TextOverflow.ellipsis),
@@ -1153,6 +1188,8 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                           decoration: BoxDecoration(color: const Color(0xFF3F51B5).withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
                           child: Text('LOCAL GUIDE', style: GoogleFonts.poppins(color: const Color(0xFF3F51B5), fontSize: 9.5, fontWeight: FontWeight.bold)),
                         ),
+                        const SizedBox(width: 5),
+                        _buildVerificationBadge(g.isVerified),
                         const Spacer(),
                         const Icon(Icons.star_rounded, color: Colors.amber, size: 14),
                         Text(' ${g.rating.toStringAsFixed(1)}', style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.bold)),
@@ -1348,10 +1385,14 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                       websiteUrl: websiteCtrl.text.trim().isNotEmpty ? websiteCtrl.text.trim() : null,
                       description: descCtrl.text.trim(),
                       typePrices: typeMap,
+                      isVerified: false,
                     ));
 
                     nav.pop();
-                    messenger.showSnackBar(const SnackBar(content: Text('Hotel listed live on SastaSafar!')));
+                    messenger.showSnackBar(const SnackBar(
+                      content: Text('Hotel submitted! It will appear live once approved by admin.'),
+                      backgroundColor: Colors.orange,
+                    ));
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryPurple,
@@ -1565,10 +1606,14 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                       vendorId: uid,
                       websiteUrl: phoneCtrl.text.trim(),
                       typePrices: typeMap,
+                      isVerified: false,
                     ));
 
                     nav.pop();
-                    messenger.showSnackBar(const SnackBar(content: Text('Fleet route registered live on SastaSafar!')));
+                    messenger.showSnackBar(const SnackBar(
+                      content: Text('Route submitted! It will appear live once approved by admin.'),
+                      backgroundColor: Colors.orange,
+                    ));
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.transportColor,
@@ -1747,10 +1792,14 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                       imageUrl: finalImg,
                       phone: phoneCtrl.text.trim(),
                       typePrices: typeMap,
+                      isVerified: false,
                     ));
 
                     nav.pop();
-                    messenger.showSnackBar(const SnackBar(content: Text('Restaurant & Menu published live!')));
+                    messenger.showSnackBar(const SnackBar(
+                      content: Text('Restaurant submitted! It will appear live once approved by admin.'),
+                      backgroundColor: Colors.orange,
+                    ));
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.foodColor,
@@ -1898,7 +1947,7 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                       dailyRatePkr: rateP,
                       tripCount: 45,
                       imageUrl: finalImg,
-                      isVerified: true,
+                      isVerified: false,
                       isFemaleFriendly: isFemaleFriendly,
                       experience: expCtrl.text.trim(),
                       car: carCtrl.text.trim(),
@@ -1909,7 +1958,10 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                     ));
 
                     nav.pop();
-                    messenger.showSnackBar(const SnackBar(content: Text('Tour Guide registered live on SastaSafar!')));
+                    messenger.showSnackBar(const SnackBar(
+                      content: Text('Guide profile submitted! It will appear live once approved by admin.'),
+                      backgroundColor: Colors.orange,
+                    ));
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3F51B5),

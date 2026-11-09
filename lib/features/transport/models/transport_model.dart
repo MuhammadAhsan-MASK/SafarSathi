@@ -17,6 +17,7 @@ class TransportOption {
   final String departureTime;
   final int availableSeats;
   final String operator;
+  final bool isVerified;
 
   TransportOption({
     required this.id,
@@ -34,6 +35,7 @@ class TransportOption {
     this.departureTime = '08:00',
     this.availableSeats = 15,
     this.operator = '',
+    this.isVerified = true,
   });
 
   factory TransportOption.fromFirestore(DocumentSnapshot doc) {
@@ -76,6 +78,7 @@ class TransportOption {
       departureTime: data['departureTime']?.toString() ?? '08:00',
       availableSeats: (data['availableSeats'] as num?)?.toInt() ?? 15,
       operator: data['operator']?.toString() ?? '',
+      isVerified: data['isVerified'] ?? true,
     );
   }
 
@@ -94,6 +97,7 @@ class TransportOption {
       'vendorId': vendorId,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : null,
       'typePrices': typePrices,
+      'isVerified': isVerified,
     };
   }
 }

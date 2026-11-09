@@ -23,7 +23,10 @@ class RestaurantService {
 
     try {
       await for (final snapshot in _firestore.collection('restaurants').snapshots()) {
-        final firestoreRestaurants = snapshot.docs.map((doc) => Restaurant.fromFirestore(doc)).toList();
+        final firestoreRestaurants = snapshot.docs
+            .map((doc) => Restaurant.fromFirestore(doc))
+            .where((r) => r.isVerified)
+            .toList();
         yield _mergeRestaurants(SeedData.initialRestaurants, firestoreRestaurants);
       }
     } catch (_) {
@@ -55,6 +58,7 @@ class RestaurantService {
     final lowerQuery = query.trim().toLowerCase();
 
     bool matches(Restaurant r) {
+      if (!r.isVerified) return false;
       if (lowerQuery.isEmpty) return true;
       return r.name.toLowerCase().contains(lowerQuery) ||
              r.location.toLowerCase().contains(lowerQuery) ||
@@ -69,7 +73,10 @@ class RestaurantService {
     // Next try Firestore
     try {
       await for (final snapshot in _firestore.collection('restaurants').snapshots()) {
-        final firestoreRestaurants = snapshot.docs.map((doc) => Restaurant.fromFirestore(doc)).toList();
+        final firestoreRestaurants = snapshot.docs
+            .map((doc) => Restaurant.fromFirestore(doc))
+            .where((r) => r.isVerified)
+            .toList();
         final combined = _mergeRestaurants(SeedData.initialRestaurants, firestoreRestaurants);
         final filtered = combined.where(matches).toList();
 

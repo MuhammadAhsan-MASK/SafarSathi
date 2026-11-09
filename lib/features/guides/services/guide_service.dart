@@ -10,7 +10,10 @@ class GuideService {
 
     try {
       await for (final snapshot in _firestore.collection('guides').snapshots()) {
-        final firestoreGuides = snapshot.docs.map((doc) => LocalGuide.fromFirestore(doc)).toList();
+        final firestoreGuides = snapshot.docs
+            .map((doc) => LocalGuide.fromFirestore(doc))
+            .where((g) => g.isVerified)
+            .toList();
         yield [...firestoreGuides, ...mockGuides];
       }
     } catch (_) {

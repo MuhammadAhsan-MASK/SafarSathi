@@ -114,7 +114,10 @@ class TransportService {
 
     try {
       await for (final snapshot in _firestore.collection('transport').snapshots()) {
-        final firestoreTransports = snapshot.docs.map((doc) => TransportOption.fromFirestore(doc)).toList();
+        final firestoreTransports = snapshot.docs
+            .map((doc) => TransportOption.fromFirestore(doc))
+            .where((t) => t.isVerified)
+            .toList();
         final combined = _mergeTransports(SeedData.initialTransports, firestoreTransports);
         yield filterList(combined);
       }

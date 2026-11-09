@@ -75,7 +75,10 @@ class HotelService {
     
     try {
       await for (final snapshot in _firestore.collection('hotels').snapshots()) {
-        final firestoreHotels = snapshot.docs.map((doc) => Hotel.fromFirestore(doc)).toList();
+        final firestoreHotels = snapshot.docs
+            .map((doc) => Hotel.fromFirestore(doc))
+            .where((h) => h.isVerified)
+            .toList();
         yield _mergeHotels(SeedData.initialHotels, [...firestoreHotels, ...csvHotels]);
       }
     } catch (_) {
@@ -109,6 +112,7 @@ class HotelService {
     List<Hotel> csvHotels = await _loadCsvHotels();
 
     bool matches(Hotel h) {
+      if (!h.isVerified) return false;
       if (lowerQuery.isEmpty) return true;
       return h.name.toLowerCase().contains(lowerQuery) ||
              h.location.toLowerCase().contains(lowerQuery) ||
@@ -121,7 +125,10 @@ class HotelService {
 
     try {
       await for (final snapshot in _firestore.collection('hotels').snapshots()) {
-        final firestoreHotels = snapshot.docs.map((doc) => Hotel.fromFirestore(doc)).toList();
+        final firestoreHotels = snapshot.docs
+            .map((doc) => Hotel.fromFirestore(doc))
+            .where((h) => h.isVerified)
+            .toList();
         final allHotels = _mergeHotels(SeedData.initialHotels, [...firestoreHotels, ...csvHotels]);
         yield allHotels.where(matches).toList();
       }

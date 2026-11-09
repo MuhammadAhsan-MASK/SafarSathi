@@ -13,6 +13,7 @@ class Restaurant {
   final String vendorId;
   final DateTime? createdAt;
   final Map<String, double> typePrices;
+  final bool isVerified;
 
   Restaurant({
     required this.id,
@@ -27,6 +28,7 @@ class Restaurant {
     this.description,
     this.createdAt,
     this.typePrices = const {},
+    this.isVerified = true,
   });
 
   factory Restaurant.fromFirestore(DocumentSnapshot doc) {
@@ -44,6 +46,7 @@ class Restaurant {
       vendorId: data['vendorId'] ?? '',
       createdAt: data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : null,
       typePrices: Map<String, double>.from(data['typePrices'] ?? {}),
+      isVerified: data['isVerified'] ?? true,
     );
   }
 
@@ -60,6 +63,7 @@ class Restaurant {
       'vendorId': vendorId,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : null,
       'typePrices': typePrices,
+      'isVerified': isVerified,
     };
   }
 }
