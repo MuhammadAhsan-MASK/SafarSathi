@@ -484,9 +484,14 @@ class _PartnerRegistrationScreenState extends State<PartnerRegistrationScreen> {
           children: [
             Icon(icon, size: 14, color: const Color(0xFF059669)),
             const SizedBox(width: 4),
-            Text(
-              text,
-              style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF334155)),
+            Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  text,
+                  style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.bold, color: const Color(0xFF334155)),
+                ),
+              ),
             ),
           ],
         ),

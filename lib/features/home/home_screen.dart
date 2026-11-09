@@ -1205,16 +1205,20 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       const Icon(Icons.route_rounded, size: 14, color: Color(0xFF64748B)),
                       const SizedBox(width: 4),
-                      Text(
-                        '${activeTrip.origin} ➔ ${activeTrip.destination}',
-                        style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF64748B)),
+                      Flexible(
+                        child: Text(
+                          '${activeTrip.origin} ➔ ${activeTrip.destination}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF64748B)),
+                        ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Text('•', style: TextStyle(color: Colors.grey[400])),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                       Text(
-                        '${activeTrip.durationDays} Days (${activeTrip.travelers} People)',
-                        style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF64748B)),
+                        '${activeTrip.durationDays}d (${activeTrip.travelers}p)',
+                        style: GoogleFonts.poppins(fontSize: 11.5, fontWeight: FontWeight.w500, color: const Color(0xFF64748B)),
                       ),
                     ],
                   ),
