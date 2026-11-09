@@ -40,12 +40,32 @@ class UserRoleService {
     });
   }
 
-  Future<void> updateUserRole(String newRole) async {
-    final user = _auth.currentUser;
+  Future<void> updateUserRole(String newRole, {Map<String, dynamic>? additionalData}) async {
+    User? user = _auth.currentUser;
+    if (user == null) {
+      try {
+        final cred = await _auth.signInAnonymously();
+        user = cred.user;
+      } catch (e) {
+        debugPrint('Anonymous signin fallback error: $e');
+      }
+    }
     if (user == null) throw Exception('No user logged in');
 
-    await _firestore.collection('users').doc(user.uid).update({
+    final Map<String, dynamic> data = {
       'role': newRole,
-    });
+      'email': user.email ?? 'partner_${user.uid.substring(0, 6)}@sastasafar.pk',
+      'name': user.displayName ?? (additionalData?['businessName'] ?? 'Service Partner'),
+      'updatedAt': FieldValue.serverTimestamp(),
+    };
+
+    if (additionalData != null) {
+      data.addAll(additionalData);
+    }
+
+    await _firestore.collection('users').doc(user.uid).set(
+      data,
+      SetOptions(merge: true),
+    );
   }
 }

@@ -8,7 +8,6 @@ import '../restaurants/restaurant_screen.dart';
 import '../transport/transport_screen.dart';
 import '../attractions/attractions_screen.dart';
 import '../lingo/lingo_screen.dart';
-import '../auth/role_selection_screen.dart';
 import '../news/widgets/live_travel_news_section.dart';
 import '../eco_tracker/eco_tracker_screen.dart';
 import '../guides/guides_screen.dart';
@@ -17,6 +16,7 @@ import '../budget/smart_packing_screen.dart';
 import '../budget/split_bill_screen.dart';
 import '../budget/models/saved_trip_model.dart';
 import '../budget/services/saved_trips_service.dart';
+import '../provider/partner_registration_screen.dart';
 
 import 'package:provider/provider.dart';
 import '../../core/currency_provider.dart';
@@ -1324,22 +1324,28 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const RoleSelectionScreen()),
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => const PartnerRegistrationScreen()),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: const Color(0xFF1E293B),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      elevation: 0,
+                    ),
+                    child: const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text('Register Business Profile', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    ),
+                  ),
                 ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: const Color(0xFF1E293B),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  elevation: 0,
-                ),
-                child: const Text('Register Business Profile', style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
+              ],
             ),
           ],
         ),

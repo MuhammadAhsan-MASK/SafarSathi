@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../core/theme.dart';
+import 'user_role_service.dart';
+import '../home/main_screen.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
@@ -12,25 +14,34 @@ class RoleSelectionScreen extends StatefulWidget {
 
 class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final UserRoleService _roleService = UserRoleService();
   bool _isLoading = false;
 
   Future<void> _selectRole(String role) async {
-    final user = _auth.currentUser;
-    if (user == null) return;
-
     setState(() => _isLoading = true);
     try {
-      await _firestore.collection('users').doc(user.uid).set({
-        'role': role,
-        'email': user.email,
-        'name': user.displayName ?? '',
-        'updatedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
-      // Selection updated - StreamBuilder in MainScreen will detect this and redirect
+      await _roleService.updateUserRole(role);
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Switched to $role mode!'),
+          backgroundColor: AppTheme.primaryPurple,
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+
+      // Cleanly redirect to MainScreen so ProviderDashboard or Traveler mode renders
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const MainScreen()),
+        (route) => false,
+      );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update role: $e'), backgroundColor: Colors.red),
+      );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
