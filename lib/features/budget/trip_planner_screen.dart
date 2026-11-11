@@ -161,9 +161,25 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
                   // ── Dates ────────────────────────────────────────────────
                   Row(
                     children: [
-                      Expanded(child: _buildDatePicker('Start Date', _startDate, (date) => setState(() => _startDate = date))),
+                      Expanded(
+                        child: _buildDatePicker('Start Date', _startDate, (date) {
+                          setState(() {
+                            _startDate = date;
+                            if (_endDate != null && _endDate!.isBefore(date)) {
+                              _endDate = date.add(const Duration(days: 2));
+                            }
+                          });
+                        }),
+                      ),
                       const SizedBox(width: 16),
-                      Expanded(child: _buildDatePicker('End Date', _endDate, (date) => setState(() => _endDate = date))),
+                      Expanded(
+                        child: _buildDatePicker(
+                          'End Date',
+                          _endDate,
+                          (date) => setState(() => _endDate = date),
+                          minDate: _startDate,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -258,10 +274,19 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
                           return;
                         }
                         
+                        final nowDate = DateTime.now();
+                        final startDate = _startDate ?? DateTime(nowDate.year, nowDate.month, nowDate.day);
+                        final endDate = _endDate ?? startDate.add(const Duration(days: 3));
+
+                        if (endDate.isBefore(startDate)) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('End Date cannot be earlier than Start Date.')),
+                          );
+                          return;
+                        }
+
                         try {
-                          final startDate = _startDate ?? DateTime.now();
-                          final endDate = _endDate ?? DateTime.now().add(const Duration(days: 3));
-                          int days = endDate.difference(startDate).inDays.abs() + 1;
+                          int days = endDate.difference(startDate).inDays + 1;
                           if (days < 1) days = 1;
                           final minBudget = days * 1500 * _travelers;
                           
@@ -328,8 +353,8 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
                                 origin: origin,
                                 destination: destination,
                                 budget: parsedBudget,
-                                startDate: _startDate ?? DateTime.now(),
-                                endDate: _endDate ?? DateTime.now().add(const Duration(days: 3)),
+                                startDate: startDate,
+                                endDate: endDate,
                                 travelers: _travelers,
                               ),
                             ),
@@ -564,7 +589,14 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
     );
   }
 
-  Widget _buildDatePicker(String label, DateTime? selectedDate, Function(DateTime) onSelect) {
+  DateTime _dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  Widget _buildDatePicker(
+    String label,
+    DateTime? selectedDate,
+    Function(DateTime) onSelect, {
+    DateTime? minDate,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -572,13 +604,26 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
         const SizedBox(height: 8),
         InkWell(
           onTap: () async {
+            final nowDate = _dateOnly(DateTime.now());
+            final effectiveFirstDate =
+                (minDate != null && _dateOnly(minDate).isAfter(nowDate)) ? _dateOnly(minDate) : nowDate;
+            final effectiveLastDate = nowDate.add(const Duration(days: 365));
+
+            DateTime effectiveInitialDate = selectedDate != null ? _dateOnly(selectedDate) : effectiveFirstDate;
+            if (effectiveInitialDate.isBefore(effectiveFirstDate)) {
+              effectiveInitialDate = effectiveFirstDate;
+            }
+            if (effectiveInitialDate.isAfter(effectiveLastDate)) {
+              effectiveInitialDate = effectiveLastDate;
+            }
+
             final date = await showDatePicker(
               context: context,
-              initialDate: DateTime.now(),
-              firstDate: DateTime.now(),
-              lastDate: DateTime.now().add(const Duration(days: 365)),
+              initialDate: effectiveInitialDate,
+              firstDate: effectiveFirstDate,
+              lastDate: effectiveLastDate,
             );
-            if (date != null) onSelect(date);
+            if (date != null) onSelect(_dateOnly(date));
           },
           child: Container(
             padding: const EdgeInsets.all(16),
@@ -591,9 +636,13 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
               children: [
                 const Icon(Icons.calendar_today_outlined, size: 20, color: AppTheme.primaryPurple),
                 const SizedBox(width: 8),
-                Text(
-                  selectedDate == null ? 'mm/dd/yy' : '${selectedDate.month}/${selectedDate.day}/${selectedDate.year}',
-                  style: TextStyle(color: selectedDate == null ? Colors.grey : Colors.black),
+                Expanded(
+                  child: Text(
+                    selectedDate == null ? 'mm/dd/yy' : '${selectedDate.month}/${selectedDate.day}/${selectedDate.year}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: selectedDate == null ? Colors.grey : Colors.black),
+                  ),
                 ),
               ],
             ),
