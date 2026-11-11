@@ -32,6 +32,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   bool _isSwitching = false;
 
+  @override
+  void initState() {
+    super.initState();
+    SavedTripsService().getSavedTrips();
+  }
+
   // ── Surprise Me ───────────────────────────────────────────────────────────
   void _showSurpriseMeSheet(BuildContext context) {
     String selectedVibe = 'Adventure';
@@ -731,15 +737,17 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 6),
             Flexible(
-              child: Text(
-                title,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.poppins(
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF2C3E50),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  style: GoogleFonts.poppins(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF2C3E50),
+                  ),
                 ),
               ),
             ),
@@ -1052,14 +1060,19 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Your Saved Trips & Khata',
-                style: GoogleFonts.poppins(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF1F2429),
+              Expanded(
+                child: Text(
+                  'Your Saved Trips & Khata',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1F2429),
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               InkWell(
                 onTap: () => Navigator.push(
                   context,
@@ -1078,10 +1091,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        FutureBuilder<List<SavedTrip>>(
-          future: SavedTripsService().getSavedTrips(),
-          builder: (context, snapshot) {
-            final trips = snapshot.data ?? [];
+        ValueListenableBuilder<List<SavedTrip>>(
+          valueListenable: SavedTripsService().tripsNotifier,
+          builder: (context, trips, _) {
             if (trips.isEmpty) {
               return Container(
                 margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -1111,7 +1123,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 10),
                     Text(
-                      'No Active Itinerary',
+                      'No Saved Trips Yet',
                       style: GoogleFonts.poppins(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
@@ -1120,22 +1132,54 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Use the AI Trip Planner to create a personalized day-by-day budget itinerary.',
+                      'Create a budget itinerary or open Safar Khata to add a new group trip and track expenses.',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.poppins(color: Colors.grey[500], fontSize: 12),
                     ),
-                    const SizedBox(height: 14),
-                    OutlinedButton.icon(
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => const TripPlannerScreen()),
-                      ),
-                      icon: const Icon(Icons.add_rounded, size: 18),
-                      label: const Text('Create Itinerary'),
-                      style: OutlinedButton.styleFrom(
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                      ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const SplitBillScreen()),
+                            ),
+                            icon: const Icon(Icons.receipt_long_rounded, size: 16),
+                            label: const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text('New Trip Khata', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primaryPurple,
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                              elevation: 0,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const TripPlannerScreen()),
+                            ),
+                            icon: const Icon(Icons.add_rounded, size: 16),
+                            label: const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text('Create Itinerary', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppTheme.primaryPurple,
+                              side: const BorderSide(color: AppTheme.primaryPurple),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

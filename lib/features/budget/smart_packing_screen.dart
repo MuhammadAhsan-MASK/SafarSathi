@@ -399,7 +399,7 @@ class _SmartPackingScreenState extends State<SmartPackingScreen> {
           children: [
             Icon(Icons.copy_rounded, color: Colors.white, size: 18),
             SizedBox(width: 8),
-            Text('Packing checklist copied! Paste directly in WhatsApp.'),
+            Expanded(child: Text('Packing checklist copied! Paste directly in WhatsApp.')),
           ],
         ),
         backgroundColor: const Color(0xFF10B981),

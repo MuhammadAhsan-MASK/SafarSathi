@@ -1064,7 +1064,7 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                     endDate: widget.endDate,
                     budget: widget.budget,
                     travelers: widget.travelers,
-                    companions: ['Ali', 'Hamza', 'Me'],
+                    companions: const [],
                     isCurrent: true,
                   );
                   await SavedTripsService().saveTrip(newTrip);

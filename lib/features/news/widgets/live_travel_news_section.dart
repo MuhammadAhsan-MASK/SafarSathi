@@ -76,9 +76,11 @@ class _LiveTravelNewsSectionState extends State<LiveTravelNewsSection> {
               children: [
                 const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
                 const SizedBox(width: 8),
-                Text(
-                  'Live travel news & weather updated from NDMA & PMD feeds',
-                  style: GoogleFonts.poppins(fontSize: 12),
+                Expanded(
+                  child: Text(
+                    'Live travel news & weather updated from NDMA & PMD feeds',
+                    style: GoogleFonts.poppins(fontSize: 12),
+                  ),
                 ),
               ],
             ),

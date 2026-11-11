@@ -5,6 +5,7 @@ import '../models/saved_trip_model.dart';
 
 class SavedTripsService {
   static const String _storageKey = 'safar_saved_trips';
+  static const String _mockCleanupFlag = 'safar_khata_mock_cleaned_v1';
   static final SavedTripsService _instance = SavedTripsService._internal();
 
   factory SavedTripsService() => _instance;
@@ -12,74 +13,53 @@ class SavedTripsService {
 
   final ValueNotifier<List<SavedTrip>> tripsNotifier = ValueNotifier<List<SavedTrip>>([]);
 
-  List<SavedTrip> _curatedDefaults() {
-    final now = DateTime.now();
-    return [
-      SavedTrip(
-        id: 'trip_murree_hills',
-        title: 'Murree Hills Getaway',
-        destination: 'Murree',
-        origin: 'Islamabad',
-        startDate: now.subtract(const Duration(days: 1)),
-        endDate: now.add(const Duration(days: 2)),
-        budget: 38000,
-        travelers: 3,
-        companions: ['Ali', 'Hamza', 'Ahsan'],
-        notes: 'Weekend mountain retreat via Murree Expressway with dining at Mall Road & Patriata chairlift.',
-        isCurrent: true,
-      ),
-      SavedTrip(
-        id: 'trip_hunza_autumn',
-        title: 'Hunza Autumn Expedition',
-        destination: 'Hunza',
-        origin: 'Islamabad',
-        startDate: now.add(const Duration(days: 10)),
-        endDate: now.add(const Duration(days: 16)),
-        budget: 95000,
-        travelers: 4,
-        companions: ['Ali', 'Hamza', 'Ahsan', 'Bilal'],
-        notes: 'Golden autumn tour covering Karimabad, Attabad Lake, Passu Cones, and Baltit Fort.',
-        isCurrent: false,
-      ),
-      SavedTrip(
-        id: 'trip_swat_valley',
-        title: 'Swat Valley River Tour',
-        destination: 'Swat',
-        origin: 'Peshawar',
-        startDate: now.add(const Duration(days: 25)),
-        endDate: now.add(const Duration(days: 29)),
-        budget: 48000,
-        travelers: 3,
-        companions: ['Kamran', 'Farhan', 'Me'],
-        notes: 'Explore Malam Jabba, Kalam, and Mahodand Lake trout spots.',
-        isCurrent: false,
-      ),
-    ];
-  }
+  static const Set<String> _legacyMockTripIds = {
+    'trip_murree_hills',
+    'trip_hunza_autumn',
+    'trip_swat_valley',
+  };
 
   Future<List<SavedTrip>> getSavedTrips() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+
+      // One-time cleanup of previously seeded mock trips & sample khata data
+      final cleaned = prefs.getBool(_mockCleanupFlag) ?? false;
+      if (!cleaned) {
+        final rawJson = prefs.getString(_storageKey);
+        if (rawJson != null && rawJson.isNotEmpty) {
+          final List<dynamic> list = jsonDecode(rawJson);
+          final filtered = list
+              .map((m) => SavedTrip.fromMap(Map<String, dynamic>.from(m)))
+              .where((t) => !_legacyMockTripIds.contains(t.id))
+              .toList();
+          await _persistTrips(prefs, filtered);
+        }
+        for (final id in _legacyMockTripIds) {
+          await prefs.remove('safar_split_people_$id');
+          await prefs.remove('safar_split_expenses_$id');
+          await prefs.remove('safar_split_settled_$id');
+        }
+        await prefs.remove('safar_split_people');
+        await prefs.remove('safar_split_expenses');
+        await prefs.remove('safar_split_settled');
+        await prefs.setBool(_mockCleanupFlag, true);
+      }
+
       final jsonString = prefs.getString(_storageKey);
       if (jsonString != null && jsonString.isNotEmpty) {
         final List<dynamic> list = jsonDecode(jsonString);
         final trips = list.map((m) => SavedTrip.fromMap(Map<String, dynamic>.from(m))).toList();
-        if (trips.isNotEmpty) {
-          tripsNotifier.value = trips;
-          return trips;
-        }
+        tripsNotifier.value = trips;
+        return trips;
       }
 
-      // Initialize with curated defaults
-      final defaults = _curatedDefaults();
-      await _persistTrips(prefs, defaults);
-      tripsNotifier.value = defaults;
-      return defaults;
+      tripsNotifier.value = [];
+      return [];
     } catch (e) {
       debugPrint('Error getting saved trips: $e');
-      final fallback = _curatedDefaults();
-      tripsNotifier.value = fallback;
-      return fallback;
+      tripsNotifier.value = [];
+      return [];
     }
   }
 
@@ -97,15 +77,12 @@ class SavedTripsService {
 
       List<SavedTrip> updatedTrips;
       if (index >= 0) {
-        // Update existing
         updatedTrips = List.from(trips);
         updatedTrips[index] = trip;
       } else {
-        // Add new trip to the beginning
         updatedTrips = [trip, ...trips];
       }
 
-      // If marked current, unset current for others
       if (trip.isCurrent) {
         updatedTrips = updatedTrips.map((t) {
           if (t.id != trip.id) {
@@ -143,10 +120,13 @@ class SavedTripsService {
       final trips = await getSavedTrips();
       final updatedTrips = trips.where((t) => t.id != tripId).toList();
 
-      // Ensure at least one is current if any remain
       if (updatedTrips.isNotEmpty && !updatedTrips.any((t) => t.isCurrent)) {
         updatedTrips[0] = updatedTrips[0].copyWith(isCurrent: true);
       }
+
+      await prefs.remove('safar_split_people_$tripId');
+      await prefs.remove('safar_split_expenses_$tripId');
+      await prefs.remove('safar_split_settled_$tripId');
 
       await _persistTrips(prefs, updatedTrips);
       tripsNotifier.value = updatedTrips;
