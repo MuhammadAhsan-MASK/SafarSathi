@@ -99,59 +99,69 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // ── Route Section (From & To) ─────────────────────────────
+                  // ── Route Section (From & To - Full Width) ──────────────────
+                  _buildInputField(
+                    'From (Departure)',
+                    Icons.flight_takeoff_rounded,
+                    'e.g., Karachi, Lahore',
+                    _originController,
+                  ),
+                  const SizedBox(height: 10),
+                  _buildQuickChips(_popularOrigins, (city) {
+                    setState(() => _originController.text = city);
+                  }, _originController.text),
+
+                  const SizedBox(height: 14),
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildInputField(
-                              'From (Departure)',
-                              Icons.flight_takeoff_rounded,
-                              'e.g., Karachi, Lahore',
-                              _originController,
-                            ),
-                            const SizedBox(height: 8),
-                            _buildQuickChips(_popularOrigins, (city) {
-                              setState(() => _originController.text = city);
-                            }, _originController.text),
-                            const SizedBox(height: 16),
-                            _buildInputField(
-                              'To (Destination)',
-                              Icons.location_on_outlined,
-                              'e.g., Islamabad, Hunza, Skardu',
-                              _destinationController,
-                              onSubmitted: (val) => _loadWeatherForDestination(val),
-                            ),
-                            const SizedBox(height: 8),
-                            _buildQuickChips(_popularDestinations, (city) {
-                              setState(() => _destinationController.text = city);
-                              _loadWeatherForDestination(city);
-                            }, _destinationController.text),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 8),
+                      const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 50.0),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
                         child: InkWell(
                           onTap: _swapRoute,
                           borderRadius: BorderRadius.circular(20),
                           child: Container(
-                            padding: const EdgeInsets.all(10),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                             decoration: BoxDecoration(
                               color: AppTheme.primaryPurple.withValues(alpha: 0.1),
-                              shape: BoxShape.circle,
+                              borderRadius: BorderRadius.circular(20),
                               border: Border.all(color: AppTheme.primaryPurple.withValues(alpha: 0.3)),
                             ),
-                            child: const Icon(Icons.swap_vert_rounded, color: AppTheme.primaryPurple, size: 26),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.swap_vert_rounded, color: AppTheme.primaryPurple, size: 18),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Swap Route',
+                                  style: GoogleFonts.poppins(
+                                    color: AppTheme.primaryPurple,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 11.5,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
+                      const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
                     ],
                   ),
+                  const SizedBox(height: 10),
+
+                  _buildInputField(
+                    'To (Destination)',
+                    Icons.location_on_outlined,
+                    'e.g., Islamabad, Hunza, Skardu',
+                    _destinationController,
+                    onSubmitted: (val) => _loadWeatherForDestination(val),
+                  ),
+                  const SizedBox(height: 10),
+                  _buildQuickChips(_popularDestinations, (city) {
+                    setState(() => _destinationController.text = city);
+                    _loadWeatherForDestination(city);
+                  }, _destinationController.text),
                   const SizedBox(height: 14),
 
                   // ── Live Destination Weather Badge ──────────────────────
@@ -517,24 +527,28 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
   }
 
   Widget _buildQuickChips(List<String> cities, Function(String) onSelect, String currentVal) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
+    return SizedBox(
+      width: double.infinity,
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 6,
         children: cities.map((city) {
           final isSelected = currentVal.toLowerCase() == city.toLowerCase();
-          return Padding(
-            padding: const EdgeInsets.only(right: 6.0),
-            child: ActionChip(
-              label: Text(city),
-              labelStyle: TextStyle(
-                fontSize: 11,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? Colors.white : Colors.black87,
-              ),
-              backgroundColor: isSelected ? AppTheme.primaryPurple : Colors.grey[200],
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-              onPressed: () => onSelect(city),
+          return ActionChip(
+            label: Text(city),
+            labelStyle: TextStyle(
+              fontSize: 11.5,
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+              color: isSelected ? Colors.white : Colors.black87,
             ),
+            backgroundColor: isSelected ? AppTheme.primaryPurple : Colors.grey[200],
+            side: BorderSide(
+              color: isSelected ? AppTheme.primaryPurple : const Color(0xFFE2E8F0),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            visualDensity: VisualDensity.compact,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            onPressed: () => onSelect(city),
           );
         }).toList(),
       ),
