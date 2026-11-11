@@ -1138,27 +1138,216 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                 ),
-                onPressed: () async {
-                  final messenger = ScaffoldMessenger.of(context);
-                  try {
-                    messenger.showSnackBar(
-                      const SnackBar(content: Text('Generating Itinerary PDF...'), behavior: SnackBarBehavior.floating),
-                    );
-                    await PDFService.generateItineraryPDF(
-                      destination: widget.destination,
-                      activities: activities,
-                    );
-                  } catch (e) {
-                    messenger.showSnackBar(
-                      SnackBar(content: Text('Error generating PDF: $e'), backgroundColor: Colors.red),
-                    );
-                  }
-                },
+                onPressed: () => _showExportPdfDaySelector(context),
               ),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  void _showExportPdfDaySelector(BuildContext context) {
+    final currency = Provider.of<CurrencyProvider>(context, listen: false);
+    final messenger = ScaffoldMessenger.of(context);
+    final Set<int> selectedDays = {
+      for (int i = 0; i < _dayCount; i++) i,
+    };
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetCtx) {
+        return StatefulBuilder(
+          builder: (ctx, setSheetState) {
+            final sortedSelected = selectedDays.toList()..sort();
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 14, 20, 20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[300],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryPurple.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.picture_as_pdf_rounded, color: AppTheme.primaryPurple, size: 22),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Choose Days to Export',
+                                style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16),
+                              ),
+                              Text(
+                                'Pick specific days or export your full ${widget.destination} trip',
+                                style: GoogleFonts.poppins(fontSize: 11.5, color: Colors.grey[600]),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Quick Filter Presets
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          ActionChip(
+                            label: Text('All Days (1-$_dayCount)', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                            onPressed: () {
+                              setSheetState(() {
+                                selectedDays.clear();
+                                for (int i = 0; i < _dayCount; i++) {
+                                  selectedDays.add(i);
+                                }
+                              });
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          ActionChip(
+                            label: Text('Current Day Only (Day ${_selectedDay + 1})', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                            onPressed: () {
+                              setSheetState(() {
+                                selectedDays
+                                  ..clear()
+                                  ..add(_selectedDay);
+                              });
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          ActionChip(
+                            label: const Text('Clear', style: TextStyle(fontSize: 11.5)),
+                            onPressed: () {
+                              setSheetState(() => selectedDays.clear());
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(context).size.height * 0.42,
+                      ),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: _dayCount,
+                        itemBuilder: (_, dayIdx) {
+                          final dayDate = widget.startDate.add(Duration(days: dayIdx));
+                          final dayBudget = _dayBudgets[dayIdx] ?? (_totalTripBudget / _dayCount);
+                          final dayActivities = _getCuratedActivitiesForDay(dayIdx, dayBudget);
+                          final isChecked = selectedDays.contains(dayIdx);
+
+                          return CheckboxListTile(
+                            value: isChecked,
+                            activeColor: AppTheme.primaryPurple,
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(
+                              'Day ${dayIdx + 1} (${dayDate.month}/${dayDate.day}/${dayDate.year})',
+                              style: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 13.5),
+                            ),
+                            subtitle: Text(
+                              '${dayActivities.length} planned activities • Budget: ${currency.formatPrice(dayBudget)}',
+                              style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[600]),
+                            ),
+                            onChanged: (val) {
+                              setSheetState(() {
+                                if (val == true) {
+                                  selectedDays.add(dayIdx);
+                                } else {
+                                  selectedDays.remove(dayIdx);
+                                }
+                              });
+                            },
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        onPressed: sortedSelected.isEmpty
+                            ? null
+                            : () async {
+                                Navigator.pop(sheetCtx);
+                                try {
+                                  messenger.showSnackBar(
+                                    SnackBar(
+                                      content: Text('Generating PDF for ${sortedSelected.length} day(s)...'),
+                                      behavior: SnackBarBehavior.floating,
+                                    ),
+                                  );
+
+                                  final List<Map<String, dynamic>> sections = sortedSelected.map((dayIdx) {
+                                    final dayDate = widget.startDate.add(Duration(days: dayIdx));
+                                    final dayBudget = _dayBudgets[dayIdx] ?? (_totalTripBudget / _dayCount);
+                                    return {
+                                      'dayTitle': 'Day ${dayIdx + 1} (${dayDate.month}/${dayDate.day}/${dayDate.year})',
+                                      'budget': currency.formatPrice(dayBudget),
+                                      'activities': _getCuratedActivitiesForDay(dayIdx, dayBudget),
+                                    };
+                                  }).toList();
+
+                                  await PDFService.generateItineraryPDF(
+                                    destination: widget.destination,
+                                    origin: widget.origin,
+                                    daySections: sections,
+                                  );
+                                } catch (e) {
+                                  messenger.showSnackBar(
+                                    SnackBar(content: Text('Error generating PDF: $e'), backgroundColor: Colors.red),
+                                  );
+                                }
+                              },
+                        icon: const Icon(Icons.picture_as_pdf_rounded, size: 18),
+                        label: Text(
+                          sortedSelected.isEmpty
+                              ? 'Select at least 1 Day'
+                              : 'Export PDF (${sortedSelected.length} ${sortedSelected.length == 1 ? 'Day' : 'Days'})',
+                          style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13.5),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryPurple,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
