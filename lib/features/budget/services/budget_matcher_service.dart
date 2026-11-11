@@ -89,28 +89,18 @@ class BudgetMatcherService {
 
     double getLowestPrice(Hotel h) {
       if (h.typePrices.isNotEmpty) {
-        final minType = h.typePrices.values.reduce((a, b) => a < b ? a : b);
-        if (minType > 0) return minType;
+        final positives = h.typePrices.values.where((v) => v > 0);
+        if (positives.isNotEmpty) {
+          return positives.reduce((a, b) => a < b ? a : b);
+        }
       }
       return h.price > 0 ? h.price : 3500.0;
     }
 
-    if (destinationHotels.isEmpty) {
-      final fallback = [...allHotels];
-      fallback.sort((a, b) => getLowestPrice(a).compareTo(getLowestPrice(b)));
-      return fallback.take(5).toList();
-    }
-
-    // Filter strictly by calculated budget cap
+    // Filter strictly by calculated nightly budget cap — never return over-budget hotels
     final budgetMatches = destinationHotels.where((h) => getLowestPrice(h) <= maxPricePerNight).toList();
-    if (budgetMatches.isNotEmpty) {
-      budgetMatches.sort((a, b) => getLowestPrice(a).compareTo(getLowestPrice(b)));
-      return budgetMatches;
-    }
-
-    // If budget cap is extremely tight, sort and return lowest available options
-    destinationHotels.sort((a, b) => getLowestPrice(a).compareTo(getLowestPrice(b)));
-    return destinationHotels;
+    budgetMatches.sort((a, b) => getLowestPrice(a).compareTo(getLowestPrice(b)));
+    return budgetMatches;
   }
 
   Future<List<Restaurant>> getAffordableRestaurants(String destination, double maxPricePerMeal) async {

@@ -147,7 +147,11 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
               '< ${currency.formatPrice(_maxNightlyHotelBudget)} /night',
               Icons.hotel,
             ),
-            _buildFutureBuilder<List<Hotel>>(_hotelFuture, (hotels) => _buildHotelList(hotels)),
+            _buildFutureBuilder<List<Hotel>>(
+              _hotelFuture,
+              (hotels) => _buildHotelList(hotels),
+              emptyBuilder: () => _buildNoBudgetHotelsCard(currency),
+            ),
 
             const SizedBox(height: 18),
 
@@ -273,7 +277,11 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
     );
   }
 
-  Widget _buildFutureBuilder<T>(Future<T> future, Widget Function(T) builder) {
+  Widget _buildFutureBuilder<T>(
+    Future<T> future,
+    Widget Function(T) builder, {
+    Widget Function()? emptyBuilder,
+  }) {
     return FutureBuilder<T>(
       future: future,
       builder: (context, snapshot) {
@@ -283,6 +291,9 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
             child: Center(child: CircularProgressIndicator()),
           );
         } else if (snapshot.hasError || !snapshot.hasData || (snapshot.data is List && (snapshot.data as List).isEmpty)) {
+          if (emptyBuilder != null) {
+            return emptyBuilder();
+          }
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 20),
             child: Container(
@@ -308,6 +319,172 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
         }
         return builder(snapshot.data as T);
       },
+    );
+  }
+
+  List<String> _getSuggestedBudgetStayAreas(String destination) {
+    final lower = destination.toLowerCase();
+    if (lower.contains('hunza')) {
+      return ['Aliabad Bazaar', 'Ganish Village', 'Altit Side Streets', 'Gulmit Homestays'];
+    } else if (lower.contains('skardu')) {
+      return ['Skardu Main Bazaar', 'Hussainabad', 'Satellite Town', 'Old Skardu Road'];
+    } else if (lower.contains('murree')) {
+      return ['Lower Bazaar', 'Jhika Gali', 'Kashmir Point Side Lanes', 'Sunny Bank'];
+    } else if (lower.contains('swat') || lower.contains('kalam')) {
+      return ['Mingora Side Streets', 'Fizagat', 'Bahrain Riverbank', 'Utror Homestays'];
+    } else if (lower.contains('naran') || lower.contains('kaghan')) {
+      return ['Kaghan Town', 'Paras Rest Houses', 'Battakundi', 'Shogran Lower Village'];
+    } else if (lower.contains('islamabad') || lower.contains('rawalpindi')) {
+      return ['G-9 / G-10 Markaz Rooms', 'Bahria Town Apartments', 'Saddar (Rawalpindi)', 'F-10 Airbnbs'];
+    } else if (lower.contains('lahore')) {
+      return ['Johar Town Airbnbs', 'Gulberg Side Lanes', 'Model Town', 'Lakshmi Chowk Hostels'];
+    } else if (lower.contains('karachi')) {
+      return ['Clifton Block 2/8 Airbnbs', 'PECHS Guesthouses', 'Gulshan-e-Iqbal', 'Bahadurabad'];
+    } else if (lower.contains('multan')) {
+      return ['Bosan Road Guesthouses', 'Gulgasht Colony', 'Cantt Side Streets', 'Nishtar Road'];
+    } else if (lower.contains('bahawalpur')) {
+      return ['Model Town A/B', 'University Chowk', 'Fareed Gate Side Streets', 'Satellite Town'];
+    } else if (lower.contains('peshawar')) {
+      return ['University Town', 'Saddar Bazaar Guesthouses', 'Hayatabad Phase 1/2'];
+    } else if (lower.contains('quetta')) {
+      return ['Jinnah Road', 'Satellite Town', 'Samungli Road Guesthouses'];
+    } else if (lower.contains('gwadar')) {
+      return ['Airport Road Guesthouses', 'Marine Drive Backlanes', 'Main Bazaar Rooms'];
+    } else if (lower.contains('chitral') || lower.contains('neelum') || lower.contains('kumrat') || lower.contains('gilgit')) {
+      return ['Main Bazaar Rest Houses', 'Local Village Homestays', 'Riverbank Guesthouses'];
+    }
+    return ['Main City Bazaar Side Streets', 'Local Homestays & Airbnbs', 'Bus Terminal Guesthouses'];
+  }
+
+  Widget _buildNoBudgetHotelsCard(CurrencyProvider currency) {
+    final areas = _getSuggestedBudgetStayAreas(widget.destination);
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFFDE68A), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.amber.withValues(alpha: 0.08),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.home_work_rounded, color: Color(0xFFD97706), size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'No Hotels Available Within Budget',
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13.5,
+                    color: const Color(0xFF92400E),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'According to your budget (< ${currency.formatPrice(_maxNightlyHotelBudget)}/night), there are no listed hotels available in ${widget.destination}. You can try local Airbnb rooms, homestays, or small budget hotels nearby.',
+            style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF78350F), height: 1.4),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'SUGGESTED AFFORDABLE AREAS IN ${widget.destination.toUpperCase()}:',
+            style: GoogleFonts.poppins(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: const Color(0xFFB45309),
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: areas.map((area) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFCD34D)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.location_on_rounded, size: 12, color: Color(0xFFD97706)),
+                    const SizedBox(width: 4),
+                    Text(
+                      area,
+                      style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF78350F)),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    final query = Uri.encodeComponent('${widget.destination}, Pakistan');
+                    _launchUrl('https://www.airbnb.com/s/$query/homes');
+                  },
+                  icon: const Icon(Icons.travel_explore_rounded, size: 16),
+                  label: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text('Search Local Airbnbs', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFB45309),
+                    side: const BorderSide(color: Color(0xFFD97706)),
+                    backgroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.tune_rounded, size: 16),
+                  label: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text('Adjust Budget', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFD97706),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -401,8 +578,9 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
         itemCount: hotels.length,
         itemBuilder: (context, index) {
           final h = hotels[index];
-          final effectivePrice = h.typePrices.isNotEmpty
-              ? h.typePrices.values.reduce((a, b) => a < b ? a : b)
+          final positivePrices = h.typePrices.values.where((v) => v > 0).toList();
+          final effectivePrice = positivePrices.isNotEmpty
+              ? positivePrices.reduce((a, b) => a < b ? a : b)
               : (h.price > 0 ? h.price : 3500.0);
           final isWithin = effectivePrice <= _maxNightlyHotelBudget;
           return GestureDetector(
