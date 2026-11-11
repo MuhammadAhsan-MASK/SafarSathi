@@ -9,7 +9,6 @@ import '../../core/currency_provider.dart';
 import 'models/group_expense_model.dart';
 import 'models/saved_trip_model.dart';
 import 'services/saved_trips_service.dart';
-import 'smart_packing_screen.dart';
 
 class SplitBillScreen extends StatefulWidget {
   final SavedTrip? initialTrip;
@@ -678,18 +677,6 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
             onSelected: (val) {
               if (val == 'new_trip') {
                 _showCreateTripDialog();
-              } else if (val == 'packing') {
-                if (_activeTrip != null) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => SmartPackingScreen(
-                        destination: _activeTrip!.destination,
-                        duration: '${_activeTrip!.durationDays} Days',
-                      ),
-                    ),
-                  );
-                }
               } else if (val == 'delete_trip') {
                 _deleteCurrentTrip();
               } else if (val == 'clear') {
@@ -704,7 +691,6 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
             itemBuilder: (_) => [
               const PopupMenuItem(value: 'new_trip', child: Text('🗺️ Create New Trip Khata')),
               if (_activeTrip != null) ...[
-                const PopupMenuItem(value: 'packing', child: Text('🎒 AI Packing Checklist')),
                 const PopupMenuItem(value: 'clear', child: Text('🧹 Clear Trip Expenses')),
                 const PopupMenuItem(value: 'delete_trip', child: Text('🗑️ Delete This Trip', style: TextStyle(color: Colors.red))),
               ],
@@ -1124,36 +1110,15 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
                 ),
               ),
               if (trip != null)
-                InkWell(
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => SmartPackingScreen(
-                          destination: trip.destination,
-                          duration: '${trip.durationDays} Days',
-                        ),
-                      ),
-                    );
-                  },
-                  borderRadius: BorderRadius.circular(10),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.backpack_outlined, size: 12, color: Colors.white),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Packing List',
-                          style: GoogleFonts.poppins(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                        ),
-                      ],
-                    ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '${trip.origin} ➔ ${trip.destination}',
+                    style: GoogleFonts.poppins(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                   ),
                 ),
             ],

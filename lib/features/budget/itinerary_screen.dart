@@ -1097,18 +1097,28 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                 }
               },
             ),
-            const SizedBox(width: 6),
-            // Packing Checklist Shortcut
-            IconButton(
-              icon: const Icon(Icons.checklist, color: AppTheme.primaryPurple),
-              tooltip: 'Packing Checklist',
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => SmartPackingScreen(
-                    destination: widget.destination,
-                    duration: '$_dayCount days',
-                    weather: 'Seasonal',
+            const SizedBox(width: 4),
+            // Smart Packing Bag Button
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.luggage_rounded, size: 18, color: AppTheme.primaryPurple),
+                label: const FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text('Smart Packing', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppTheme.primaryPurple,
+                  side: const BorderSide(color: AppTheme.primaryPurple, width: 1.4),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                ),
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SmartPackingScreen(
+                      destination: widget.destination,
+                      duration: '$_dayCount Days',
+                    ),
                   ),
                 ),
               ),
@@ -1118,12 +1128,15 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
             Expanded(
               child: ElevatedButton.icon(
                 icon: const Icon(Icons.picture_as_pdf, size: 18),
-                label: const Text('Export Itinerary PDF', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                label: const FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text('Export PDF', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryPurple,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
                 ),
                 onPressed: () async {
                   final messenger = ScaffoldMessenger.of(context);

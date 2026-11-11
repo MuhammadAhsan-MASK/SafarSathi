@@ -12,7 +12,7 @@ import '../news/widgets/live_travel_news_section.dart';
 import '../eco_tracker/eco_tracker_screen.dart';
 import '../guides/guides_screen.dart';
 import '../bargain/bargain_screen.dart';
-import '../budget/smart_packing_screen.dart';
+import '../budget/itinerary_screen.dart';
 import '../budget/split_bill_screen.dart';
 import '../budget/models/saved_trip_model.dart';
 import '../budget/services/saved_trips_service.dart';
@@ -647,7 +647,6 @@ class _HomeScreenState extends State<HomeScreen> {
       {'title': 'Guides', 'icon': Icons.person_pin_circle_rounded, 'color': Colors.deepOrange.shade600, 'bg': Colors.orange.shade50, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const GuidesScreen()))},
       {'title': 'Bargain', 'icon': Icons.price_check_rounded, 'color': Colors.green.shade700, 'bg': Colors.green.shade50, 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const BargainScreen()))},
       {'title': 'Eco-Tracker', 'icon': Icons.eco_rounded, 'color': const Color(0xFF00897B), 'bg': const Color(0xFFE0F2F1), 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EcoTrackerScreen()))},
-      {'title': 'AI Packing', 'icon': Icons.backpack_rounded, 'color': AppTheme.primaryPurple, 'bg': const Color(0xFFF3E8FF), 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SmartPackingScreen()))},
       {'title': 'Safar Khata', 'icon': Icons.receipt_long_rounded, 'color': const Color(0xFFE65100), 'bg': const Color(0xFFFFF3E0), 'onTap': () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SplitBillScreen()))},
     ];
 
@@ -1293,14 +1292,18 @@ class _HomeScreenState extends State<HomeScreen> {
                           onPressed: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (_) => SmartPackingScreen(
+                              builder: (_) => ItineraryScreen(
+                                origin: activeTrip.origin,
                                 destination: activeTrip.destination,
-                                duration: '${activeTrip.durationDays} Days',
+                                startDate: activeTrip.startDate,
+                                endDate: activeTrip.endDate,
+                                budget: activeTrip.budget > 0 ? activeTrip.budget : 50000,
+                                travelers: activeTrip.travelers,
                               ),
                             ),
                           ),
-                          icon: const Icon(Icons.backpack_outlined, size: 16),
-                          label: const Text('Packing', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          icon: const Icon(Icons.route_rounded, size: 16),
+                          label: const Text('View Route', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppTheme.primaryPurple,
                             side: const BorderSide(color: AppTheme.primaryPurple),

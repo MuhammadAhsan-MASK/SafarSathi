@@ -9,13 +9,13 @@ import '../../core/gemini_service.dart';
 class SmartPackingScreen extends StatefulWidget {
   final String destination;
   final String duration;
-  final String weather;
+  final String? weather;
 
   const SmartPackingScreen({
     super.key,
     this.destination = 'Hunza Valley',
     this.duration = '5 Days',
-    this.weather = 'Cold & Chilly (5°C)',
+    this.weather,
   });
 
   @override
@@ -27,6 +27,7 @@ class _SmartPackingScreenState extends State<SmartPackingScreen> {
   late String _duration;
   late String _weather;
   String _selectedVibe = 'Adventure';
+  String _currentTip = '';
   bool _isLoading = false;
   List<Map<String, dynamic>>? _packingList;
 
@@ -34,49 +35,207 @@ class _SmartPackingScreenState extends State<SmartPackingScreen> {
     'Adventure', 'Relaxation', 'Cultural', 'Family', 'Photography',
   ];
 
-  final Map<String, (String weather, String vibe, String tip)> _destinationPresets = {
-    'Hunza & Northern Areas': (
+  // Key: City Name -> (weather, vibe, climateProfile, localTip)
+  // climateProfile values: 'high_altitude', 'cold', 'coastal', 'urban_heritage'
+  final Map<String, (String weather, String vibe, String climate, String tip)> _destinationPresets = {
+    'Hunza Valley': (
       'Cold & Chilly (5°C)',
       'Adventure',
-      'Northern ATMs often go offline; carry at least PKR 15,000 in cash.'
-    ),
-    'Murree & Galiyat': (
-      'Misty & Road Frost (10°C)',
-      'Family',
-      'Dense evening fog; keep anti-freeze coolant in car and carry snow chains.'
-    ),
-    'Swat & Kalam': (
-      'Crisp Autumn (7°C)',
-      'Adventure',
-      'Carry river-friendly waterproof shoes and warm fleece layers for night.'
+      'high_altitude',
+      'ATMs in Karimabad often go offline; keep PKR 15,000+ cash and warm layers for Eagle\'s Nest.',
     ),
     'Skardu & Deosai': (
       'Freezing & Windy (2°C)',
       'Photography',
-      'High altitude AMS risk above 4,000m; keep Diamox, ORS, and UV goggles.'
+      'high_altitude',
+      'Deosai Plains exceed 4,100m; carry Diamox, UV400 goggles, and heavy windproof layers.',
     ),
-    'Karachi & Baloch Coast': (
-      'Warm & Breezy (28°C)',
-      'Relaxation',
-      'Pack lightweight cotton clothes, swimwear, and plenty of hydration.'
+    'Fairy Meadows': (
+      'Sub-Zero & Alpine (0°C)',
+      'Adventure',
+      'high_altitude',
+      'Requires a 3-hour trek from Tattu Village; pack light but sub-zero thermal gear and trekking boots.',
     ),
-    'Lahore & Islamabad': (
-      'Mild & Pleasant (19°C)',
+    'Naran & Kaghan': (
+      'Alpine Cold (6°C)',
+      'Adventure',
+      'cold',
+      'Nights near Lake Saif-ul-Mulook drop sharply; keep a fleece jacket and waterproof shoes.',
+    ),
+    'Swat & Kalam': (
+      'Crisp Mountain Air (8°C)',
+      'Adventure',
+      'cold',
+      'Carry river-friendly grip shoes for Mahodand Lake and warm evening layers.',
+    ),
+    'Murree & Galiyat': (
+      'Misty & Chilly (10°C)',
+      'Family',
+      'cold',
+      'Sudden fog & drizzle are common; pack an umbrella, anti-slip sneakers, and warm sweaters.',
+    ),
+    'Neelum Valley': (
+      'Mountain Mist & Rain (9°C)',
+      'Adventure',
+      'cold',
+      'Carry original CNIC for checkposts, a compact raincoat, and power bank for remote valleys.',
+    ),
+    'Chitral & Kalash': (
+      'Cool & Mountainous (9°C)',
       'Cultural',
-      'Walking shoes for heritage sites and monuments; light jacket for evenings.'
+      'cold',
+      'Respect local Kalash traditions when photographing; Lowari Tunnel drive requires motion sickness prep.',
+    ),
+    'Kumrat Valley': (
+      'Forest Cold (7°C)',
+      'Adventure',
+      'cold',
+      'Limited mobile signal inside Kumrat forest; download offline maps and carry torch & cash.',
+    ),
+    'Gilgit & Naltar': (
+      'Alpine Pine Breeze (8°C)',
+      'Photography',
+      'cold',
+      'Naltar Lakes trail is bumpy; pack motion tablets, sunglasses, and dusty-trail shoes.',
+    ),
+    'Quetta & Ziarat': (
+      'Dry & Chilly Nights (12°C)',
+      'Cultural',
+      'cold',
+      'Dry mountain climate cracks lips fast; keep lip balm, moisturizer, and warm nightwear.',
+    ),
+    'Islamabad': (
+      'Pleasant Foothills (20°C)',
+      'Relaxation',
+      'urban_heritage',
+      'Great walking city for Margalla Trails & Faisal Mosque; bring sneakers and a light evening jacket.',
+    ),
+    'Lahore': (
+      'Warm Heritage City (26°C)',
+      'Cultural',
+      'urban_heritage',
+      'Keep a modest shawl/dupatta for Badshahi Mosque & Walled City tours, plus antacids for food streets!',
+    ),
+    'Karachi': (
+      'Warm & Coastal (31°C)',
+      'Relaxation',
+      'coastal',
+      'Humid coastal breeze; pack breathable cotton, SPF 50+ sunscreen, and waterproof sandals for Clifton/French Beach.',
+    ),
+    'Gwadar & Makran': (
+      'Sunny & Coastal (29°C)',
+      'Photography',
+      'coastal',
+      'Strong coastal sun along Kund Malir & Hammerhead; carry UV sunglasses, ORS hydration, and SPF 50+.',
+    ),
+    'Multan': (
+      'Hot & Dry Plains (34°C)',
+      'Cultural',
+      'urban_heritage',
+      'Pack airy cotton clothes, a head scarf/shawl for Sufi shrines, sunscreen, and a hydration flask.',
+    ),
+    'Bahawalpur': (
+      'Warm Desert Sun (33°C)',
+      'Cultural',
+      'urban_heritage',
+      'Visiting Noor Mahal & Derawar Fort involves sunny walks; wear cushioned sneakers and a sun hat.',
     ),
   };
 
   @override
   void initState() {
     super.initState();
-    _destination = widget.destination;
-    _duration = widget.duration;
-    _weather = widget.weather;
+    _initDestinationState();
     _loadSavedChecklist();
   }
 
-  String get _storageKey => 'safar_packing_${_destination.replaceAll(' ', '_').toLowerCase()}';
+  void _initDestinationState() {
+    final incomingLower = widget.destination.toLowerCase();
+    String matchedKey = widget.destination;
+    (String, String, String, String)? matchedPreset;
+
+    for (final entry in _destinationPresets.entries) {
+      final keyFirstWord = entry.key.split(' & ').first.toLowerCase();
+      if (entry.key.toLowerCase() == incomingLower ||
+          incomingLower.contains(keyFirstWord) ||
+          entry.key.toLowerCase().contains(incomingLower)) {
+        matchedKey = entry.key;
+        matchedPreset = entry.value;
+        break;
+      }
+    }
+
+    _destination = matchedKey;
+    _duration = widget.duration;
+
+    if (matchedPreset != null) {
+      _weather = (widget.weather != null && widget.weather!.isNotEmpty && widget.weather != 'Seasonal')
+          ? widget.weather!
+          : matchedPreset.$1;
+      _selectedVibe = matchedPreset.$2;
+      _currentTip = matchedPreset.$4;
+    } else {
+      final inferredClimate = _inferClimateProfile(widget.destination);
+      _weather = (widget.weather != null && widget.weather!.isNotEmpty && widget.weather != 'Seasonal')
+          ? widget.weather!
+          : _defaultWeatherForClimate(inferredClimate);
+      _currentTip = 'Pack comfortably based on $_destination\'s local weather and carry original CNIC.';
+    }
+  }
+
+  String _inferClimateProfile(String dest) {
+    final lower = dest.toLowerCase();
+    for (final entry in _destinationPresets.entries) {
+      final firstWord = entry.key.split(' & ').first.toLowerCase();
+      if (lower.contains(firstWord) || entry.key.toLowerCase() == lower) {
+        return entry.value.$3;
+      }
+    }
+    if (lower.contains('skardu') ||
+        lower.contains('deosai') ||
+        lower.contains('hunza') ||
+        lower.contains('fairy') ||
+        lower.contains('khunjerab') ||
+        lower.contains('babusar')) {
+      return 'high_altitude';
+    }
+    if (lower.contains('karachi') ||
+        lower.contains('gwadar') ||
+        lower.contains('makran') ||
+        lower.contains('kund malir') ||
+        lower.contains('ormara')) {
+      return 'coastal';
+    }
+    if (lower.contains('murree') ||
+        lower.contains('swat') ||
+        lower.contains('kalam') ||
+        lower.contains('naran') ||
+        lower.contains('kaghan') ||
+        lower.contains('neelum') ||
+        lower.contains('chitral') ||
+        lower.contains('kumrat') ||
+        lower.contains('gilgit') ||
+        lower.contains('quetta') ||
+        lower.contains('ziarat')) {
+      return 'cold';
+    }
+    return 'urban_heritage';
+  }
+
+  String _defaultWeatherForClimate(String climate) {
+    switch (climate) {
+      case 'high_altitude':
+        return 'Freezing & Windy (3°C)';
+      case 'cold':
+        return 'Cool Mountain Air (9°C)';
+      case 'coastal':
+        return 'Warm & Coastal (30°C)';
+      default:
+        return 'Mild & Warm (24°C)';
+    }
+  }
+
+  String get _storageKey => 'safar_packing_v2_${_destination.replaceAll(' ', '_').toLowerCase()}';
 
   Future<void> _loadSavedChecklist() async {
     try {
@@ -84,16 +243,17 @@ class _SmartPackingScreenState extends State<SmartPackingScreen> {
       final saved = prefs.getString(_storageKey);
       if (saved != null) {
         final List<dynamic> decoded = jsonDecode(saved);
-        setState(() {
-          _packingList = decoded.map((cat) => Map<String, dynamic>.from(cat)).toList();
-        });
+        if (mounted) {
+          setState(() {
+            _packingList = decoded.map((cat) => Map<String, dynamic>.from(cat)).toList();
+          });
+        }
         return;
       }
     } catch (e) {
       debugPrint('Error loading saved checklist: $e');
     }
 
-    // If nothing saved yet, generate immediately from local expert database
     _generateLocalCuratedList();
   }
 
@@ -108,161 +268,496 @@ class _SmartPackingScreenState extends State<SmartPackingScreen> {
   }
 
   void _generateLocalCuratedList() {
-    final lowerDest = _destination.toLowerCase();
-    final bool isCold = lowerDest.contains('hunza') ||
-        lowerDest.contains('skardu') ||
-        lowerDest.contains('murree') ||
-        lowerDest.contains('swat') ||
-        lowerDest.contains('kalam') ||
-        lowerDest.contains('naran') ||
-        lowerDest.contains('gilgit');
+    final climate = _inferClimateProfile(_destination);
+    List<Map<String, dynamic>> curated;
 
-    final bool isHighAltitude = lowerDest.contains('skardu') ||
-        lowerDest.contains('deosai') ||
-        lowerDest.contains('babusar') ||
-        lowerDest.contains('khunjerab');
-
-    final List<Map<String, dynamic>> defaultList = [
-      {
-        'category': '👕 Thermal & Layered Clothing',
-        'items': [
-          {
-            'item': isCold ? 'Thermal Inners (Top & Bottom)' : 'Breathable Cotton Shirts',
-            'reason': isCold ? 'Base layer to retain core body temperature in cold air' : 'Lightweight breathable daily wear',
-            'checked': false
-          },
-          {
-            'item': isCold ? 'Heavy Fleece / Down Jacket' : 'Light Evening Windbreaker',
-            'reason': isCold ? 'Essential outer warmth against sub-zero mountain winds' : 'Protection against dust and breeze',
-            'checked': false
-          },
-          {
-            'item': isCold ? 'Woolen Beanie Cap & Gloves' : 'Sun Hat / Baseball Cap',
-            'reason': isCold ? '80% of heat loss occurs via head & hands' : 'Sunstroke prevention during sightseeing',
-            'checked': false
-          },
-          {
-            'item': 'Thick Hiking Socks (3+ pairs)',
-            'reason': 'Prevents blisters and keeps feet warm while walking',
-            'checked': false
-          },
-          {
-            'item': 'Waterproof Windbreaker',
-            'reason': 'Shields against sudden mountain squalls and rains',
-            'checked': false
-          },
-        ]
-      },
-      {
-        'category': '🥾 Mountain Footwear & Outdoor Gear',
-        'items': [
-          {
-            'item': 'Sturdy Trekking Boots with Deep Lug Grip',
-            'reason': 'Crucial for rocky trails, viewpoints and loose gravel',
-            'checked': false
-          },
-          {
-            'item': '20,000mAh Fast Power Bank',
-            'reason': 'Northern valleys face load-shedding; cold drains phone battery fast',
-            'checked': false
-          },
-          {
-            'item': 'UV400 Polarized Sunglasses',
-            'reason': 'Protects retina against sharp high-altitude UV radiation & snow glare',
-            'checked': false
-          },
-          {
-            'item': 'LED Headlamp / Pocket Torch',
-            'reason': 'Handy for night walks, power outages, and trail movement',
-            'checked': false
-          },
-          {
-            'item': 'Insulated Thermal Flask / Water Bottle',
-            'reason': 'Keeps boiled drinking water or warm kehwa warm for 12 hours',
-            'checked': false
-          },
-        ]
-      },
-      {
-        'category': '💊 Health, Altitude & First Aid Kit',
-        'items': [
-          if (isHighAltitude)
+    if (climate == 'high_altitude') {
+      curated = [
+        {
+          'category': '🧥 Sub-Zero & Thermal Layering',
+          'items': [
+            {
+              'item': 'Thermal Inners (Top & Bottom)',
+              'reason': 'Base layer to retain core body heat in freezing mountain winds',
+              'checked': false,
+            },
+            {
+              'item': 'Heavy Down / Puffer Jacket',
+              'reason': 'Essential outer insulation for early mornings & high passes',
+              'checked': false,
+            },
+            {
+              'item': 'Woolen Beanie Cap & Windproof Gloves',
+              'reason': 'Prevents rapid heat loss from head and fingers at high altitude',
+              'checked': false,
+            },
+            {
+              'item': 'Thick Merino / Thermal Hiking Socks (3+ pairs)',
+              'reason': 'Keeps feet warm and blister-free on rocky trails',
+              'checked': false,
+            },
+            {
+              'item': 'Fleece-Lined Windproof Trousers',
+              'reason': 'Blocks chilly alpine gusts at viewpoints and lakes',
+              'checked': false,
+            },
+          ],
+        },
+        {
+          'category': '🥾 High-Altitude Footwear & Gear',
+          'items': [
+            {
+              'item': 'Waterproof Trekking Boots with Deep Grip',
+              'reason': 'Crucial traction for loose gravel, snow patches, and treks',
+              'checked': false,
+            },
+            {
+              'item': 'UV400 Polarized Sunglasses',
+              'reason': 'Shields eyes from intense high-altitude UV & snow glare',
+              'checked': false,
+            },
+            {
+              'item': '20,000mAh Fast Power Bank',
+              'reason': 'Sub-zero cold drains phone batteries fast and valleys have outages',
+              'checked': false,
+            },
+            {
+              'item': 'Insulated Thermal Flask',
+              'reason': 'Keeps drinking water or hot kehwa warm for hours',
+              'checked': false,
+            },
+            {
+              'item': 'LED Headlamp / Pocket Torch',
+              'reason': 'Essential for camp walks and night power cuts',
+              'checked': false,
+            },
+          ],
+        },
+        {
+          'category': '💊 Altitude Health & First Aid',
+          'items': [
             {
               'item': 'Diamox (Acetazolamide) Tablets',
-              'reason': 'Medically proven prevention for Acute Mountain Sickness (AMS)',
-              'checked': false
+              'reason': 'Prevents Acute Mountain Sickness (AMS) above 3,500m',
+              'checked': false,
             },
-          {
-            'item': 'ORS Electrolyte Rehydration Sachets',
-            'reason': 'Prevents dehydration on long dry mountain drives and treks',
-            'checked': false
-          },
-          {
-            'item': 'Motion Sickness Tablets (Gravinate)',
-            'reason': 'Vital for winding Karakoram Highway & hill climb hairpins',
-            'checked': false
-          },
-          {
-            'item': 'Paracetamol & Pain Relief Tablets',
-            'reason': 'For general altitude headaches, muscle soreness, or fever',
-            'checked': false
-          },
-          {
-            'item': 'First Aid Bandages & Antiseptic Cream',
-            'reason': 'Immediate treatment for trail scrapes and blisters',
-            'checked': false
-          },
-        ]
-      },
-      {
-        'category': '📄 Essential Documents & Emergency Cash',
-        'items': [
-          {
-            'item': 'Original CNIC / Passport (2 Copies)',
-            'reason': 'Mandatory for security checkpoints along KKH and border zones',
-            'checked': false
-          },
-          {
-            'item': 'Physical Cash in Wallet (Min PKR 15,000)',
-            'reason': 'Remote ATMs in valleys frequently lose internet connection',
-            'checked': false
-          },
-          {
-            'item': 'Vehicle Registration & Original Driving License',
-            'reason': 'Required for highway police and car rental checks',
-            'checked': false
-          },
-          {
-            'item': 'Offline Downloaded Google / SafarSathi Maps',
-            'reason': 'Cellular internet is unavailable on several mountain stretches',
-            'checked': false
-          },
-        ]
-      },
-      {
-        'category': '🧴 Personal Care & Toiletries',
-        'items': [
-          {
-            'item': 'Broad-Spectrum Sunscreen (SPF 50+)',
-            'reason': 'High altitude sun causes rapid skin sunburn without sunscreen',
-            'checked': false
-          },
-          {
-            'item': 'Moisturizing Cold Cream & Lip Balm',
-            'reason': 'Combats extreme dry mountain winds that crack lips and skin',
-            'checked': false
-          },
-          {
-            'item': 'Antiseptic Wet Wipes & Sanitizer',
-            'reason': 'Convenient cleanliness on road trips and remote food dhabas',
-            'checked': false
-          },
-        ]
-      },
-    ];
+            {
+              'item': 'Motion Sickness Tablets (Gravinate)',
+              'reason': 'Vital for winding Karakoram Highway & mountain hairpins',
+              'checked': false,
+            },
+            {
+              'item': 'ORS Electrolyte Sachets',
+              'reason': 'Maintains hydration in dry, high-altitude mountain air',
+              'checked': false,
+            },
+            {
+              'item': 'Paracetamol / Pain Relief & Bandages',
+              'reason': 'Handles altitude headaches, soreness, and trail scrapes',
+              'checked': false,
+            },
+          ],
+        },
+        {
+          'category': '📄 Mountain Checkpoint Docs & Cash',
+          'items': [
+            {
+              'item': 'Original CNIC / Passport (2 Photocopies)',
+              'reason': 'Mandatory for security checkposts along KKH & northern borders',
+              'checked': false,
+            },
+            {
+              'item': 'Physical Cash (Min PKR 15,000+)',
+              'reason': 'Remote valley ATMs frequently go offline or run out of cash',
+              'checked': false,
+            },
+            {
+              'item': 'Offline Downloaded Google Maps',
+              'reason': 'Mobile data drops completely in many northern canyons',
+              'checked': false,
+            },
+          ],
+        },
+        {
+          'category': '🧴 Alpine Skincare',
+          'items': [
+            {
+              'item': 'Sunscreen (SPF 50+) & Lip Balm',
+              'reason': 'Prevents windburn and sunburn in thin mountain atmosphere',
+              'checked': false,
+            },
+            {
+              'item': 'Heavy Cold Cream / Moisturizer',
+              'reason': 'Protects skin from severe drying mountain winds',
+              'checked': false,
+            },
+            {
+              'item': 'Antiseptic Wet Wipes & Hand Sanitizer',
+              'reason': 'Quick hygiene on long jeep safaris and stops',
+              'checked': false,
+            },
+          ],
+        },
+      ];
+    } else if (climate == 'cold') {
+      curated = [
+        {
+          'category': '🧥 Warm Layered Clothing',
+          'items': [
+            {
+              'item': 'Warm Fleece Jacket or Wool Sweater',
+              'reason': 'Comfortable warmth for crisp valley evenings and mornings',
+              'checked': false,
+            },
+            {
+              'item': 'Long-Sleeve Cotton T-Shirts (Layering)',
+              'reason': 'Easy to adjust as daytime sun turns into cool breeze',
+              'checked': false,
+            },
+            {
+              'item': 'Rain & Windproof Hooded Jacket',
+              'reason': 'Protects against sudden hill drizzle and mountain mist',
+              'checked': false,
+            },
+            {
+              'item': 'Comfortable Jeans or Cargo Trousers',
+              'reason': 'Durable and warm for outdoor walks and sightseeing',
+              'checked': false,
+            },
+            {
+              'item': 'Warm Cotton / Wool Socks (3+ pairs)',
+              'reason': 'Keeps feet cozy during walks and chilly hotel nights',
+              'checked': false,
+            },
+          ],
+        },
+        {
+          'category': '🥾 Valley Footwear & Gear',
+          'items': [
+            {
+              'item': 'Anti-Slip Walking / Trail Sneakers',
+              'reason': 'Safe grip on damp hill paths, mall roads, and forest trails',
+              'checked': false,
+            },
+            {
+              'item': 'Compact Folding Umbrella / Rain Poncho',
+              'reason': 'Essential for unpredictable showers in hill stations & valleys',
+              'checked': false,
+            },
+            {
+              'item': '10,000mAh+ Power Bank & Charging Cable',
+              'reason': 'Keeps phone charged through scenic drives and photography',
+              'checked': false,
+            },
+            {
+              'item': 'Lightweight Daypack Backpack',
+              'reason': 'Conveniently carries water, snacks, and extra layers on day trips',
+              'checked': false,
+            },
+          ],
+        },
+        {
+          'category': '💊 Hill Road Health & First Aid',
+          'items': [
+            {
+              'item': 'Motion Sickness Tablets (Gravinate)',
+              'reason': 'Helps on winding hill climbs and sharp valley turns',
+              'checked': false,
+            },
+            {
+              'item': 'Paracetamol & Adhesive Bandages',
+              'reason': 'Quick relief for travel fatigue or minor shoe blisters',
+              'checked': false,
+            },
+            {
+              'item': 'Reusable Water Bottle',
+              'reason': 'Stay hydrated during outdoor hikes and chairlift visits',
+              'checked': false,
+            },
+          ],
+        },
+        {
+          'category': '📄 Travel Docs & Essentials',
+          'items': [
+            {
+              'item': 'Original CNIC & Driving License',
+              'reason': 'Required for hotel check-ins and highway checkpoints',
+              'checked': false,
+            },
+            {
+              'item': 'Cash for Tolls, Jeeps & Chairlifts',
+              'reason': 'Local transport operators and stalls rarely accept cards',
+              'checked': false,
+            },
+            {
+              'item': 'Offline Maps & Hotel Confirmations',
+              'reason': 'Smooth navigation even where 4G signals fluctuate',
+              'checked': false,
+            },
+          ],
+        },
+        {
+          'category': '🧴 Personal Care',
+          'items': [
+            {
+              'item': 'Lip Balm & Skin Moisturizer',
+              'reason': 'Keeps skin comfortable in cool mountain air',
+              'checked': false,
+            },
+            {
+              'item': 'Sunscreen (SPF 30+) & Sunglasses',
+              'reason': 'Protects skin & eyes on sunny hilltop viewpoints',
+              'checked': false,
+            },
+            {
+              'item': 'Pocket Tissues & Hand Sanitizer',
+              'reason': 'Handy for roadside chai stops and scenic picnics',
+              'checked': false,
+            },
+          ],
+        },
+      ];
+    } else if (climate == 'coastal') {
+      curated = [
+        {
+          'category': '👕 Light & Breezy Coastal Wear',
+          'items': [
+            {
+              'item': 'Breathable Cotton T-Shirts / Linen Kurtas',
+              'reason': 'Lightweight fabric stays cool in warm, humid sea air',
+              'checked': false,
+            },
+            {
+              'item': 'Airy Cotton Trousers / Beach Shorts',
+              'reason': 'Comfortable movement along beaches and waterfront promos',
+              'checked': false,
+            },
+            {
+              'item': 'Wide-Brim Sun Hat or Baseball Cap',
+              'reason': 'Blocks direct midday sun glare on coastal drives',
+              'checked': false,
+            },
+            {
+              'item': 'Extra Swimwear / Change of Clothes',
+              'reason': 'Essential if visiting beaches like Clifton, Hawksbay, or Kund Malir',
+              'checked': false,
+            },
+          ],
+        },
+        {
+          'category': '🩴 Beach Footwear & Sun Gear',
+          'items': [
+            {
+              'item': 'Waterproof Beach Sandals / Slides',
+              'reason': 'Easy to rinse sand off after shoreline walks',
+              'checked': false,
+            },
+            {
+              'item': 'Comfortable Breathable Sneakers',
+              'reason': 'For city tours, malls, and evening boardwalks',
+              'checked': false,
+            },
+            {
+              'item': 'UV400 Polarized Sunglasses',
+              'reason': 'Cuts harsh sunlight reflection off the sea and sand',
+              'checked': false,
+            },
+            {
+              'item': 'Quick-Dry Microfiber Towel & Phone Pouch',
+              'reason': 'Protects your phone from salt water splashes and sand',
+              'checked': false,
+            },
+            {
+              'item': '10,000mAh Power Bank',
+              'reason': 'Keeps maps and camera ready during full-day coastal trips',
+              'checked': false,
+            },
+          ],
+        },
+        {
+          'category': '💊 Sun Care & Hydration',
+          'items': [
+            {
+              'item': 'Water-Resistant Sunscreen (SPF 50+)',
+              'reason': 'Crucial protection against strong tropical/coastal UV rays',
+              'checked': false,
+            },
+            {
+              'item': 'ORS Electrolytes & Hydration Sachets',
+              'reason': 'Replenishes salts lost quickly in warm humid weather',
+              'checked': false,
+            },
+            {
+              'item': 'Mosquito / Insect Repellent Spray',
+              'reason': 'Useful for outdoor beach dinners and coastal evenings',
+              'checked': false,
+            },
+            {
+              'item': 'Aloe Vera / Soothing After-Sun Gel',
+              'reason': 'Calms skin after sunny afternoon outings',
+              'checked': false,
+            },
+          ],
+        },
+        {
+          'category': '📄 ID & Smart Payments',
+          'items': [
+            {
+              'item': 'Original CNIC & Driving License',
+              'reason': 'Needed for hotels, beach entry passes, and coastal checkposts',
+              'checked': false,
+            },
+            {
+              'item': 'Debit Card + Cash for Boats & Food Stalls',
+              'reason': 'Cards work in city malls while cash is handy at beach huts',
+              'checked': false,
+            },
+          ],
+        },
+        {
+          'category': '🧴 Freshness & Hygiene',
+          'items': [
+            {
+              'item': 'Cooling Wet Wipes & Face Mist',
+              'reason': 'Instant refresh after warm afternoon sightseeing',
+              'checked': false,
+            },
+            {
+              'item': 'Deodorant & Hand Sanitizer',
+              'reason': 'Stay fresh through coastal humidity and street dining',
+              'checked': false,
+            },
+          ],
+        },
+      ];
+    } else {
+      // 'urban_heritage' (Lahore, Islamabad, Multan, Bahawalpur, Peshawar, etc.)
+      curated = [
+        {
+          'category': '👕 City & Heritage Attire',
+          'items': [
+            {
+              'item': 'Lightweight Cotton / Lawn Shirts & Kurtas',
+              'reason': 'Breathable comfort for walking forts, gardens, and bazaars',
+              'checked': false,
+            },
+            {
+              'item': 'Modest Shawl / Dupatta / Scarf',
+              'reason': 'Required head/shoulder cover when entering mosques & Sufi shrines',
+              'checked': false,
+            },
+            {
+              'item': 'Comfortable Trousers / Jeans',
+              'reason': 'Ideal for day-long heritage tours and evening dining',
+              'checked': false,
+            },
+            {
+              'item': 'Light Cardigan or Overshirt',
+              'reason': 'Handy for cool evenings or chilly AC buses & restaurants',
+              'checked': false,
+            },
+            {
+              'item': 'Clean Cotton Socks (Extra Pairs)',
+              'reason': 'Comfortable walking over warm marble courtyards at mosques/shrines',
+              'checked': false,
+            },
+          ],
+        },
+        {
+          'category': '👟 City Walking & Sightseeing Gear',
+          'items': [
+            {
+              'item': 'Easy Slip-On Cushioned Walking Sneakers',
+              'reason': 'Great arch support for forts and quick to remove at mosques',
+              'checked': false,
+            },
+            {
+              'item': 'Crossbody / Anti-Theft Day Bag',
+              'reason': 'Keeps phone and wallet secure in bustling historical bazaars',
+              'checked': false,
+            },
+            {
+              'item': 'Insulated Reusable Water Bottle',
+              'reason': 'Keeps water cool during afternoon palace and fort tours',
+              'checked': false,
+            },
+            {
+              'item': 'Sunglasses & Compact Sun Umbrella',
+              'reason': 'Welcome shade in open fort courtyards and heritage plazas',
+              'checked': false,
+            },
+            {
+              'item': '10,000mAh Power Bank',
+              'reason': 'Essential for photos, ride-hailing apps, and food spot navigation',
+              'checked': false,
+            },
+          ],
+        },
+        {
+          'category': '💊 Foodie & Urban Wellness',
+          'items': [
+            {
+              'item': 'Digestive / Antacid Tablets (e.g. ENO / Risek)',
+              'reason': 'Helpful when enjoying rich street food, karahi, and nihari',
+              'checked': false,
+            },
+            {
+              'item': 'ORS Electrolytes & Paracetamol',
+              'reason': 'Combats afternoon sun fatigue during full-day city tours',
+              'checked': false,
+            },
+            {
+              'item': 'Adhesive Bandages',
+              'reason': 'Handy if walking long heritage stretches',
+              'checked': false,
+            },
+          ],
+        },
+        {
+          'category': '📄 City ID, Cards & Tickets',
+          'items': [
+            {
+              'item': 'Original CNIC',
+              'reason': 'Mandatory for hotel check-ins and museum/fort entry',
+              'checked': false,
+            },
+            {
+              'item': 'Debit Card + Small Currency Notes (PKR 50/100)',
+              'reason': 'Small notes make rickshaw rides, tips, and bazaar snacks easy',
+              'checked': false,
+            },
+            {
+              'item': 'Saved Hotel & Attraction Booking Details',
+              'reason': 'Speeds up entry at popular heritage spots and restaurants',
+              'checked': false,
+            },
+          ],
+        },
+        {
+          'category': '🧴 Daily Personal Care',
+          'items': [
+            {
+              'item': 'Sunscreen (SPF 50+)',
+              'reason': 'Protects skin during sunny outdoor walks and rooftop dinners',
+              'checked': false,
+            },
+            {
+              'item': 'Hand Sanitizer & Antiseptic Wet Wipes',
+              'reason': 'Must-have before and after street food tasting!',
+              'checked': false,
+            },
+            {
+              'item': 'Deodorant & Pocket Tissues',
+              'reason': 'Keeps you feeling fresh all day',
+              'checked': false,
+            },
+          ],
+        },
+      ];
+    }
 
     setState(() {
-      _packingList = defaultList;
+      _packingList = curated;
     });
     _saveChecklistToStorage();
   }
@@ -293,7 +788,7 @@ class _SmartPackingScreenState extends State<SmartPackingScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Switched to verified expert packing checklist for $_destination.'),
+            content: Text('Loaded expert packing checklist for $_destination.'),
             backgroundColor: AppTheme.primaryPurple,
             behavior: SnackBarBehavior.floating,
           ),
@@ -417,8 +912,56 @@ class _SmartPackingScreenState extends State<SmartPackingScreen> {
       _destination = destKey;
       _weather = preset.$1;
       _selectedVibe = preset.$2;
-      _generateLocalCuratedList();
+      _currentTip = preset.$4;
     });
+    _loadSavedChecklist();
+  }
+
+  void _showAllCitiesPicker() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.65,
+        maxChildSize: 0.9,
+        builder: (_, controller) => Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(4))),
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text('Select Pakistani City / Destination', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
+            ),
+            Expanded(
+              child: ListView.builder(
+                controller: controller,
+                itemCount: _destinationPresets.length,
+                itemBuilder: (_, idx) {
+                  final key = _destinationPresets.keys.elementAt(idx);
+                  final info = _destinationPresets[key]!;
+                  final isSelected = _destination == key;
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: isSelected ? AppTheme.primaryPurple : const Color(0xFFF1F5F9),
+                      child: Icon(Icons.location_on_rounded, color: isSelected ? Colors.white : AppTheme.primaryPurple, size: 18),
+                    ),
+                    title: Text(key, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13.5)),
+                    subtitle: Text(info.$1, style: GoogleFonts.poppins(fontSize: 11.5, color: Colors.grey[600])),
+                    trailing: isSelected ? const Icon(Icons.check_circle_rounded, color: AppTheme.primaryPurple) : null,
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _applyPreset(key);
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -438,7 +981,16 @@ class _SmartPackingScreenState extends State<SmartPackingScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FE),
       appBar: AppBar(
-        title: Text('Smart Packing AI', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 17)),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.luggage_rounded, size: 21),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text('Smart Packing AI', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 17)),
+            ),
+          ],
+        ),
         backgroundColor: AppTheme.primaryPurple,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -450,7 +1002,7 @@ class _SmartPackingScreenState extends State<SmartPackingScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.restart_alt_rounded, size: 22),
-            tooltip: 'Reset Checklist',
+            tooltip: 'Reset Checked Items',
             onPressed: () {
               if (_packingList != null) {
                 setState(() {
@@ -468,13 +1020,8 @@ class _SmartPackingScreenState extends State<SmartPackingScreen> {
       ),
       body: Column(
         children: [
-          // Destination & Preset Header
           _buildPreferencesHeader(),
-
-          // Progress Bar & Stats
           _buildProgressBanner(checked, total, progress),
-
-          // Checklist Cards
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -489,7 +1036,7 @@ class _SmartPackingScreenState extends State<SmartPackingScreen> {
 
   Widget _buildPreferencesHeader() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
@@ -503,8 +1050,35 @@ class _SmartPackingScreenState extends State<SmartPackingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Destination Quick Preset Pills
-          Text('DESTINATION PRESETS:', style: GoogleFonts.poppins(fontSize: 10.5, fontWeight: FontWeight.bold, color: const Color(0xFF64748B), letterSpacing: 0.6)),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  'CITIES & DESTINATIONS (${_destinationPresets.length}):',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF64748B),
+                    letterSpacing: 0.6,
+                  ),
+                ),
+              ),
+              InkWell(
+                onTap: _showAllCitiesPicker,
+                child: Text(
+                  'View All Cities →',
+                  style: GoogleFonts.poppins(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryPurple,
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 6),
           SizedBox(
             height: 32,
@@ -536,9 +1110,8 @@ class _SmartPackingScreenState extends State<SmartPackingScreen> {
             ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
 
-          // Current Trip Info Row
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -546,43 +1119,79 @@ class _SmartPackingScreenState extends State<SmartPackingScreen> {
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: const Color(0xFFE2E8F0)),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.location_on_rounded, size: 14, color: AppTheme.primaryPurple),
-                          const SizedBox(width: 4),
-                          Expanded(
-                            child: Text(
-                              _destination,
+                Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        onTap: _showAllCitiesPicker,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.location_on_rounded, size: 14, color: AppTheme.primaryPurple),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    _destination,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13.5),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '$_duration • $_weather',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13.5),
+                              style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF64748B)),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 2),
-                      Text('$_duration • $_weather',
-                          style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF64748B))),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton.icon(
+                      onPressed: _isLoading ? null : _generateListWithAi,
+                      icon: const Icon(Icons.auto_awesome, size: 14),
+                      label: const Text('AI Regenerate', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryPurple,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      ),
+                    ),
+                  ],
                 ),
-                ElevatedButton.icon(
-                  onPressed: _isLoading ? null : _generateListWithAi,
-                  icon: const Icon(Icons.auto_awesome, size: 14),
-                  label: const Text('AI Regenerate', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryPurple,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                if (_currentTip.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryPurple.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.tips_and_updates_rounded, size: 14, color: AppTheme.primaryPurple),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            _currentTip,
+                            style: GoogleFonts.poppins(fontSize: 10.5, color: const Color(0xFF334155)),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -610,17 +1219,27 @@ class _SmartPackingScreenState extends State<SmartPackingScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(
-                    progress == 1.0 ? Icons.check_circle_rounded : Icons.backpack_rounded,
-                    size: 18,
-                    color: progress == 1.0 ? const Color(0xFF10B981) : AppTheme.primaryPurple,
-                  ),
-                  const SizedBox(width: 6),
-                  Text('Luggage Progress', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13)),
-                ],
+              Expanded(
+                child: Row(
+                  children: [
+                    Icon(
+                      progress == 1.0 ? Icons.check_circle_rounded : Icons.luggage_rounded,
+                      size: 18,
+                      color: progress == 1.0 ? const Color(0xFF10B981) : AppTheme.primaryPurple,
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        'Luggage Progress',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
                 decoration: BoxDecoration(
@@ -670,12 +1289,12 @@ class _SmartPackingScreenState extends State<SmartPackingScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.backpack_outlined, size: 64, color: Colors.grey),
+            const Icon(Icons.luggage_rounded, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
             Text('Ready to Pack?', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             Text(
-              'Select a destination preset above or tap AI Regenerate to build your customized packing list.',
+              'Select a city above or tap AI Regenerate to build your customized packing list.',
               textAlign: TextAlign.center,
               style: GoogleFonts.poppins(color: Colors.grey, fontSize: 13),
             ),
