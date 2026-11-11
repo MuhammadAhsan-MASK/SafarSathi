@@ -20,6 +20,7 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
   DateTime? _endDate;
   int _travelers = 1;
   bool _isLoading = false;
+  bool _showDateError = false;
 
   @override
   void dispose() {
@@ -284,9 +285,30 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
                           return;
                         }
                         
-                        final nowDate = DateTime.now();
-                        final startDate = _startDate ?? DateTime(nowDate.year, nowDate.month, nowDate.day);
-                        final endDate = _endDate ?? startDate.add(const Duration(days: 3));
+                        if (_startDate == null || _endDate == null) {
+                          setState(() => _showDateError = true);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                _startDate == null && _endDate == null
+                                    ? 'Please select both Start Date and End Date to proceed.'
+                                    : (_startDate == null
+                                        ? 'Please select a Start Date to proceed.'
+                                        : 'Please select an End Date to proceed.'),
+                              ),
+                              backgroundColor: Colors.redAccent,
+                              behavior: SnackBarBehavior.floating,
+                            ),
+                          );
+                          return;
+                        }
+
+                        if (_showDateError) {
+                          setState(() => _showDateError = false);
+                        }
+
+                        final startDate = _startDate!;
+                        final endDate = _endDate!;
 
                         if (endDate.isBefore(startDate)) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -644,7 +666,12 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(15),
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+              border: Border.all(
+                color: (_showDateError && selectedDate == null)
+                    ? Colors.redAccent
+                    : Colors.grey.withValues(alpha: 0.2),
+                width: (_showDateError && selectedDate == null) ? 1.5 : 1.0,
+              ),
             ),
             child: Row(
               children: [
