@@ -32,34 +32,37 @@ class _MainScreenState extends State<MainScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<String?>(
-      stream: _roleService.getUserRoleStream(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
+    return ValueListenableBuilder<String?>(
+      valueListenable: UserRoleService.localRoleNotifier,
+      builder: (context, localRole, _) {
+        return StreamBuilder<String?>(
+          stream: _roleService.getUserRoleStream(),
+          builder: (context, snapshot) {
+            if (localRole == null && snapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            }
 
-        final role = snapshot.data;
+            final role = localRole ?? snapshot.data;
 
-        if (role == null) {
-          return const RoleSelectionScreen();
-        }
+            if (role == null) {
+              return const RoleSelectionScreen();
+            }
 
-        if (role == 'Hotel Owner' ||
-            role == 'Restaurant Owner' ||
-            role == 'Transport Provider' ||
-            role == 'Service Provider') {
-          return const ProviderDashboard();
-        }
+            if (role == 'Hotel Owner' ||
+                role == 'Restaurant Owner' ||
+                role == 'Transport Provider' ||
+                role == 'Service Provider') {
+              return const ProviderDashboard();
+            }
 
-        return Scaffold(
-          body: IndexedStack(
-            index: _selectedIndex,
-            children: _travelerScreens,
-          ),
-          floatingActionButton: Container(
+            return Scaffold(
+              body: IndexedStack(
+                index: _selectedIndex,
+                children: _travelerScreens,
+              ),
+              floatingActionButton: Container(
             margin: const EdgeInsets.only(bottom: 6),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
@@ -160,6 +163,8 @@ class _MainScreenState extends State<MainScreen> {
               ),
             ),
           ),
+        );
+          },
         );
       },
     );

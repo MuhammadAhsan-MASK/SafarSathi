@@ -6,11 +6,17 @@ class UserRoleService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
+  /// Immediate in-memory role state so UI transitions work instantaneously
+  /// even when Firestore network writes are queued or offline.
+  static final ValueNotifier<String?> localRoleNotifier = ValueNotifier<String?>(null);
+
   Future<String?> getUserRole() async {
+    if (localRoleNotifier.value != null) {
+      return localRoleNotifier.value;
+    }
     final user = _auth.currentUser;
     if (user == null) return null;
 
-    // Retry logic to handle race condition during signup
     int retries = 0;
     while (retries < 5) {
       try {
@@ -21,7 +27,6 @@ class UserRoleService {
       } catch (e) {
         debugPrint('Error fetching role: $e');
       }
-      // Wait 1 second before retrying
       await Future.delayed(const Duration(seconds: 1));
       retries++;
     }
@@ -30,7 +35,7 @@ class UserRoleService {
 
   Stream<String?> getUserRoleStream() {
     final user = _auth.currentUser;
-    if (user == null) return Stream.value(null);
+    if (user == null) return Stream.value(localRoleNotifier.value);
 
     return _firestore.collection('users').doc(user.uid).snapshots().map((doc) {
       if (doc.exists) {
@@ -41,16 +46,19 @@ class UserRoleService {
   }
 
   Future<void> updateUserRole(String newRole, {Map<String, dynamic>? additionalData}) async {
+    // Immediately update local reactive role for instant UI transition
+    localRoleNotifier.value = newRole;
+
     User? user = _auth.currentUser;
     if (user == null) {
       try {
-        final cred = await _auth.signInAnonymously();
+        final cred = await _auth.signInAnonymously().timeout(const Duration(seconds: 3));
         user = cred.user;
       } catch (e) {
         debugPrint('Anonymous signin fallback error: $e');
       }
     }
-    if (user == null) throw Exception('No user logged in');
+    if (user == null) return;
 
     final Map<String, dynamic> data = {
       'role': newRole,
@@ -63,9 +71,15 @@ class UserRoleService {
       data.addAll(additionalData);
     }
 
-    await _firestore.collection('users').doc(user.uid).set(
-      data,
-      SetOptions(merge: true),
-    );
+    try {
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .set(data, SetOptions(merge: true))
+          .timeout(const Duration(seconds: 3));
+    } catch (e) {
+      // Queued in Firestore offline cache / ignored so UI isn't blocked offline
+      debugPrint('Role sync deferred or timed out: $e');
+    }
   }
 }

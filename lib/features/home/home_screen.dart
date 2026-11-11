@@ -16,7 +16,6 @@ import '../budget/smart_packing_screen.dart';
 import '../budget/split_bill_screen.dart';
 import '../budget/models/saved_trip_model.dart';
 import '../budget/services/saved_trips_service.dart';
-import '../provider/partner_registration_screen.dart';
 
 import 'package:provider/provider.dart';
 import '../../core/currency_provider.dart';
@@ -1376,10 +1375,19 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (context) => const PartnerRegistrationScreen()),
-                    ),
+                    onPressed: () async {
+                      final messenger = ScaffoldMessenger.of(context);
+                      if (mounted) setState(() => _isSwitching = true);
+                      try {
+                        await UserRoleService().updateUserRole('Service Provider');
+                      } catch (e) {
+                        messenger.showSnackBar(
+                          SnackBar(content: Text('Failed to open Provider Dashboard: $e')),
+                        );
+                      } finally {
+                        if (mounted) setState(() => _isSwitching = false);
+                      }
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: const Color(0xFF1E293B),
