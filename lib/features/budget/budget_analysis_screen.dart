@@ -197,6 +197,8 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                         endDate: widget.endDate,
                         budget: widget.budget,
                         travelers: widget.travelers,
+                        transportCost: widget.budget * 0.20,
+                        stayCost: widget.budget * 0.40,
                       ),
                     ),
                   ),

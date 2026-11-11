@@ -20,6 +20,7 @@ class PDFService {
     String? origin,
     List<Map<String, dynamic>> activities = const [],
     List<Map<String, dynamic>>? daySections,
+    Map<String, String>? budgetSummary,
   }) async {
     final pdf = pw.Document();
 
@@ -72,8 +73,78 @@ class PDFService {
                 ],
               ),
             ),
-            pw.SizedBox(height: 18),
+            pw.SizedBox(height: 14),
           ];
+
+          if (budgetSummary != null && budgetSummary.isNotEmpty) {
+            final gross = _pdfSafe(budgetSummary['grossBudget'] ?? '');
+            final transport = _pdfSafe(budgetSummary['transportCost'] ?? '');
+            final stay = _pdfSafe(budgetSummary['stayCost'] ?? '');
+            final net = _pdfSafe(budgetSummary['netDailyBudget'] ?? '');
+
+            widgets.add(
+              pw.Container(
+                margin: const pw.EdgeInsets.only(bottom: 14),
+                padding: const pw.EdgeInsets.all(12),
+                decoration: pw.BoxDecoration(
+                  color: PdfColors.grey100,
+                  border: pw.Border.all(color: PdfColors.grey300),
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Text(
+                      'Trip Budget Breakdown (After Transport & Stay)',
+                      style: pw.TextStyle(
+                        fontSize: 12,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.deepPurple900,
+                      ),
+                    ),
+                    pw.SizedBox(height: 6),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Total Trip Budget:', style: const pw.TextStyle(fontSize: 10.5)),
+                        pw.Text(gross, style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold)),
+                      ],
+                    ),
+                    pw.SizedBox(height: 3),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Less Transport Cost:', style: const pw.TextStyle(fontSize: 10.5, color: PdfColors.red800)),
+                        pw.Text('- $transport', style: const pw.TextStyle(fontSize: 10.5, color: PdfColors.red800)),
+                      ],
+                    ),
+                    pw.SizedBox(height: 3),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text('Less Hotel / Stay Cost:', style: const pw.TextStyle(fontSize: 10.5, color: PdfColors.red800)),
+                        pw.Text('- $stay', style: const pw.TextStyle(fontSize: 10.5, color: PdfColors.red800)),
+                      ],
+                    ),
+                    pw.Divider(color: PdfColors.grey400),
+                    pw.Row(
+                      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                      children: [
+                        pw.Text(
+                          'Net Remaining for Daily Itinerary (Food & Activities):',
+                          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold, color: PdfColors.green900),
+                        ),
+                        pw.Text(
+                          net,
+                          style: pw.TextStyle(fontSize: 11.5, fontWeight: pw.FontWeight.bold, color: PdfColors.green900),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
 
           for (final section in effectiveSections) {
             final dayTitle = _pdfSafe((section['dayTitle'] ?? 'Day').toString());
@@ -108,7 +179,7 @@ class PDFService {
                     ),
                     if (dayBudget.isNotEmpty)
                       pw.Text(
-                        'Allocated Budget: $dayBudget',
+                        'Net Day Budget: $dayBudget',
                         style: pw.TextStyle(
                           fontSize: 11,
                           fontWeight: pw.FontWeight.bold,

@@ -17,6 +17,8 @@ class ItineraryScreen extends StatefulWidget {
   final DateTime endDate;
   final double budget;
   final int travelers;
+  final double? transportCost;
+  final double? stayCost;
 
   const ItineraryScreen({
     super.key,
@@ -26,6 +28,8 @@ class ItineraryScreen extends StatefulWidget {
     required this.endDate,
     this.budget = 50000,
     this.travelers = 1,
+    this.transportCost,
+    this.stayCost,
   });
 
   @override
@@ -35,18 +39,27 @@ class ItineraryScreen extends StatefulWidget {
 class _ItineraryScreenState extends State<ItineraryScreen> {
   int _selectedDay = 0;
   bool _isSaved = false;
-  late double _totalTripBudget;
+  late double _grossTripBudget;
+  late double _transportDeduction;
+  late double _stayDeduction;
+  late double _totalTripBudget; // Net spendable budget after Transport & Stay
   late int _dayCount;
   late Map<int, double> _dayBudgets;
 
   @override
   void initState() {
     super.initState();
-    _totalTripBudget = widget.budget > 0 ? widget.budget : 50000;
+    _grossTripBudget = widget.budget > 0 ? widget.budget : 50000;
+    _transportDeduction = widget.transportCost ?? (_grossTripBudget * 0.20);
+    _stayDeduction = widget.stayCost ?? (_grossTripBudget * 0.40);
+
+    final netDaily = _grossTripBudget - _transportDeduction - _stayDeduction;
+    _totalTripBudget = netDaily > 0 ? netDaily : 0;
+
     final diff = widget.endDate.difference(widget.startDate).inDays.abs() + 1;
     _dayCount = diff > 0 ? diff : 1;
 
-    // Initialize each day with an equal share of the total budget
+    // Initialize each day with an equal share of the net daily wallet (after transport & stay)
     _dayBudgets = {};
     final defaultPerDay = _totalTripBudget / _dayCount;
     for (int i = 0; i < _dayCount; i++) {
@@ -729,7 +742,7 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                             overflow: TextOverflow.ellipsis,
                           ),
                           Text(
-                            'Trip Total: ${currency.formatPrice(_totalTripBudget)}',
+                            'Net Daily Wallet: ${currency.formatPrice(_totalTripBudget)}',
                             style: const TextStyle(fontSize: 11, color: Colors.grey),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -753,6 +766,71 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                 onPressed: () => _showSetDayBudgetDialog(_selectedDay),
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+
+          // Net Budget Deduction Strip (Total - Transport - Stay)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8F9FE),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Total Budget', style: TextStyle(fontSize: 9.5, color: Colors.grey), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          currency.formatPrice(_grossTripBudget),
+                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Colors.black87),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('- Transport', style: TextStyle(fontSize: 9.5, color: Colors.redAccent), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '-${currency.formatPrice(_transportDeduction)}',
+                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Colors.redAccent),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('- Stay/Hotel', style: TextStyle(fontSize: 9.5, color: Colors.redAccent), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '-${currency.formatPrice(_stayDeduction)}',
+                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: Colors.redAccent),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 12),
 
@@ -1320,6 +1398,12 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                                     destination: widget.destination,
                                     origin: widget.origin,
                                     daySections: sections,
+                                    budgetSummary: {
+                                      'grossBudget': currency.formatPrice(_grossTripBudget),
+                                      'transportCost': currency.formatPrice(_transportDeduction),
+                                      'stayCost': currency.formatPrice(_stayDeduction),
+                                      'netDailyBudget': currency.formatPrice(_totalTripBudget),
+                                    },
                                   );
                                 } catch (e) {
                                   messenger.showSnackBar(
