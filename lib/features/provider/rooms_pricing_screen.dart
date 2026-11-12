@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../../core/currency_provider.dart';
 import '../../core/theme.dart';
 import '../hotels/services/hotel_service.dart';
 import '../hotels/models/hotel_model.dart';
@@ -11,6 +13,7 @@ class RoomsPricingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hotelService = HotelService();
+    final currency = Provider.of<CurrencyProvider>(context);
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -32,6 +35,8 @@ class RoomsPricingScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           final hotels = snapshot.data ?? [];
+          final verifiedCount = hotels.where((h) => h.isVerified).length;
+          final pendingCount = hotels.length - verifiedCount;
           
           return SingleChildScrollView(
             child: Padding(
@@ -39,7 +44,7 @@ class RoomsPricingScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildInventoryOverview(hotels.length),
+                  _buildInventoryOverview(hotels.length, verifiedCount, pendingCount),
                   const SizedBox(height: 30),
                   Text('Your Properties', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
@@ -50,14 +55,14 @@ class RoomsPricingScreen extends StatelessWidget {
                     ))
                   else
                     ...hotels.map((hotel) => _buildRoomTypeCard(
-                      hotel.name, 
-                      hotel.location, 
-                      'PKR ${hotel.price.toInt()}', 
-                      10, // Mock inventory
-                      AppTheme.primaryPurple
+                      context,
+                      hotelService,
+                      hotel,
+                      currency.formatPrice(hotel.price),
+                      AppTheme.primaryPurple,
                     )),
                   const SizedBox(height: 30),
-                  _buildAddButton(),
+                  _buildBackToDashboardButton(context),
                 ],
               ),
             ),
@@ -67,7 +72,7 @@ class RoomsPricingScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInventoryOverview(int count) {
+  Widget _buildInventoryOverview(int total, int verified, int pending) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -78,11 +83,11 @@ class RoomsPricingScreen extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStat(count.toString(), 'Total Properties'),
+          _buildStat(total.toString(), 'Total Properties'),
           Container(width: 1, height: 40, color: Colors.grey[200]),
-          _buildStat('0', 'Occupied'),
+          _buildStat(verified.toString(), 'Verified Live'),
           Container(width: 1, height: 40, color: Colors.grey[200]),
-          _buildStat('Actual', 'Live'),
+          _buildStat(pending.toString(), 'Pending'),
         ],
       ),
     );
@@ -97,7 +102,51 @@ class RoomsPricingScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRoomTypeCard(String title, String subtitle, String price, int available, Color color) {
+  void _showEditPriceDialog(BuildContext context, HotelService hotelService, Hotel hotel) {
+    final priceCtrl = TextEditingController(text: hotel.price.toStringAsFixed(0));
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text('Update Base Rate (${hotel.name})', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 15)),
+        content: TextField(
+          controller: priceCtrl,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'Nightly Rate (PKR)',
+            prefixText: 'Rs. ',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final newPrice = double.tryParse(priceCtrl.text.trim());
+              if (newPrice == null || newPrice <= 0) {
+                ScaffoldMessenger.of(ctx).showSnackBar(
+                  const SnackBar(content: Text('Please enter a valid positive rate in PKR.')),
+                );
+                return;
+              }
+              await hotelService.updateHotelPrice(hotel.id, newPrice);
+              if (ctx.mounted) Navigator.pop(ctx);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryPurple, foregroundColor: Colors.white),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoomTypeCard(
+    BuildContext context,
+    HotelService hotelService,
+    Hotel hotel,
+    String formattedPrice,
+    Color color,
+  ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
@@ -118,16 +167,30 @@ class RoomsPricingScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
-                Text(subtitle, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                Text(hotel.name, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
+                Text(hotel.location, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                const SizedBox(height: 4),
+                Text(
+                  hotel.isVerified ? 'Verified Live' : 'Pending Approval',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: hotel.isVerified ? Colors.green : Colors.orange,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ],
             ),
           ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(price, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: AppTheme.primaryPurple)),
-              Text('Live', style: TextStyle(fontSize: 11, color: Colors.green, fontWeight: FontWeight.bold)),
+              Text(formattedPrice, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: AppTheme.primaryPurple)),
+              TextButton.icon(
+                onPressed: () => _showEditPriceDialog(context, hotelService, hotel),
+                icon: const Icon(Icons.edit_outlined, size: 14),
+                label: const Text('Edit Price', style: TextStyle(fontSize: 11)),
+                style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(0, 28)),
+              ),
             ],
           ),
         ],
@@ -135,7 +198,7 @@ class RoomsPricingScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAddButton() {
+  Widget _buildBackToDashboardButton(BuildContext context) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -143,9 +206,9 @@ class RoomsPricingScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: ElevatedButton.icon(
-        onPressed: () {},
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Add New Property', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        onPressed: () => Navigator.pop(context),
+        icon: const Icon(Icons.dashboard_outlined, color: Colors.white),
+        label: const Text('Manage & Add from Dashboard', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,

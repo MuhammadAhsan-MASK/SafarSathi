@@ -9,14 +9,30 @@ import '../../../core/seed_data.dart';
 class BudgetMatcherService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
+  static const Set<String> _ignoredCityTokens = {
+    'valley',
+    'city',
+    'town',
+    'north',
+    'south',
+    'park',
+    'hill',
+    'hills',
+    'lake',
+    'pass',
+    'fort',
+  };
+
   static bool _matchesCity(String location, String destination) {
-    final loc = location.toLowerCase();
+    final loc = location.trim().toLowerCase();
     final dest = destination.trim().toLowerCase();
     if (dest.isEmpty) return true;
+    if (loc.isEmpty) return false;
 
-    if (loc.contains(dest) || dest.contains(loc)) return true;
+    if (loc.contains(dest) || (loc.length >= 3 && dest.contains(loc))) return true;
     for (var part in dest.split(RegExp(r'[, -]'))) {
-      if (part.trim().length >= 3 && loc.contains(part.trim())) {
+      final token = part.trim();
+      if (token.length >= 3 && !_ignoredCityTokens.contains(token) && loc.contains(token)) {
         return true;
       }
     }
@@ -127,9 +143,7 @@ class BudgetMatcherService {
     }
 
     if (destinationRests.isEmpty) {
-      final fallback = [...allRestaurants];
-      fallback.sort((a, b) => getLowestMealPrice(a).compareTo(getLowestMealPrice(b)));
-      return fallback.take(5).toList();
+      return [];
     }
 
     final budgetMatches = destinationRests.where((r) => getLowestMealPrice(r) <= maxPricePerMeal).toList();
@@ -207,9 +221,7 @@ class BudgetMatcherService {
     final destinationAttractions = allAttractions.where((a) => _matchesCity(a.city, destination) || _matchesCity(a.location ?? '', destination)).toList();
 
     if (destinationAttractions.isEmpty) {
-      final fallback = [...allAttractions];
-      fallback.sort((a, b) => a.fee.compareTo(b.fee));
-      return fallback.take(5).toList();
+      return [];
     }
 
     // Filter strictly within calculated activity budget

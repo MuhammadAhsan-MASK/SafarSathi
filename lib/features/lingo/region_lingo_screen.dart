@@ -29,19 +29,31 @@ class _RegionLingoScreenState extends State<RegionLingoScreen> {
     _initTts();
   }
 
-  void _initTts() async {
+  void _clearSpeaking() {
+    if (mounted && _currentlySpeaking != null) {
+      setState(() {
+        _currentlySpeaking = null;
+      });
+    }
+  }
+
+  Future<void> _initTts() async {
     try {
-      await flutterTts.setLanguage("ur-PK");
+      flutterTts.setCompletionHandler(_clearSpeaking);
+      flutterTts.setCancelHandler(_clearSpeaking);
+      flutterTts.setErrorHandler((_) => _clearSpeaking());
+
+      // Phrases & phonetic guides are Latin-scripted; prefer an available English voice first, falling back to ur-PK.
+      for (final locale in ['en-US', 'en-GB', 'ur-PK']) {
+        final available = await flutterTts.isLanguageAvailable(locale);
+        if (available == true) {
+          await flutterTts.setLanguage(locale);
+          break;
+        }
+      }
       await flutterTts.setSpeechRate(0.45);
       await flutterTts.setVolume(1.0);
       await flutterTts.setPitch(1.0);
-      flutterTts.setCompletionHandler(() {
-        if (mounted) {
-          setState(() {
-            _currentlySpeaking = null;
-          });
-        }
-      });
     } catch (e) {
       debugPrint("TTS init error: $e");
     }
@@ -53,19 +65,34 @@ class _RegionLingoScreenState extends State<RegionLingoScreen> {
     super.dispose();
   }
 
-  Future<void> _speak(String text) async {
-    setState(() {
-      _currentlySpeaking = text;
-    });
-    try {
+  Future<void> _speak(String key, {String? phoneticText}) async {
+    if (_currentlySpeaking == key) {
       await flutterTts.stop();
-      await flutterTts.speak(text);
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _currentlySpeaking = null;
-        });
+      _clearSpeaking();
+      return;
+    }
+
+    try {
+      // Stop any prior utterance before setting the new speaking key so cancel handler won't clear it.
+      await flutterTts.stop();
+      if (!mounted) return;
+      setState(() {
+        _currentlySpeaking = key;
+      });
+
+      final rawSpoken = (phoneticText != null && phoneticText.trim().isNotEmpty)
+          ? phoneticText
+          : key;
+      final spoken = rawSpoken.replaceAll('/', ', ');
+      final result = await flutterTts.speak(spoken);
+      if (result != 1 && mounted) {
+        _clearSpeaking();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Audio pronunciation unavailable on this device.')),
+        );
       }
+    } catch (e) {
+      _clearSpeaking();
     }
   }
 
@@ -1186,7 +1213,10 @@ class _RegionLingoScreenState extends State<RegionLingoScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => _speak(phrase['local']!),
+          onTap: () => _speak(
+            phrase['local'] ?? '',
+            phoneticText: phrase['pronunciation'],
+          ),
           borderRadius: BorderRadius.circular(18),
           child: Padding(
             padding: const EdgeInsets.all(16),

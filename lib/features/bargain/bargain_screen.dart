@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../../core/currency_provider.dart';
 import '../../core/theme.dart';
 
 class BargainItem {
@@ -239,16 +241,18 @@ class _BargainScreenState extends State<BargainScreen> {
   }
 
   void _calculateVerdict() {
+    final currency = Provider.of<CurrencyProvider>(context, listen: false);
     final text = _quoteController.text.replaceAll(',', '').trim();
-    final quote = double.tryParse(text);
+    final rawQuote = double.tryParse(text);
 
-    if (quote == null || quote <= 0) {
+    if (rawQuote == null || rawQuote <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid quoted price in PKR.')),
+        SnackBar(content: Text('Please enter a valid quoted price in ${currency.selectedCurrency}.')),
       );
       return;
     }
 
+    final quote = currency.toPkr(rawQuote);
     final item = _calculatorSelectedItem!;
     final min = item.minNumeric;
     final max = item.maxNumeric;
@@ -258,35 +262,41 @@ class _BargainScreenState extends State<BargainScreen> {
     IconData icon;
     String advice;
     String suggestedCounter;
+    String rebuttal;
 
     if (quote <= min) {
       verdict = 'Super Steal / Great Deal!';
       color = Colors.green.shade700;
       icon = Icons.verified;
       advice = 'This is at or below local wholesale rate. Accept the offer right away!';
-      suggestedCounter = 'Pay the quoted PKR ${quote.toStringAsFixed(0)} gladly.';
+      suggestedCounter = 'Pay the quoted ${currency.formatPrice(quote)} gladly.';
+      rebuttal = 'Behtareen rate hai, shukriya! Deal pakki karein.';
     } else if (quote <= max) {
+      final politeOffer = (quote * 0.90).clamp(min, quote);
       verdict = 'Fair Market Price';
       color = Colors.teal.shade700;
       icon = Icons.check_circle_outline;
-      advice = 'This is a fair standard tourist rate. No need for aggressive haggling.';
-      suggestedCounter = 'Accept or round down to nearest 500 (e.g. PKR ${(quote * 0.9).toStringAsFixed(0)}).';
+      advice = 'This is a fair standard rate. You can pay or ask for a gentle 10% rounding discount.';
+      suggestedCounter = 'Accept or politely offer ${currency.formatPrice(politeOffer)}.';
+      rebuttal = item.urduRebuttal ?? 'Bhai munasib rate lagayein.';
     } else if (quote <= max * 1.35) {
       final markup = (((quote - max) / max) * 100).toStringAsFixed(0);
-      final counter = ((min + max) / 2).toStringAsFixed(0);
+      final counter = (min + max) / 2;
       verdict = 'A Bit High (+$markup% Markup)';
       color = Colors.amber.shade900;
       icon = Icons.warning_amber_rounded;
       advice = 'The vendor is testing the waters. Negotiate firmly with confidence.';
-      suggestedCounter = 'Counter-offer: PKR $counter. Walk away if they refuse.';
+      suggestedCounter = 'Counter-offer: ${currency.formatPrice(counter)}. Walk away if they refuse.';
+      rebuttal = item.urduRebuttal ?? 'Bhai munasib rate lagayein.';
     } else {
       final markup = (((quote - max) / max) * 100).toStringAsFixed(0);
-      final counter = max.toStringAsFixed(0);
+      final firmCounter = (min + ((max - min) * 0.4)).clamp(min, max);
       verdict = 'Overpriced Tourist Markup (+$markup% Over!)';
       color = Colors.red.shade700;
       icon = Icons.gpp_bad_rounded;
-      advice = 'You are being heavily overcharged. Politely decline and try another vendor.';
-      suggestedCounter = 'Counter max: PKR $counter. If they say no, smile and walk away.';
+      advice = 'You are being heavily overcharged. Start from fair local mid-rate and be ready to walk away.';
+      suggestedCounter = 'Firm counter: ${currency.formatPrice(firmCounter)} (max fair ${currency.formatPrice(max)}).';
+      rebuttal = item.urduRebuttal ?? 'Bhai yeh bohot zyada hai, local rate lagayein.';
     }
 
     setState(() {
@@ -296,8 +306,8 @@ class _BargainScreenState extends State<BargainScreen> {
         'icon': icon,
         'advice': advice,
         'suggestedCounter': suggestedCounter,
-        'rebuttal': item.urduRebuttal ?? 'Bhai munasib rate lagayein.',
-        'fairRange': 'PKR ${item.minPrice} – ${item.maxPrice}',
+        'rebuttal': rebuttal,
+        'fairRange': '${currency.formatPrice(min)} – ${currency.formatPrice(max)}',
       };
     });
   }
@@ -502,33 +512,38 @@ class _BargainScreenState extends State<BargainScreen> {
           const SizedBox(height: 12),
 
           // Quote input field + Analyze button
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _quoteController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Quoted Price (PKR)',
-                    prefixText: 'Rs. ',
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          Builder(
+            builder: (context) {
+              final currency = Provider.of<CurrencyProvider>(context);
+              return Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _quoteController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: 'Quoted Price (${currency.selectedCurrency})',
+                        prefixText: '${currency.symbol} ',
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.analytics_outlined, size: 18),
-                label: const Text('Check'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryPurple,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed: _calculateVerdict,
-              ),
-            ],
+                  const SizedBox(width: 10),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.analytics_outlined, size: 18),
+                    label: const Text('Check'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryPurple,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: _calculateVerdict,
+                  ),
+                ],
+              );
+            },
           ),
 
           // ── VERDICT DISPLAY ─────────────────────────────────────
@@ -640,10 +655,10 @@ class _BargainScreenState extends State<BargainScreen> {
             ),
             const Divider(height: 20),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildPriceChip('Min (Fair Local)', 'PKR ${item.minPrice}', Colors.green.shade700),
-                _buildPriceChip('Max (Acceptable)', 'PKR ${item.maxPrice}', Colors.deepOrange),
+                Expanded(child: _buildPriceChip('Min (Fair Local)', 'PKR ${item.minPrice}', Colors.green.shade700)),
+                const SizedBox(width: 8),
+                Expanded(child: _buildPriceChip('Max (Acceptable)', 'PKR ${item.maxPrice}', Colors.deepOrange)),
               ],
             ),
             const SizedBox(height: 12),

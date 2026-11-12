@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -63,6 +64,50 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
     'Gwadar',
     'Neelum Valley',
   ];
+
+  void _showModalValidationError(BuildContext modalCtx, String message) {
+    showDialog(
+      context: modalCtx,
+      builder: (dCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text('Check Input', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
+        content: Text(message, style: GoogleFonts.poppins(fontSize: 13)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dCtx), child: const Text('OK')),
+        ],
+      ),
+    );
+  }
+
+  /// Submits a provider listing with a short timeout so offline queues do not freeze the modal.
+  Future<void> _submitProviderListing({
+    required BuildContext modalContext,
+    required Future<void> Function() action,
+    required String successMessage,
+  }) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final nav = Navigator.of(modalContext);
+    try {
+      await action().timeout(const Duration(seconds: 4));
+      if (!modalContext.mounted) return;
+      nav.pop();
+      messenger.showSnackBar(SnackBar(
+        content: Text(successMessage),
+        backgroundColor: Colors.orange,
+      ));
+    } on TimeoutException {
+      if (modalContext.mounted) nav.pop();
+      messenger.showSnackBar(const SnackBar(
+        content: Text('Saved locally — will sync to server automatically when online.'),
+        backgroundColor: Colors.orange,
+      ));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(
+        content: Text('Could not submit listing: $e'),
+        backgroundColor: Colors.red,
+      ));
+    }
+  }
 
   Future<String?> _pickImageFromGallery() async {
     try {
@@ -1364,42 +1409,50 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
 
                 ElevatedButton(
                   onPressed: () async {
-                    if (nameCtrl.text.trim().isEmpty) return;
-                    final messenger = ScaffoldMessenger.of(context);
-                    final nav = Navigator.of(ctx);
-                    final uid = FirebaseAuth.instance.currentUser?.uid ?? 'provider_user';
-                    final fullLocation = '${addressCtrl.text.trim()}, $selectedCity';
-                    final baseP = double.tryParse(basePriceCtrl.text) ?? 3500;
+                    if (nameCtrl.text.trim().isEmpty) {
+                      _showModalValidationError(ctx, 'Please enter the hotel name.');
+                      return;
+                    }
+                    final baseP = double.tryParse(basePriceCtrl.text.trim());
+                    if (baseP == null || baseP <= 0) {
+                      _showModalValidationError(ctx, 'Base price must be a positive number in PKR.');
+                      return;
+                    }
+                    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+                    if (uid.isEmpty) {
+                      _showModalValidationError(ctx, 'Please sign in before publishing.');
+                      return;
+                    }
+                    final addr = addressCtrl.text.trim();
+                    final fullLocation = addr.isNotEmpty ? '$addr, $selectedCity' : selectedCity;
                     final typeMap = <String, double>{
-                      'Standard Room': double.tryParse(stdPriceCtrl.text) ?? baseP,
-                      'Deluxe Room': double.tryParse(dlxPriceCtrl.text) ?? (baseP * 1.3),
-                      'Executive Suite': double.tryParse(execPriceCtrl.text) ?? (baseP * 1.8),
+                      'Standard Room': (double.tryParse(stdPriceCtrl.text.trim()) ?? baseP).clamp(1, 9999999),
+                      'Deluxe Room': (double.tryParse(dlxPriceCtrl.text.trim()) ?? (baseP * 1.3)).clamp(1, 9999999),
+                      'Executive Suite': (double.tryParse(execPriceCtrl.text.trim()) ?? (baseP * 1.8)).clamp(1, 9999999),
                     };
 
                     final finalImg = selectedImageUrl.trim().isNotEmpty
                         ? selectedImageUrl.trim()
                         : 'https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800';
 
-                    await _hotelService.addHotel(Hotel(
-                      id: '',
-                      name: nameCtrl.text.trim(),
-                      location: fullLocation,
-                      price: baseP,
-                      rating: 4.8,
-                      vendorId: uid,
-                      imageUrl: finalImg,
-                      phone: phoneCtrl.text.trim(),
-                      websiteUrl: websiteCtrl.text.trim().isNotEmpty ? websiteCtrl.text.trim() : null,
-                      description: descCtrl.text.trim(),
-                      typePrices: typeMap,
-                      isVerified: false,
-                    ));
-
-                    nav.pop();
-                    messenger.showSnackBar(const SnackBar(
-                      content: Text('Hotel submitted! It will appear live once approved by admin.'),
-                      backgroundColor: Colors.orange,
-                    ));
+                    await _submitProviderListing(
+                      modalContext: ctx,
+                      successMessage: 'Hotel submitted! It will appear live once approved by admin.',
+                      action: () => _hotelService.addHotel(Hotel(
+                        id: '',
+                        name: nameCtrl.text.trim(),
+                        location: fullLocation,
+                        price: baseP,
+                        rating: 0.0,
+                        vendorId: uid,
+                        imageUrl: finalImg,
+                        phone: phoneCtrl.text.trim(),
+                        websiteUrl: websiteCtrl.text.trim().isNotEmpty ? websiteCtrl.text.trim() : null,
+                        description: descCtrl.text.trim(),
+                        typePrices: typeMap,
+                        isVerified: false,
+                      )),
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryPurple,
@@ -1582,16 +1635,34 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
 
                 ElevatedButton(
                   onPressed: () async {
-                    if (operatorCtrl.text.trim().isEmpty) return;
-                    final messenger = ScaffoldMessenger.of(context);
-                    final nav = Navigator.of(ctx);
-                    final uid = FirebaseAuth.instance.currentUser?.uid ?? 'provider_user';
+                    if (operatorCtrl.text.trim().isEmpty) {
+                      _showModalValidationError(ctx, 'Please enter the operator or route name.');
+                      return;
+                    }
+                    if (origin.trim().toLowerCase() == destination.trim().toLowerCase()) {
+                      _showModalValidationError(ctx, 'Departure and destination cities must be different.');
+                      return;
+                    }
+                    final fareP = double.tryParse(baseFareCtrl.text.trim());
+                    final seatsCount = int.tryParse(seatsCtrl.text.trim());
+                    if (fareP == null || fareP <= 0) {
+                      _showModalValidationError(ctx, 'Base fare must be a positive number in PKR.');
+                      return;
+                    }
+                    if (seatsCount == null || seatsCount <= 0) {
+                      _showModalValidationError(ctx, 'Available seats must be at least 1.');
+                      return;
+                    }
+                    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+                    if (uid.isEmpty) {
+                      _showModalValidationError(ctx, 'Please sign in before publishing.');
+                      return;
+                    }
                     final routeStr = '$origin -> $destination';
-                    final fareP = double.tryParse(baseFareCtrl.text) ?? 4500;
                     final typeMap = <String, double>{
-                      'Economy': double.tryParse(econFareCtrl.text) ?? fareP,
-                      'Executive': double.tryParse(execFareCtrl.text) ?? (fareP * 1.3),
-                      'Business / VIP': double.tryParse(bizFareCtrl.text) ?? (fareP * 1.7),
+                      'Economy': (double.tryParse(econFareCtrl.text.trim()) ?? fareP).clamp(1, 9999999),
+                      'Executive': (double.tryParse(execFareCtrl.text.trim()) ?? (fareP * 1.3)).clamp(1, 9999999),
+                      'Business / VIP': (double.tryParse(bizFareCtrl.text.trim()) ?? (fareP * 1.7)).clamp(1, 9999999),
                     };
 
                     IconData iconData = Icons.directions_bus;
@@ -1599,28 +1670,26 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                     if (category == 'train') iconData = Icons.train;
                     if (category == 'car') iconData = Icons.airport_shuttle;
 
-                    await _transportService.addTransportOption(TransportOption(
-                      id: '',
-                      type: operatorCtrl.text.trim(),
-                      route: routeStr,
-                      fare: fareP,
-                      time: timeDurationCtrl.text.trim(),
-                      icon: iconData,
-                      category: category,
-                      departureTime: departureTimeCtrl.text.trim(),
-                      availableSeats: int.tryParse(seatsCtrl.text) ?? 20,
-                      operator: operatorCtrl.text.trim(),
-                      vendorId: uid,
-                      websiteUrl: phoneCtrl.text.trim(),
-                      typePrices: typeMap,
-                      isVerified: false,
-                    ));
-
-                    nav.pop();
-                    messenger.showSnackBar(const SnackBar(
-                      content: Text('Route submitted! It will appear live once approved by admin.'),
-                      backgroundColor: Colors.orange,
-                    ));
+                    await _submitProviderListing(
+                      modalContext: ctx,
+                      successMessage: 'Route submitted! It will appear live once approved by admin.',
+                      action: () => _transportService.addTransportOption(TransportOption(
+                        id: '',
+                        type: operatorCtrl.text.trim(),
+                        route: routeStr,
+                        fare: fareP,
+                        time: timeDurationCtrl.text.trim(),
+                        icon: iconData,
+                        category: category,
+                        departureTime: departureTimeCtrl.text.trim(),
+                        availableSeats: seatsCount,
+                        operator: operatorCtrl.text.trim(),
+                        vendorId: uid,
+                        websiteUrl: phoneCtrl.text.trim(),
+                        typePrices: typeMap,
+                        isVerified: false,
+                      )),
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.transportColor,
@@ -1773,40 +1842,53 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
 
                 ElevatedButton(
                   onPressed: () async {
-                    if (nameCtrl.text.trim().isEmpty) return;
-                    final messenger = ScaffoldMessenger.of(context);
-                    final nav = Navigator.of(ctx);
-                    final uid = FirebaseAuth.instance.currentUser?.uid ?? 'provider_user';
-                    final fullLocation = '${addressCtrl.text.trim()}, $selectedCity';
-                    final baseP = double.tryParse(basePriceCtrl.text) ?? 850;
-                    final typeMap = <String, double>{
-                      dish1NameCtrl.text.trim(): double.tryParse(dish1PriceCtrl.text) ?? 1200,
-                      dish2NameCtrl.text.trim(): double.tryParse(dish2PriceCtrl.text) ?? 2800,
-                      dish3NameCtrl.text.trim(): double.tryParse(dish3PriceCtrl.text) ?? 1600,
-                    };
+                    if (nameCtrl.text.trim().isEmpty) {
+                      _showModalValidationError(ctx, 'Please enter the restaurant name.');
+                      return;
+                    }
+                    final baseP = double.tryParse(basePriceCtrl.text.trim());
+                    if (baseP == null || baseP <= 0) {
+                      _showModalValidationError(ctx, 'Average price must be a positive number in PKR.');
+                      return;
+                    }
+                    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+                    if (uid.isEmpty) {
+                      _showModalValidationError(ctx, 'Please sign in before publishing.');
+                      return;
+                    }
+                    final addr = addressCtrl.text.trim();
+                    final fullLocation = addr.isNotEmpty ? '$addr, $selectedCity' : selectedCity;
+                    final typeMap = <String, double>{};
+                    for (final pair in [
+                      (dish1NameCtrl.text.trim(), double.tryParse(dish1PriceCtrl.text.trim()) ?? 1200),
+                      (dish2NameCtrl.text.trim(), double.tryParse(dish2PriceCtrl.text.trim()) ?? 2800),
+                      (dish3NameCtrl.text.trim(), double.tryParse(dish3PriceCtrl.text.trim()) ?? 1600),
+                    ]) {
+                      if (pair.$1.isNotEmpty && pair.$2 > 0) {
+                        typeMap[pair.$1] = pair.$2;
+                      }
+                    }
 
                     final finalImg = selectedImageUrl.trim().isNotEmpty
                         ? selectedImageUrl.trim()
                         : 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=800';
 
-                    await _restaurantService.addRestaurant(Restaurant(
-                      id: '',
-                      name: nameCtrl.text.trim(),
-                      cuisine: selectedCuisine,
-                      price: baseP,
-                      location: fullLocation,
-                      vendorId: uid,
-                      imageUrl: finalImg,
-                      phone: phoneCtrl.text.trim(),
-                      typePrices: typeMap,
-                      isVerified: false,
-                    ));
-
-                    nav.pop();
-                    messenger.showSnackBar(const SnackBar(
-                      content: Text('Restaurant submitted! It will appear live once approved by admin.'),
-                      backgroundColor: Colors.orange,
-                    ));
+                    await _submitProviderListing(
+                      modalContext: ctx,
+                      successMessage: 'Restaurant submitted! It will appear live once approved by admin.',
+                      action: () => _restaurantService.addRestaurant(Restaurant(
+                        id: '',
+                        name: nameCtrl.text.trim(),
+                        cuisine: selectedCuisine,
+                        price: baseP,
+                        location: fullLocation,
+                        vendorId: uid,
+                        imageUrl: finalImg,
+                        phone: phoneCtrl.text.trim(),
+                        typePrices: typeMap,
+                        isVerified: false,
+                      )),
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.foodColor,
@@ -1834,7 +1916,8 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
     final bioCtrl = TextEditingController(text: 'Licensed local mountain guide. Safe high-altitude driver for families and solo travelers.');
 
     String selectedRegion = 'Hunza';
-    String selectedRole = '4x4 Mountain Guide';
+    const String defaultRole = '4x4 Mountain Guide';
+    final roleCtrl = TextEditingController(text: defaultRole);
     bool isFemaleFriendly = true;
     String selectedImageUrl = '';
 
@@ -1885,7 +1968,7 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
                 ),
                 const SizedBox(height: 14),
 
-                _buildInputField('Role / Specialization', TextEditingController(text: selectedRole), '4x4 Mountain Driver', Icons.military_tech_outlined),
+                _buildInputField('Role / Specialization', roleCtrl, '4x4 Mountain Driver', Icons.military_tech_outlined),
                 const SizedBox(height: 14),
 
                 _buildInputField('Vehicle / Car Model', carCtrl, 'e.g. Toyota Prado TX 4x4 (AC & Heated)', Icons.directions_car_outlined),
@@ -1935,40 +2018,47 @@ class _ProviderDashboardState extends State<ProviderDashboard> {
 
                 ElevatedButton(
                   onPressed: () async {
-                    if (nameCtrl.text.trim().isEmpty) return;
-                    final messenger = ScaffoldMessenger.of(context);
-                    final nav = Navigator.of(ctx);
-                    final uid = FirebaseAuth.instance.currentUser?.uid ?? 'provider_user';
-                    final rateP = double.tryParse(dailyRateCtrl.text) ?? 7000;
+                    if (nameCtrl.text.trim().isEmpty) {
+                      _showModalValidationError(ctx, 'Please enter the guide name.');
+                      return;
+                    }
+                    final rateP = double.tryParse(dailyRateCtrl.text.trim());
+                    if (rateP == null || rateP <= 0) {
+                      _showModalValidationError(ctx, 'Daily rate must be a positive number in PKR.');
+                      return;
+                    }
+                    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+                    if (uid.isEmpty) {
+                      _showModalValidationError(ctx, 'Please sign in before publishing.');
+                      return;
+                    }
 
                     final finalImg = selectedImageUrl.trim().isNotEmpty
                         ? selectedImageUrl.trim()
                         : 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400';
 
-                    await _guideService.addGuide(LocalGuide(
-                      id: '',
-                      name: nameCtrl.text.trim(),
-                      role: selectedRole,
-                      region: selectedRegion,
-                      rating: 4.9,
-                      dailyRatePkr: rateP,
-                      tripCount: 45,
-                      imageUrl: finalImg,
-                      isVerified: false,
-                      isFemaleFriendly: isFemaleFriendly,
-                      experience: expCtrl.text.trim(),
-                      car: carCtrl.text.trim(),
-                      contactNumber: phoneCtrl.text.trim(),
-                      whatsappNumber: whatsappCtrl.text.trim(),
-                      bio: bioCtrl.text.trim(),
-                      vendorId: uid,
-                    ));
-
-                    nav.pop();
-                    messenger.showSnackBar(const SnackBar(
-                      content: Text('Guide profile submitted! It will appear live once approved by admin.'),
-                      backgroundColor: Colors.orange,
-                    ));
+                    await _submitProviderListing(
+                      modalContext: ctx,
+                      successMessage: 'Guide profile submitted! It will appear live once approved by admin.',
+                      action: () => _guideService.addGuide(LocalGuide(
+                        id: '',
+                        name: nameCtrl.text.trim(),
+                        role: roleCtrl.text.trim().isNotEmpty ? roleCtrl.text.trim() : defaultRole,
+                        region: selectedRegion,
+                        rating: 0.0,
+                        dailyRatePkr: rateP,
+                        tripCount: 0,
+                        imageUrl: finalImg,
+                        isVerified: false,
+                        isFemaleFriendly: isFemaleFriendly,
+                        experience: expCtrl.text.trim(),
+                        car: carCtrl.text.trim(),
+                        contactNumber: phoneCtrl.text.trim(),
+                        whatsappNumber: whatsappCtrl.text.trim(),
+                        bio: bioCtrl.text.trim(),
+                        vendorId: uid,
+                      )),
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF3F51B5),

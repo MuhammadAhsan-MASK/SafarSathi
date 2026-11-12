@@ -2,9 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/theme.dart';
 import '../../core/currency_provider.dart';
 import '../auth/user_role_service.dart';
+import '../hotels/services/hotel_service.dart';
+import '../hotels/models/hotel_model.dart';
+import '../restaurants/services/restaurant_service.dart';
+import '../restaurants/models/restaurant_model.dart';
+import '../transport/services/transport_service.dart';
+import '../transport/models/transport_model.dart';
+import '../guides/services/guide_service.dart';
+import '../guides/models/guide_model.dart';
 import 'saved_items_screen.dart';
 import 'info_screens.dart';
 import '../budget/split_bill_screen.dart';
@@ -67,93 +76,218 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final user = FirebaseAuth.instance.currentUser;
     final roleService = UserRoleService();
 
-    return StreamBuilder<String?>(
-      stream: roleService.getUserRoleStream(),
-      builder: (context, snapshot) {
-        final role = snapshot.data;
+    return ValueListenableBuilder<String?>(
+      valueListenable: UserRoleService.localRoleNotifier,
+      builder: (context, localRole, _) {
+        return StreamBuilder<String?>(
+          stream: roleService.getUserRoleStream(),
+          builder: (context, snapshot) {
+            final role = localRole ?? snapshot.data;
 
-        return Scaffold(
-          backgroundColor: AppTheme.backgroundColor,
-          body: (snapshot.connectionState == ConnectionState.waiting || _isSwitchingRole)
-              ? const Center(child: CircularProgressIndicator())
-              : SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      _buildPremiumHeader(context, user, role),
-                      const SizedBox(height: 20),
-                      
-                      const SizedBox(height: 10),
-                      if (role != 'Service Provider' && role != 'Hotel Owner' && role != 'Restaurant Owner' && role != 'Transport Provider') ...[
-                        _buildSection(
-                          'My Trip Library',
-                          [
-                            _buildSettingTile(
-                              Icons.luggage_rounded,
-                              'Saved Trips & Safar Khata',
-                              onTap: () {
-                                Navigator.push(context, MaterialPageRoute(builder: (context) => const SplitBillScreen()));
-                              },
+            return Scaffold(
+              backgroundColor: AppTheme.backgroundColor,
+              body: (localRole == null && snapshot.connectionState == ConnectionState.waiting || _isSwitchingRole)
+                  ? const Center(child: CircularProgressIndicator())
+                  : SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          _buildPremiumHeader(context, user, role),
+                          const SizedBox(height: 20),
+                          
+                          const SizedBox(height: 10),
+                          if (role != 'Service Provider' && role != 'Hotel Owner' && role != 'Restaurant Owner' && role != 'Transport Provider') ...[
+                            _buildSection(
+                              'My Trip Library',
+                              [
+                                _buildSettingTile(
+                                  Icons.luggage_rounded,
+                                  'Saved Trips & Safar Khata',
+                                  onTap: () {
+                                    Navigator.push(context, MaterialPageRoute(builder: (context) => const SplitBillScreen()));
+                                  },
+                                ),
+                              ],
                             ),
+                          ] else ...[
+                            _buildProviderPerformanceSection(user?.uid),
                           ],
-                        ),
-                      ] else ...[
-                        _buildSection(
-                          'Business Performance',
-                          [
-                            _buildStatCard('Active Listings', '0', Icons.list_alt, AppTheme.primaryPurple),
-                            _buildStatCard('Monthly Reach', '0', Icons.trending_up, Colors.green),
-                          ],
-                        ),
-                      ],
-                      _buildSection(
-                        'Preferences',
-                        [
-                          _buildSettingTile(Icons.favorite_outline, 'Saved Items', onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => const SavedItemsScreen()));
-                          }),
-                          _buildSettingTile(Icons.person_outline, 'Personal Information', onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => const PersonalInfoScreen()));
-                          }),
-                          Consumer<CurrencyProvider>(
-                            builder: (context, currencyProvider, child) {
-                              return _buildSettingTile(
-                                Icons.currency_exchange, 
-                                'Currency: ${currencyProvider.selectedCurrency}',
-                                onTap: () => _showCurrencyPicker(context, currencyProvider),
-                              );
-                            },
+                          _buildSection(
+                            'Preferences',
+                            [
+                              _buildSettingTile(Icons.favorite_outline, 'Saved Items', onTap: () {
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => const SavedItemsScreen()));
+                              }),
+                              _buildSettingTile(Icons.person_outline, 'Personal Information', onTap: () {
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => const PersonalInfoScreen()));
+                              }),
+                              Consumer<CurrencyProvider>(
+                                builder: (context, currencyProvider, child) {
+                                  return _buildSettingTile(
+                                    Icons.currency_exchange, 
+                                    'Currency: ${currencyProvider.selectedCurrency}',
+                                    onTap: () => _showCurrencyPicker(context, currencyProvider),
+                                  );
+                                },
+                              ),
+                              _buildSettingTile(
+                                Icons.notifications_none,
+                                'Notification Settings',
+                                onTap: () => _showNotificationSettings(context),
+                              ),
+                            ],
                           ),
-                          _buildSettingTile(Icons.notifications_none, 'Notification Settings'),
+                          _buildSection(
+                            'Policy & About',
+                            [
+                              _buildSettingTile(Icons.policy_outlined, 'Privacy Policy', onTap: () {
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => const InfoScreen(title: 'Privacy Policy', content: StaticContent.privacyPolicy)));
+                              }),
+                              _buildSettingTile(Icons.gavel_outlined, 'Terms of Service', onTap: () {
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => const InfoScreen(title: 'Terms of Service', content: StaticContent.termsOfService)));
+                              }),
+                              _buildSettingTile(Icons.info_outline, 'About SastaSafar', onTap: () {
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => const InfoScreen(title: 'About SastaSafar', content: StaticContent.aboutContent)));
+                              }),
+                              _buildSettingTile(Icons.help_outline, 'Help & Support', onTap: () {
+                                Navigator.push(context, MaterialPageRoute(builder: (context) => const InfoScreen(title: 'Help & Support', content: StaticContent.helpSupport)));
+                              }),
+                            ],
+                          ),
+                          const SizedBox(height: 40),
+                          _buildLogoutButton(context),
+                          const SizedBox(height: 50),
                         ],
                       ),
-                      _buildSection(
-                        'Policy & About',
-                        [
-                          _buildSettingTile(Icons.policy_outlined, 'Privacy Policy', onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => const InfoScreen(title: 'Privacy Policy', content: StaticContent.privacyPolicy)));
-                          }),
-                          _buildSettingTile(Icons.gavel_outlined, 'Terms of Service', onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => const InfoScreen(title: 'Terms of Service', content: StaticContent.termsOfService)));
-                          }),
-                          _buildSettingTile(Icons.info_outline, 'About SastaSafar', onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => const InfoScreen(title: 'About SastaSafar', content: StaticContent.aboutContent)));
-                          }),
-                          _buildSettingTile(Icons.help_outline, 'Help & Support', onTap: () {
-                            Navigator.push(context, MaterialPageRoute(builder: (context) => const InfoScreen(title: 'Help & Support', content: StaticContent.helpSupport)));
-                          }),
-                        ],
-                      ),
-                      const SizedBox(height: 40),
-                      _buildLogoutButton(context),
-                      const SizedBox(height: 50),
-                    ],
-                  ),
-                ),
+                    ),
+            );
+          },
         );
       },
     );
   }
 
+
+  Widget _buildProviderPerformanceSection(String? uid) {
+    if (uid == null || uid.isEmpty) {
+      return _buildSection(
+        'Business Performance',
+        [
+          _buildStatCard('Active Listings', '0', Icons.list_alt, AppTheme.primaryPurple),
+          _buildStatCard('Verified Live', '0', Icons.verified_outlined, Colors.green),
+        ],
+      );
+    }
+
+    return StreamBuilder<List<Hotel>>(
+      stream: HotelService().getHotelsByVendor(uid),
+      builder: (context, hotelSnap) {
+        return StreamBuilder<List<TransportOption>>(
+          stream: TransportService().getTransportOptionsByVendor(uid),
+          builder: (context, transportSnap) {
+            return StreamBuilder<List<Restaurant>>(
+              stream: RestaurantService().getRestaurantsByVendor(uid),
+              builder: (context, restSnap) {
+                return StreamBuilder<List<LocalGuide>>(
+                  stream: GuideService().getGuidesByVendor(uid),
+                  builder: (context, guideSnap) {
+                    final hotels = hotelSnap.data ?? const [];
+                    final transport = transportSnap.data ?? const [];
+                    final restaurants = restSnap.data ?? const [];
+                    final guides = guideSnap.data ?? const [];
+
+                    final totalListings =
+                        hotels.length + transport.length + restaurants.length + guides.length;
+                    final verifiedListings = hotels.where((h) => h.isVerified).length +
+                        transport.where((t) => t.isVerified).length +
+                        restaurants.where((r) => r.isVerified).length +
+                        guides.where((g) => g.isVerified).length;
+
+                    return _buildSection(
+                      'Business Performance',
+                      [
+                        _buildStatCard('Active Listings', '$totalListings', Icons.list_alt, AppTheme.primaryPurple),
+                        _buildStatCard('Verified Live', '$verifiedListings', Icons.verified_outlined, Colors.green),
+                      ],
+                    );
+                  },
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _showNotificationSettings(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    bool weatherAlerts = prefs.getBool('notif_weather_alerts') ?? true;
+    bool tripReminders = prefs.getBool('notif_trip_reminders') ?? true;
+    bool dealAlerts = prefs.getBool('notif_deal_alerts') ?? false;
+
+    if (!context.mounted) return;
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Notification Preferences',
+                      style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      activeColor: AppTheme.primaryPurple,
+                      title: Text('Weather & Safety Advisories', style: GoogleFonts.poppins(fontSize: 14)),
+                      subtitle: Text('Alert me about storms or route hazards', style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600])),
+                      value: weatherAlerts,
+                      onChanged: (val) async {
+                        setModalState(() => weatherAlerts = val);
+                        await prefs.setBool('notif_weather_alerts', val);
+                      },
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      activeColor: AppTheme.primaryPurple,
+                      title: Text('Trip & Packing Reminders', style: GoogleFonts.poppins(fontSize: 14)),
+                      subtitle: Text('Checklist and departure reminders', style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600])),
+                      value: tripReminders,
+                      onChanged: (val) async {
+                        setModalState(() => tripReminders = val);
+                        await prefs.setBool('notif_trip_reminders', val);
+                      },
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      activeColor: AppTheme.primaryPurple,
+                      title: Text('Budget Deals & Offers', style: GoogleFonts.poppins(fontSize: 14)),
+                      subtitle: Text('Seasonal discounts on stays and transport', style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600])),
+                      value: dealAlerts,
+                      onChanged: (val) async {
+                        setModalState(() => dealAlerts = val);
+                        await prefs.setBool('notif_deal_alerts', val);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
   void _showCurrencyPicker(BuildContext context, CurrencyProvider currencyProvider) {
     showModalBottomSheet(
@@ -227,27 +361,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          Text(
-            user?.displayName ?? (user?.email?.split('@')[0].toUpperCase() ?? 'User Name'),
-            style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-          if (role != null)
-            Container(
-              margin: const EdgeInsets.only(top: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Text(
-                role.toUpperCase(),
-                style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
-              ),
-            ),
-          const SizedBox(height: 4),
-          Text(
-            user?.email ?? 'user@example.com',
-            style: GoogleFonts.poppins(color: Colors.white70, fontSize: 14),
+          Builder(
+            builder: (context) {
+              final rawName = user?.displayName?.trim();
+              final email = user?.email?.trim() ?? '';
+              final emailPrefix = email.contains('@') ? email.split('@').first.toUpperCase() : '';
+              final displayTitle = (rawName != null && rawName.isNotEmpty)
+                  ? rawName
+                  : (user?.isAnonymous == true
+                      ? 'Guest Traveler'
+                      : (emailPrefix.isNotEmpty ? emailPrefix : 'Traveler'));
+              final displaySubtitle = email.isNotEmpty
+                  ? email
+                  : (user?.isAnonymous == true ? 'Guest Session' : 'SastaSafar Account');
+
+              return Column(
+                children: [
+                  Text(
+                    displayTitle,
+                    style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  if (role != null)
+                    Container(
+                      margin: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Colors.white24,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        role.toUpperCase(),
+                        style: GoogleFonts.poppins(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                      ),
+                    ),
+                  const SizedBox(height: 4),
+                  Text(
+                    displaySubtitle,
+                    style: GoogleFonts.poppins(color: Colors.white70, fontSize: 14),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -326,6 +480,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             );
             if (confirm == true) {
+              UserRoleService.localRoleNotifier.value = null;
               await FirebaseAuth.instance.signOut();
             }
           },

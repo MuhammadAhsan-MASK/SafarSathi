@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/currency_provider.dart';
+import '../../core/url_helper.dart';
 import '../../core/widgets/app_image.dart';
 import 'models/hotel_model.dart';
 import '../../core/theme.dart';
@@ -16,16 +17,7 @@ class HotelDetailScreen extends StatefulWidget {
 }
 
 class _HotelDetailScreenState extends State<HotelDetailScreen> {
-  Future<void> _launchUrl(String urlString) async {
-    final Uri uri = Uri.parse(urlString);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open $urlString')),
-        );
-      }
-    }
-  }
+  Future<void> _launchUrl(String urlString) => launchExternalUrl(context, urlString);
 
   Future<void> _callPhone(String phone) async {
     final Uri uri = Uri(scheme: 'tel', path: phone);
@@ -169,11 +161,11 @@ class _HotelDetailScreenState extends State<HotelDetailScreen> {
                             ],
                           ),
                         ),
-                         ElevatedButton.icon(
+                        ElevatedButton.icon(
                           icon: const Icon(Icons.phone, size: 16),
                           label: const Text('Call to Reserve'),
-                          onPressed: widget.hotel.phone != null
-                              ? () => _callPhone(widget.hotel.phone!)
+                          onPressed: (widget.hotel.phone != null && widget.hotel.phone!.trim().isNotEmpty)
+                              ? () => _callPhone(widget.hotel.phone!.trim())
                               : null,
                           style: ElevatedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),

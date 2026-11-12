@@ -4,9 +4,13 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/favorites_provider.dart';
 import '../../core/currency_provider.dart';
 import '../../core/theme.dart';
+import '../../core/url_helper.dart';
 import '../hotels/models/hotel_model.dart';
+import '../hotels/services/hotel_service.dart';
 import '../restaurants/models/restaurant_model.dart';
+import '../restaurants/services/restaurant_service.dart';
 import '../attractions/models/attraction_model.dart';
+import '../attractions/services/attraction_service.dart';
 import '../attractions/widgets/in_app_video_screen.dart';
 import '../hotels/hotel_screen.dart';
 import '../restaurants/restaurant_screen.dart';
@@ -57,16 +61,7 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with SingleTickerPr
     }
   }
 
-  Future<void> _launchUrl(String url) async {
-    final Uri uri = Uri.parse(url);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open $url')),
-        );
-      }
-    }
-  }
+  Future<void> _launchUrl(String url) => launchExternalUrl(context, url);
 
   @override
   Widget build(BuildContext context) {
@@ -94,58 +89,83 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with SingleTickerPr
       ),
       body: Consumer<FavoriteProvider>(
         builder: (context, favorites, _) {
-          final favHotels = favorites.getFavoriteHotels();
-          final favRests = favorites.getFavoriteRestaurants();
-          final favAttractions = favorites.getFavoriteAttractions();
-          final totalCount = favHotels.length + favRests.length + favAttractions.length;
+          return StreamBuilder<List<Hotel>>(
+            stream: HotelService().getHotels(),
+            builder: (context, hotelSnap) {
+              return StreamBuilder<List<Restaurant>>(
+                stream: RestaurantService().getRestaurants(),
+                builder: (context, restSnap) {
+                  return StreamBuilder<List<Attraction>>(
+                    stream: AttractionService().getAttractions(),
+                    builder: (context, attrSnap) {
+                      final allHotels = hotelSnap.data;
+                      final allRests = restSnap.data;
+                      final allAttrs = attrSnap.data;
 
-          if (totalCount == 0) {
-            return _buildEmptyState(
-              icon: Icons.favorite_border,
-              title: 'No saved items yet',
-              message: 'Bookmark your favorite hotels, restaurants, and attractions to access them anytime offline.',
-            );
-          }
+                      final favHotels = allHotels != null
+                          ? allHotels.where((h) => favorites.isFavorite(h.id)).toList()
+                          : favorites.getFavoriteHotels();
+                      final favRests = allRests != null
+                          ? allRests.where((r) => favorites.isFavorite(r.id)).toList()
+                          : favorites.getFavoriteRestaurants();
+                      final favAttractions = allAttrs != null
+                          ? allAttrs.where((a) => favorites.isFavorite(a.id)).toList()
+                          : favorites.getFavoriteAttractions();
+                      final totalCount = favHotels.length + favRests.length + favAttractions.length;
 
-          return TabBarView(
-            controller: _tabController,
-            children: [
-              // 1. ALL TAB
-              _buildAllTab(context, favHotels, favRests, favAttractions, favorites),
+                      if (totalCount == 0) {
+                        return _buildEmptyState(
+                          icon: Icons.favorite_border,
+                          title: 'No saved items yet',
+                          message: 'Bookmark your favorite hotels, restaurants, and attractions to access them anytime offline.',
+                        );
+                      }
 
-              // 2. HOTELS TAB
-              favHotels.isEmpty
-                  ? _buildEmptyCategory('No saved hotels yet', 'Explore top authentic hotels in Pakistan.', () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const HotelScreen()));
-                    }, Icons.hotel_outlined)
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: favHotels.length,
-                      itemBuilder: (ctx, i) => _buildHotelCard(ctx, favHotels[i], favorites),
-                    ),
+                      return TabBarView(
+                        controller: _tabController,
+                        children: [
+                          // 1. ALL TAB
+                          _buildAllTab(context, favHotels, favRests, favAttractions, favorites),
 
-              // 3. FOOD TAB
-              favRests.isEmpty
-                  ? _buildEmptyCategory('No saved restaurants yet', 'Explore authentic Pakistani dining spots.', () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const RestaurantScreen()));
-                    }, Icons.restaurant_outlined)
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: favRests.length,
-                      itemBuilder: (ctx, i) => _buildRestaurantCard(ctx, favRests[i], favorites),
-                    ),
+                          // 2. HOTELS TAB
+                          favHotels.isEmpty
+                              ? _buildEmptyCategory('No saved hotels yet', 'Explore top authentic hotels in Pakistan.', () {
+                                  Navigator.push(context, MaterialPageRoute(builder: (_) => const HotelScreen()));
+                                }, Icons.hotel_outlined)
+                              : ListView.builder(
+                                  padding: const EdgeInsets.all(16),
+                                  itemCount: favHotels.length,
+                                  itemBuilder: (ctx, i) => _buildHotelCard(ctx, favHotels[i], favorites),
+                                ),
 
-              // 4. ATTRACTIONS TAB
-              favAttractions.isEmpty
-                  ? _buildEmptyCategory('No saved attractions yet', 'Discover historical and scenic destinations.', () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => const AttractionsScreen()));
-                    }, Icons.location_on_outlined)
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: favAttractions.length,
-                      itemBuilder: (ctx, i) => _buildAttractionCard(ctx, favAttractions[i], favorites),
-                    ),
-            ],
+                          // 3. FOOD TAB
+                          favRests.isEmpty
+                              ? _buildEmptyCategory('No saved restaurants yet', 'Explore authentic Pakistani dining spots.', () {
+                                  Navigator.push(context, MaterialPageRoute(builder: (_) => const RestaurantScreen()));
+                                }, Icons.restaurant_outlined)
+                              : ListView.builder(
+                                  padding: const EdgeInsets.all(16),
+                                  itemCount: favRests.length,
+                                  itemBuilder: (ctx, i) => _buildRestaurantCard(ctx, favRests[i], favorites),
+                                ),
+
+                          // 4. ATTRACTIONS TAB
+                          favAttractions.isEmpty
+                              ? _buildEmptyCategory('No saved attractions yet', 'Discover historical and scenic destinations.', () {
+                                  Navigator.push(context, MaterialPageRoute(builder: (_) => const AttractionsScreen()));
+                                }, Icons.location_on_outlined)
+                              : ListView.builder(
+                                  padding: const EdgeInsets.all(16),
+                                  itemCount: favAttractions.length,
+                                  itemBuilder: (ctx, i) => _buildAttractionCard(ctx, favAttractions[i], favorites),
+                                ),
+                        ],
+                      );
+                    },
+                  );
+                },
+              );
+            },
           );
         },
       ),
@@ -492,7 +512,7 @@ class _SavedItemsScreenState extends State<SavedItemsScreen> with SingleTickerPr
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
                         onPressed: () {
-                          if (attraction.mapUrl != null) {
+                          if (attraction.mapUrl != null && attraction.mapUrl!.trim().isNotEmpty) {
                             _launchUrl(attraction.mapUrl!);
                           } else {
                             _openMap(attraction.location ?? attraction.city, attraction.name);

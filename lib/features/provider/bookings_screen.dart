@@ -51,17 +51,12 @@ class BookingsScreen extends StatelessWidget {
             itemCount: bookings.length,
             itemBuilder: (context, index) {
               final booking = bookings[index];
+              final statusLower = booking.status.toLowerCase();
               Color statusColor = Colors.orange;
-              if (booking.status == 'Confirmed') statusColor = Colors.green;
-              if (booking.status == 'Cancelled') statusColor = Colors.red;
+              if (statusLower == 'confirmed') statusColor = Colors.green;
+              if (statusLower == 'cancelled' || statusLower == 'rejected') statusColor = Colors.red;
 
-              return _buildBookingCard(
-                booking.customerName, 
-                booking.itemName, 
-                booking.dates, 
-                booking.status, 
-                statusColor
-              );
+              return _buildBookingCard(context, bookingService, booking, statusColor);
             },
           );
         },
@@ -69,7 +64,62 @@ class BookingsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBookingCard(String customer, String item, String dates, String status, Color statusColor) {
+  void _showBookingDetails(BuildContext context, BookingService service, Booking booking, Color statusColor) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(booking.itemName, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 17)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _detailRow('Customer', booking.customerName),
+            _detailRow('Dates', booking.dates),
+            _detailRow('Amount', 'PKR ${booking.price.toStringAsFixed(0)}'),
+            _detailRow('Status', booking.status),
+          ],
+        ),
+        actions: [
+          if (booking.status.toLowerCase() == 'pending') ...[
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await service.updateBookingStatus(booking.id, 'Cancelled');
+              },
+              child: const Text('Cancel', style: TextStyle(color: Colors.red)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(ctx);
+                await service.updateBookingStatus(booking.id, 'Confirmed');
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+              child: const Text('Confirm'),
+            ),
+          ] else
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+          const SizedBox(width: 12),
+          Flexible(child: Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBookingCard(BuildContext context, BookingService service, Booking booking, Color statusColor) {
+    final isPending = booking.status.toLowerCase() == 'pending';
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
@@ -84,15 +134,21 @@ class BookingsScreen extends StatelessWidget {
             children: [
               CircleAvatar(
                 backgroundColor: AppTheme.primaryPurple.withValues(alpha: 0.1),
-                child: Text(customer.isNotEmpty ? customer[0] : 'U', style: TextStyle(color: AppTheme.primaryPurple, fontWeight: FontWeight.bold)),
+                child: Text(
+                  booking.customerName.isNotEmpty ? booking.customerName[0].toUpperCase() : 'U',
+                  style: TextStyle(color: AppTheme.primaryPurple, fontWeight: FontWeight.bold),
+                ),
               ),
               const SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(customer, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
-                    Text(item, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                    Text(booking.customerName, style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text(
+                      '${booking.itemName} • PKR ${booking.price.toStringAsFixed(0)}',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
                   ],
                 ),
               ),
@@ -102,7 +158,7 @@ class BookingsScreen extends StatelessWidget {
                   color: statusColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Text(status, style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold)),
+                child: Text(booking.status, style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold)),
               ),
             ],
           ),
@@ -114,12 +170,21 @@ class BookingsScreen extends StatelessWidget {
                 children: [
                   const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
                   const SizedBox(width: 8),
-                  Text(dates, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text(booking.dates, style: const TextStyle(fontSize: 12, color: Colors.grey)),
                 ],
               ),
-              TextButton(
-                onPressed: () {},
-                child: const Text('Details', style: TextStyle(color: AppTheme.primaryPurple, fontWeight: FontWeight.bold)),
+              Row(
+                children: [
+                  if (isPending)
+                    TextButton(
+                      onPressed: () => service.updateBookingStatus(booking.id, 'Confirmed'),
+                      child: const Text('Confirm', style: TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                    ),
+                  TextButton(
+                    onPressed: () => _showBookingDetails(context, service, booking, statusColor),
+                    child: const Text('Details', style: TextStyle(color: AppTheme.primaryPurple, fontWeight: FontWeight.bold)),
+                  ),
+                ],
               ),
             ],
           ),

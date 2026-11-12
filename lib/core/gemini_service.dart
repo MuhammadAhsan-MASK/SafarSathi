@@ -9,9 +9,9 @@ class GeminiService {
   static const String _apiKey = AppSecrets.geminiApiKey;
 
   static const List<String> _models = [
-    'gemini-3.5-flash-lite',
-    'gemini-3.1-flash-lite',
-    'gemini-3.5-flash',
+    'gemini-2.5-flash',
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
   ];
 
   static Future<http.Response> _postGenerateContent(
@@ -21,17 +21,19 @@ class GeminiService {
       final uri = Uri.parse(
           'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$_apiKey');
       try {
-        final res = await http.post(
-          uri,
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(body),
-        );
+        final res = await http
+            .post(
+              uri,
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode(body),
+            )
+            .timeout(const Duration(seconds: 10));
         if (res.statusCode == 200) {
           return res;
         }
         lastResponse = res;
-        // If 503 (high demand) or 404 (not found), try next available model
-        if (res.statusCode == 503 || res.statusCode == 404) {
+        // Try next available model on 404/429/503
+        if (res.statusCode == 503 || res.statusCode == 404 || res.statusCode == 429) {
           continue;
         }
         return res;
@@ -40,6 +42,24 @@ class GeminiService {
       }
     }
     return lastResponse ?? http.Response('{"error": "Unavailable"}', 503);
+  }
+
+  static String? _extractResponseText(http.Response response) {
+    if (response.statusCode != 200) return null;
+    try {
+      final data = jsonDecode(response.body);
+      final candidates = data['candidates'];
+      if (candidates is! List || candidates.isEmpty) return null;
+      final content = candidates[0]['content'];
+      if (content is! Map) return null;
+      final parts = content['parts'];
+      if (parts is! List || parts.isEmpty) return null;
+      final text = parts[0]['text'];
+      return text is String && text.trim().isNotEmpty ? text : null;
+    } catch (e) {
+      debugPrint('Gemini parse error: $e');
+      return null;
+    }
   }
 
   static const String _systemPrompt = '''
@@ -65,19 +85,20 @@ If asked something outside travel/Pakistan, politely redirect to travel topics.
 ''';
 
   static Future<String> sendMessage(List<Map<String, String>> history) async {
-    if (_apiKey == 'YOUR_GEMINI_API_KEY') {
-      await Future.delayed(const Duration(milliseconds: 800));
-      return _mockResponse(history.last['text'] ?? '');
+    final lastUserText = history.isNotEmpty ? (history.last['text'] ?? '') : '';
+
+    if (_apiKey == 'YOUR_GEMINI_API_KEY' || _apiKey.trim().isEmpty) {
+      await Future.delayed(const Duration(milliseconds: 400));
+      return _mockResponse(lastUserText);
     }
 
     try {
       final contents = <Map<String, dynamic>>[];
 
-      // Build conversation history for the API
       for (final msg in history) {
         contents.add({
           'role': msg['role'] == 'user' ? 'user' : 'model',
-          'parts': [{'text': msg['text']}],
+          'parts': [{'text': msg['text'] ?? ''}],
         });
       }
 
@@ -92,17 +113,15 @@ If asked something outside travel/Pakistan, politely redirect to travel topics.
         },
       });
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['candidates'][0]['content']['parts'][0]['text'] as String;
-      } else if (response.statusCode == 429) {
-        // Fallback to mock responses if rate limited
-        return _mockResponse(history.last['text'] ?? '');
-      } else {
-        return 'Sorry, I couldn\'t connect right now. Please try again. (Error ${response.statusCode})';
+      final text = _extractResponseText(response);
+      if (text != null) {
+        return text;
       }
+      // Graceful offline / rate-limit fallback instead of exposing raw error codes
+      return _mockResponse(lastUserText);
     } catch (e) {
-      return 'Network error. Please check your connection and try again.';
+      debugPrint('SafarBot offline fallback: $e');
+      return _mockResponse(lastUserText);
     }
   }
 
@@ -148,28 +167,21 @@ Suggest ONE perfect Pakistan destination for them. Reply ONLY in this exact JSON
         'generationConfig': {'temperature': 0.9, 'maxOutputTokens': 512},
       });
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['candidates'] != null && data['candidates'].isNotEmpty) {
-          final text = data['candidates'][0]['content']['parts'][0]['text'] as String;
-          final startIndex = text.indexOf('{');
-          final endIndex = text.lastIndexOf('}');
-          if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
-            final jsonStr = text.substring(startIndex, endIndex + 1);
-            final map = jsonDecode(jsonStr) as Map<String, dynamic>;
-            return map.map((k, v) => MapEntry(k, v.toString()));
-          }
-        } else {
-          debugPrint("API Error or rate limit: $data");
+      final text = _extractResponseText(response);
+      if (text != null) {
+        final startIndex = text.indexOf('{');
+        final endIndex = text.lastIndexOf('}');
+        if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
+          final jsonStr = text.substring(startIndex, endIndex + 1);
+          final map = jsonDecode(jsonStr) as Map<String, dynamic>;
+          return map.map((k, v) => MapEntry(k, v.toString()));
         }
-      } else {
-         debugPrint("API HTTP Error: ${response.statusCode} - ${response.body}");
       }
     } catch (e) {
-       debugPrint("SurpriseMe API parse error: $e");
+      debugPrint('SurpriseMe API parse error: $e');
     }
 
-    // Diverse Fallbacks if API fails
+    // Diverse Fallbacks if API fails or is offline
     final fallbacks = [
       {
         'destination': 'Hunza Valley',
@@ -178,7 +190,7 @@ Suggest ONE perfect Pakistan destination for them. Reply ONLY in this exact JSON
         'highlight1': 'Eagle\'s Nest Viewpoint — Free (jeep hire ~PKR 3,000)',
         'highlight2': 'Attabad Lake boat ride — PKR 500/person',
         'highlight3': 'Baltit Fort — Entry PKR 500',
-        'accommodation': 'Guesthouses PKR 1,500–3,000/night',
+        'accommodation': 'Guesthouses PKR 2,500–5,500/night',
         'bestTime': 'May – October',
         'tip': 'Try the local dried apricots and cherry juice — a Hunza specialty!',
       },
@@ -189,7 +201,7 @@ Suggest ONE perfect Pakistan destination for them. Reply ONLY in this exact JSON
         'highlight1': 'Malam Jabba Ski Resort — Entry PKR 1,000',
         'highlight2': 'Kalam Valley exploring — Jeep PKR 4,000',
         'highlight3': 'Mahodand Lake — Boat ride PKR 1,000',
-        'accommodation': 'Hotels PKR 2,000–5,000/night',
+        'accommodation': 'Hotels PKR 2,500–6,000/night',
         'bestTime': 'April – September',
         'tip': 'Bargain for local Swati shawls at the Mingora bazaar!',
       },
@@ -203,19 +215,20 @@ Suggest ONE perfect Pakistan destination for them. Reply ONLY in this exact JSON
         'accommodation': 'Wooden Cabins PKR 3,000–6,000/night',
         'bestTime': 'May – October',
         'tip': 'Carry original CNIC as there are many security checkpoints.',
-      }
+      },
     ];
 
     fallbacks.shuffle();
     return fallbacks.first;
   }
 
-  /// AI-powered Smart Packing Assistant checklist generator
+  /// AI-powered Smart Packing Assistant checklist generator.
+  /// Throws on failure/offline so [SmartPackingScreen] applies its climate-matched local database.
   static Future<List<Map<String, dynamic>>> generatePackingList({
     required String destination,
     required String vibe,
     required String duration,
-    required String weatherConditions, // e.g. "Sunny", "Snow (Code 73)"
+    required String weatherConditions,
   }) async {
     final prompt = '''
 You are a Smart Packing Assistant for Pakistan travel. A traveler is packing for a trip with these details:
@@ -224,104 +237,76 @@ You are a Smart Packing Assistant for Pakistan travel. A traveler is packing for
 - Duration: $duration
 - Weather: $weatherConditions
 
-CRITICAL INSTRUCTION: The packing items MUST strictly reflect the "$vibe" vibe.
-- If "Business", include formal wear, laptop, blazer, etc.
-- If "Adventure", include hiking boots, flashlight, rugged clothes, etc.
-- If "Relaxation", include books, comfortable loungewear, swimsuit, etc.
+CRITICAL INSTRUCTION: The packing items MUST strictly reflect BOTH the weather conditions ("$weatherConditions") and destination ("$destination") as well as the "$vibe" vibe.
+Do NOT include cold/mountain/hiking items for warm/coastal cities like Karachi, Gwadar, Lahore, or Multan.
 
-Provide a highly customized and strictly categorized packing checklist. Reply ONLY in exact JSON format (an array of categories), no markdown blocks, no extra text:
+Reply ONLY in exact JSON format (an array of categories), no markdown blocks, no extra text:
 [
   {
     "category": "Clothing",
     "items": [
-      { "item": "Thermal wear", "reason": "Because of the snowy weather" },
-      { "item": "Jeans", "reason": "Durable for the vibe" }
+      { "item": "Example Item", "reason": "Clear reason for $destination" }
     ]
-  },
-  {
-    "category": "Essentials & Gear",
-    "items": []
-  },
-  {
-    "category": "Toiletries",
-    "items": []
   }
 ]
 ''';
 
-    try {
-      final response = await _postGenerateContent({
-        'contents': [
-          {'role': 'user', 'parts': [{'text': prompt}]}
-        ],
-        'generationConfig': {'temperature': 0.8, 'maxOutputTokens': 800},
-      });
+    final response = await _postGenerateContent({
+      'contents': [
+        {
+          'role': 'user',
+          'parts': [{'text': prompt}],
+        }
+      ],
+      'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 900},
+    });
 
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final text = data['candidates'][0]['content']['parts'][0]['text'] as String;
-        final startIndex = text.indexOf('[');
-        final endIndex = text.lastIndexOf(']');
-        if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
-          final jsonStr = text.substring(startIndex, endIndex + 1);
-          final List<dynamic> list = jsonDecode(jsonStr);
-          return list.map((e) => e as Map<String, dynamic>).toList();
+    final text = _extractResponseText(response);
+    if (text == null) {
+      throw Exception('AI packing response unavailable (status ${response.statusCode})');
+    }
+
+    final startIndex = text.indexOf('[');
+    final endIndex = text.lastIndexOf(']');
+    if (startIndex == -1 || endIndex == -1 || endIndex <= startIndex) {
+      throw Exception('Invalid AI packing JSON payload');
+    }
+
+    final jsonStr = text.substring(startIndex, endIndex + 1);
+    final List<dynamic> decoded = jsonDecode(jsonStr);
+    final List<Map<String, dynamic>> normalized = [];
+
+    for (final rawCat in decoded) {
+      if (rawCat is! Map) continue;
+      final catName = (rawCat['category'] ?? 'Essentials').toString();
+      final rawItems = rawCat['items'];
+      final List<Map<String, dynamic>> itemsList = [];
+      if (rawItems is List) {
+        for (final it in rawItems) {
+          if (it is Map && (it['item'] ?? '').toString().trim().isNotEmpty) {
+            itemsList.add({
+              'item': it['item'].toString().trim(),
+              'reason': (it['reason'] ?? 'Recommended for $destination').toString().trim(),
+              'checked': false,
+            });
+          }
         }
       }
-    } catch (e) {
-      debugPrint("generatePackingList API error: $e");
-    }
-
-    // Dynamic Fallback if API fails
-    final lowerVibe = vibe.toLowerCase();
-    
-    List<Map<String, dynamic>> clothingItems = [];
-    if (lowerVibe.contains('business')) {
-      clothingItems = [
-        { "item": "Formal Suit/Blazer", "reason": "Crucial for business meetings in \$destination." },
-        { "item": "Dress Shoes", "reason": "Professional attire." }
-      ];
-    } else if (lowerVibe.contains('adventure')) {
-      clothingItems = [
-        { "item": "Hiking Boots", "reason": "Essential for trails in \$destination." },
-        { "item": "Thermal Jacket", "reason": "For outdoor cold weather." }
-      ];
-    } else if (lowerVibe.contains('relaxation')) {
-      clothingItems = [
-        { "item": "Comfortable Loungewear", "reason": "For relaxing at the hotel." },
-        { "item": "Swimsuit/Trunks", "reason": "If your hotel has a pool." }
-      ];
-    } else {
-      clothingItems = [
-        { "item": "Warm Jacket", "reason": "Always good to have for evening chills in \$destination." },
-        { "item": "Comfortable Walking Shoes", "reason": "Essential for your \$vibe trip." }
-      ];
-    }
-
-    List<Map<String, dynamic>> techItems = [
-      { "item": "Power Bank", "reason": "Crucial for remote areas." },
-      { "item": "Universal Adapter", "reason": "Just in case." }
-    ];
-    if (lowerVibe.contains('business')) {
-      techItems.add({ "item": "Laptop & Charger", "reason": "For work on the go." });
-    } else if (lowerVibe.contains('adventure')) {
-      techItems.add({ "item": "Headlamp", "reason": "For night camping or caves." });
-    }
-
-    return [
-      { "category": "Clothing", "items": clothingItems },
-      { "category": "Tech & Gear", "items": techItems },
-      {
-        "category": "Health & Emergency",
-        "items": [
-          { "item": "Basic First Aid Kit", "reason": "Includes bandages, panadol, mask." },
-          { "item": "Sunscreen & Chapstick", "reason": "Protects against harsh conditions." }
-        ]
+      if (itemsList.isNotEmpty) {
+        normalized.add({
+          'category': catName,
+          'items': itemsList,
+        });
       }
-    ];
+    }
+
+    if (normalized.isEmpty) {
+      throw Exception('Empty AI packing categories');
+    }
+    return normalized;
   }
 
-  /// Mock responses for demo when no API key is set
+  /// Offline fallback responses for SafarBot when network/quota is unavailable
   static String _mockResponse(String input) {
     final q = input.toLowerCase();
 
@@ -338,17 +323,17 @@ Provide a highly customized and strictly categorized packing checklist. Reply ON
           '• **Best time:** June–September\n'
           '• **Budget:** PKR 20,000–40,000 per person (5 days)\n'
           '• **Must-see:** Shangrila Resort, Satpara Lake, Deosai Plains\n'
-          '• **Travel:** Flight from ISB (~PKR 8,000–15,000) or 20hr drive\n\n'
+          '• **Travel:** Flight from ISB (~PKR 15,000–25,000) or 20hr drive\n\n'
           'Would you like a detailed trip plan for Skardu?';
     }
     if (q.contains('budget') || q.contains('cheap') || q.contains('affordable') || q.contains('pkr')) {
       return '💰 **Budget Travel Tips for Pakistan:**\n\n'
-          '• Travel by Daewoo/YUTONG buses — very affordable\n'
-          '• Stay at guesthouses: PKR 800–2,000/night\n'
-          '• Eat local: Daal chawal, biryani under PKR 300\n'
+          '• Travel by Daewoo/Faisal Movers buses — very affordable\n'
+          '• Stay at local guesthouses: PKR 2,000–4,500/night\n'
+          '• Eat local: Daal chawal, biryani under PKR 400\n'
           '• Visit in shoulder season for cheaper hotels\n'
-          '• Book through SastaSafar\'s Trip Planner for best deals!\n\n'
-          'What\'s your total budget? I can plan accordingly!';
+          '• Use SastaSafar\'s Trip Planner for exact route & stay matching!\n\n'
+          'What\'s your total budget? I can help plan accordingly!';
     }
     if (q.contains('lahore')) {
       return '🕌 **Lahore** — The heart of Pakistan!\n\n'
@@ -361,7 +346,7 @@ Provide a highly customized and strictly categorized packing checklist. Reply ON
     if (q.contains('weather') || q.contains('season') || q.contains('when')) {
       return '☀️ **Best seasons to visit Pakistan:**\n\n'
           '• **North (Hunza, Skardu):** May–October\n'
-          '• **Punjab (Lahore, Multan):** Oct–March (avoid summer heat)\n'
+          '• **Punjab (Lahore, Multan):** Oct–March (avoid summer peak heat)\n'
           '• **Sindh (Karachi):** Nov–March\n'
           '• **Azad Kashmir (Neelum, Murree):** Apr–Jun, Sep–Oct\n\n'
           'Where are you planning to go?';
@@ -383,16 +368,16 @@ Provide a highly customized and strictly categorized packing checklist. Reply ON
           '• **Biryani** — Karachi-style is legendary (~PKR 300–600)\n'
           '• **Sajji** — Balochistan specialty (~PKR 1,000)\n'
           '• **Nihari** — Lahore breakfast classic (~PKR 400)\n'
-          '• **Chapli Kabab** — KPK delicacy (~PKR 50 each)\n\n'
-          'Use SastaSafar\'s Restaurants tab to find top-rated spots near you!';
+          '• **Chapli Kabab** — KPK delicacy (~PKR 150 each)\n\n'
+          'Use SastaSafar\'s Dining section to find top-rated spots near you!';
     }
 
-    return '🇵🇰 Great question! I\'m SafarBot, your Pakistan travel guide.\n\n'
-        'I can help you plan trips to amazing places like **Hunza, Skardu, Lahore, Swat, Neelum Valley** and more!\n\n'
+    return '🇵🇰 I\'m SafarBot, your Pakistan travel assistant!\n\n'
+        'I can help you explore places like **Hunza, Skardu, Lahore, Swat, Murree, and Neelum Valley**.\n\n'
         'Try asking me:\n'
         '• "Best places to visit in Pakistan"\n'
-        '• "Budget trip to Hunza for 2 people"\n'
-        '• "What should I eat in Lahore?"\n\n'
-        '_Note: The AI API is currently rate-limited (too many requests), so I am using offline fallback responses._';
+        '• "Budget trip to Hunza"\n'
+        '• "What should I eat in Lahore?"\n'
+        '• "Best travel season"';
   }
 }

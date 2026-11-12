@@ -11,7 +11,10 @@ class RestaurantService {
     if (!SeedData.useSeedData) {
       try {
         await for (final snapshot in _firestore.collection('restaurants').snapshots()) {
-          yield snapshot.docs.map((doc) => Restaurant.fromFirestore(doc)).toList();
+          yield snapshot.docs
+              .map((doc) => Restaurant.fromFirestore(doc))
+              .where((r) => r.isVerified)
+              .toList();
         }
       } catch (_) {
         yield [];

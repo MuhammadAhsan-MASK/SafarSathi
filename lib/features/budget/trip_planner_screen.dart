@@ -254,14 +254,18 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
 
                         double parsedBudget = 0;
                         try {
-                          if (_budgetController.text.isEmpty) {
+                          final rawInput = _budgetController.text.trim();
+                          if (rawInput.isEmpty) {
                             throw const FormatException("Budget cannot be empty.");
                           }
-                          final parsedText = _budgetController.text.replaceAll(RegExp(r'[^0-9.]'), '');
+                          if (rawInput.contains('-')) {
+                            throw const FormatException("Budget cannot be negative.");
+                          }
+                          final parsedText = rawInput.replaceAll(RegExp(r'[^0-9.]'), '');
                           final tempBudget = double.tryParse(parsedText);
                           
-                          if (tempBudget == null) {
-                            throw const FormatException("Please enter a valid numeric budget.");
+                          if (tempBudget == null || tempBudget <= 0) {
+                            throw const FormatException("Please enter a valid positive numeric budget.");
                           }
                           if (tempBudget.isInfinite || tempBudget.isNaN) {
                             throw const FormatException("Calculated budget is invalid.");
@@ -861,9 +865,9 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             Expanded(child: _buildBreakdownItem('Accommodation', '40%', Colors.blue)),
-            Expanded(child: _buildBreakdownItem('Food & Dining', '30%', Colors.orange)),
+            Expanded(child: _buildBreakdownItem('Food & Dining', '25%', Colors.orange)),
             Expanded(child: _buildBreakdownItem('Transportation', '20%', Colors.green)),
-            Expanded(child: _buildBreakdownItem('Activities', '10%', Colors.purple)),
+            Expanded(child: _buildBreakdownItem('Activities', '15%', Colors.purple)),
           ],
         ),
       ],

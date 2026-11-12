@@ -13,4 +13,11 @@ class BookingService {
       return snapshot.docs.map((doc) => Booking.fromFirestore(doc)).toList();
     });
   }
+
+  Future<void> updateBookingStatus(String bookingId, String status) async {
+    await _firestore.collection('bookings').doc(bookingId).update({
+      'status': status,
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
 }

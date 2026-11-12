@@ -19,6 +19,7 @@ class GuidesScreen extends StatefulWidget {
 
 class _GuidesScreenState extends State<GuidesScreen> {
   final GuideService _guideService = GuideService();
+  final TextEditingController _searchController = TextEditingController();
   List<LocalGuide> _allGuides = GuideMockService.fetchMockGuides();
   late List<LocalGuide> _filteredGuides;
   StreamSubscription? _guideSub;
@@ -60,13 +61,19 @@ class _GuidesScreenState extends State<GuidesScreen> {
   @override
   void dispose() {
     _guideSub?.cancel();
+    _searchController.dispose();
     super.dispose();
   }
 
   void _filterGuides() {
     setState(() {
       _filteredGuides = _allGuides.where((g) {
-        final matchesRegion = _selectedRegion == 'All' || g.region == _selectedRegion;
+        final regionFilter = _selectedRegion.toLowerCase();
+        final guideRegion = g.region.toLowerCase();
+        final matchesRegion = _selectedRegion == 'All' ||
+            guideRegion == regionFilter ||
+            regionFilter.contains(guideRegion) ||
+            guideRegion.contains(regionFilter.split(RegExp(r'[\s&]+')).first);
         final matchesSafety = !_onlySafeForFemales || g.isFemaleFriendly;
         final q = _searchQuery.trim().toLowerCase();
         final matchesSearch = q.isEmpty ||
@@ -93,7 +100,18 @@ class _GuidesScreenState extends State<GuidesScreen> {
   }
 
   Future<void> _openWhatsApp(String waNumber, String guideName) async {
-    final cleanNumber = waNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    var cleanNumber = waNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    if (cleanNumber.startsWith('0') && cleanNumber.length >= 10) {
+      cleanNumber = '92${cleanNumber.substring(1)}';
+    }
+    if (cleanNumber.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No WhatsApp number provided for this guide.')),
+        );
+      }
+      return;
+    }
     final message = Uri.encodeComponent(
       'Hello $guideName! I found your profile on SastaSafar. I want to inquire about booking your guide and vehicle services.',
     );
@@ -142,6 +160,7 @@ class _GuidesScreenState extends State<GuidesScreen> {
                 if (_selectedRegion != 'All' || _onlySafeForFemales || _searchQuery.isNotEmpty)
                   GestureDetector(
                     onTap: () {
+                      _searchController.clear();
                       setState(() {
                         _selectedRegion = 'All';
                         _onlySafeForFemales = false;
@@ -204,6 +223,7 @@ class _GuidesScreenState extends State<GuidesScreen> {
         children: [
           // Search TextField
           TextField(
+            controller: _searchController,
             onChanged: (val) {
               _searchQuery = val;
               _filterGuides();

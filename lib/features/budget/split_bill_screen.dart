@@ -399,6 +399,7 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
                           category: selectedCategory,
                           date: DateTime.now(),
                         ));
+                        _settledKeys.clear();
                       });
                       _saveCurrentTripKhata();
                       Navigator.pop(ctx);
@@ -551,7 +552,20 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
                   final title = rawTitle.isNotEmpty ? rawTitle : '$dest Trip';
                   final finalDest = dest.isNotEmpty ? dest : rawTitle;
                   final origin = originCtrl.text.trim().isNotEmpty ? originCtrl.text.trim() : 'Home';
-                  final budget = double.tryParse(budgetCtrl.text.trim()) ?? 0.0;
+                  final rawBudgetText = budgetCtrl.text.trim();
+                  if (rawBudgetText.contains('-')) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Budget cannot be negative.')),
+                    );
+                    return;
+                  }
+                  if (origin.toLowerCase() == finalDest.toLowerCase()) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Departure and destination cities must be different.')),
+                    );
+                    return;
+                  }
+                  final budget = double.tryParse(rawBudgetText.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
                   final rawComps = companionsCtrl.text.split(',');
                   final comps = rawComps.map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
 
@@ -613,7 +627,7 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
       buffer.writeln('✅ All settled up! No outstanding balances.');
     } else {
       for (final s in settlements) {
-        final key = '${s.fromPerson.id}_${s.toPerson.id}';
+        final key = '${s.fromPerson.id}_${s.toPerson.id}_${s.amount.toStringAsFixed(0)}';
         final isDone = _settledKeys.contains(key);
         buffer.writeln('${isDone ? '✅ [PAID]' : '👉'} ${s.fromPerson.name} owes ${s.toPerson.name}: ${currency.formatPrice(s.amount)}');
       }
@@ -681,7 +695,6 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
                 _deleteCurrentTrip();
               } else if (val == 'clear') {
                 setState(() {
-                  _people.clear();
                   _expenses.clear();
                   _settledKeys.clear();
                 });
@@ -1311,6 +1324,7 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
                 setState(() {
                   _people.remove(p);
                   _expenses.removeWhere((e) => e.paidBy == p || e.splitAmong.contains(p));
+                  _settledKeys.clear();
                 });
                 _saveCurrentTripKhata();
               },
@@ -1374,7 +1388,10 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
                     IconButton(
                       icon: const Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent),
                       onPressed: () {
-                        setState(() => _expenses.remove(e));
+                        setState(() {
+                          _expenses.remove(e);
+                          _settledKeys.clear();
+                        });
                         _saveCurrentTripKhata();
                       },
                     ),
@@ -1445,7 +1462,7 @@ class _SplitBillScreenState extends State<SplitBillScreen> {
         ),
         const SizedBox(height: 10),
         ...settlements.map((s) {
-          final key = '${s.fromPerson.id}_${s.toPerson.id}';
+          final key = '${s.fromPerson.id}_${s.toPerson.id}_${s.amount.toStringAsFixed(0)}';
           final isDone = _settledKeys.contains(key);
 
           return Container(

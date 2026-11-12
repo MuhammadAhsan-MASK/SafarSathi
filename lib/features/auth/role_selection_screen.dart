@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/theme.dart';
 import 'user_role_service.dart';
-import '../home/main_screen.dart';
 
 class RoleSelectionScreen extends StatefulWidget {
   const RoleSelectionScreen({super.key});
@@ -32,11 +31,8 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         ),
       );
 
-      // Cleanly redirect to MainScreen so ProviderDashboard or Traveler mode renders
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => const MainScreen()),
-        (route) => false,
-      );
+      // Return to the root MainScreen (which reacts to localRoleNotifier) without popping MainApp's StreamBuilder
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -58,7 +54,10 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout_rounded),
-            onPressed: () => _auth.signOut(),
+            onPressed: () async {
+              UserRoleService.localRoleNotifier.value = null;
+              await _auth.signOut();
+            },
           ),
         ],
       ),
@@ -115,7 +114,10 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
               const SizedBox(height: 40),
               Center(
                 child: TextButton(
-                  onPressed: () => _auth.signOut(),
+                  onPressed: () async {
+                    UserRoleService.localRoleNotifier.value = null;
+                    await _auth.signOut();
+                  },
                   child: const Text('Back to Login', style: TextStyle(color: Colors.grey)),
                 ),
               ),

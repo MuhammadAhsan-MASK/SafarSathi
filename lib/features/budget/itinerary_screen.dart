@@ -39,6 +39,7 @@ class ItineraryScreen extends StatefulWidget {
 class _ItineraryScreenState extends State<ItineraryScreen> {
   int _selectedDay = 0;
   bool _isSaved = false;
+  String? _savedTripId;
   late double _grossTripBudget;
   late double _transportDeduction;
   late double _stayDeduction;
@@ -49,15 +50,25 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
   @override
   void initState() {
     super.initState();
+    final diff = widget.endDate.isBefore(widget.startDate)
+        ? 1
+        : widget.endDate.difference(widget.startDate).inDays + 1;
+    _dayCount = diff > 0 ? diff : 1;
+    final nights = _dayCount > 1 ? _dayCount - 1 : 0;
+    final groupSize = widget.travelers > 0 ? widget.travelers : 1;
+    final roomsNeeded = (groupSize / 2).ceil();
+
     _grossTripBudget = widget.budget > 0 ? widget.budget : 50000;
-    _transportDeduction = widget.transportCost ?? (_grossTripBudget * 0.20);
-    _stayDeduction = widget.stayCost ?? (_grossTripBudget * 0.40);
+    _transportDeduction = widget.transportCost ??
+        (_grossTripBudget * 0.20).clamp(0.0, 45000.0 * groupSize * 2);
+    final remainingAfterTrans = (_grossTripBudget - _transportDeduction).clamp(0.0, _grossTripBudget);
+    _stayDeduction = widget.stayCost ??
+        (nights == 0
+            ? 0.0
+            : (_grossTripBudget * 0.40).clamp(0.0, 35000.0 * nights * roomsNeeded).clamp(0.0, remainingAfterTrans));
 
     final netDaily = _grossTripBudget - _transportDeduction - _stayDeduction;
     _totalTripBudget = netDaily > 0 ? netDaily : 0;
-
-    final diff = widget.endDate.difference(widget.startDate).inDays.abs() + 1;
-    _dayCount = diff > 0 ? diff : 1;
 
     // Initialize each day with an equal share of the net daily wallet (after transport & stay)
     _dayBudgets = {};
@@ -127,7 +138,10 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
     final currency = Provider.of<CurrencyProvider>(context, listen: false);
     final currentDayBudget = _dayBudgets[dayIndex] ?? (_totalTripBudget / _dayCount);
     final maxAvailable = _getRemainingWallet(dayIndex);
-    final controller = TextEditingController(text: currentDayBudget.toStringAsFixed(0));
+    final decimals = currency.rate == 1.0 ? 0 : 2;
+    final controller = TextEditingController(
+      text: currency.convertFromPkr(currentDayBudget).toStringAsFixed(decimals),
+    );
 
     showDialog(
       context: context,
@@ -159,10 +173,10 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                     const SizedBox(height: 16),
                     TextField(
                       controller: controller,
-                      keyboardType: TextInputType.number,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
-                        labelText: 'Day ${dayIndex + 1} Spending Limit',
-                        prefixText: 'PKR ',
+                        labelText: 'Day ${dayIndex + 1} Spending Limit (${currency.selectedCurrency})',
+                        prefixText: '${currency.symbol} ',
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                         helperText: 'Max available: ${currency.formatPrice(maxAvailable)}',
                       ),
@@ -176,16 +190,16 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                         ActionChip(
                           label: const Text('25%'),
                           onPressed: () {
-                            final val = (maxAvailable * 0.25).clamp(1000, maxAvailable);
-                            controller.text = val.toStringAsFixed(0);
+                            final valPkr = (maxAvailable * 0.25).clamp(0.0, maxAvailable);
+                            controller.text = currency.convertFromPkr(valPkr).toStringAsFixed(decimals);
                             setDialogState(() {});
                           },
                         ),
                         ActionChip(
                           label: const Text('50%'),
                           onPressed: () {
-                            final val = (maxAvailable * 0.50).clamp(1000, maxAvailable);
-                            controller.text = val.toStringAsFixed(0);
+                            final valPkr = (maxAvailable * 0.50).clamp(0.0, maxAvailable);
+                            controller.text = currency.convertFromPkr(valPkr).toStringAsFixed(decimals);
                             setDialogState(() {});
                           },
                         ),
@@ -193,15 +207,15 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                           label: const Text('Equal Split'),
                           onPressed: () {
                             final futureDaysCount = _dayCount - dayIndex;
-                            final val = maxAvailable / (futureDaysCount > 0 ? futureDaysCount : 1);
-                            controller.text = val.toStringAsFixed(0);
+                            final valPkr = maxAvailable / (futureDaysCount > 0 ? futureDaysCount : 1);
+                            controller.text = currency.convertFromPkr(valPkr).toStringAsFixed(decimals);
                             setDialogState(() {});
                           },
                         ),
                         ActionChip(
                           label: const Text('Max Available'),
                           onPressed: () {
-                            controller.text = maxAvailable.toStringAsFixed(0);
+                            controller.text = currency.convertFromPkr(maxAvailable).toStringAsFixed(decimals);
                             setDialogState(() {});
                           },
                         ),
@@ -217,20 +231,28 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    final entered = double.tryParse(controller.text.replaceAll(RegExp(r'[^0-9.]'), ''));
-                    if (entered == null || entered <= 0) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Please enter a valid amount.')),
+                    final raw = controller.text.trim();
+                    if (raw.contains('-')) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        const SnackBar(content: Text('Budget cannot be negative.')),
                       );
                       return;
                     }
-                    if (entered > maxAvailable) {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                    final enteredDisplay = double.tryParse(raw.replaceAll(RegExp(r'[^0-9.]'), ''));
+                    if (enteredDisplay == null || enteredDisplay <= 0) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        const SnackBar(content: Text('Please enter a valid positive amount.')),
+                      );
+                      return;
+                    }
+                    final enteredPkr = currency.toPkr(enteredDisplay);
+                    if (enteredPkr > maxAvailable + 1) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(
                         SnackBar(content: Text('Cannot allocate more than ${currency.formatPrice(maxAvailable)}')),
                       );
                       return;
                     }
-                    _setDayBudget(dayIndex, entered);
+                    _setDayBudget(dayIndex, enteredPkr.clamp(0.0, maxAvailable));
                     Navigator.pop(ctx);
                   },
                   style: ElevatedButton.styleFrom(
@@ -547,10 +569,17 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
   @override
   Widget build(BuildContext context) {
     final currency = context.watch<CurrencyProvider>();
+    final groupSize = widget.travelers > 0 ? widget.travelers : 1;
     final currentDayBudget = _dayBudgets[_selectedDay] ?? (_totalTripBudget / _dayCount);
-    final activities = _getCuratedActivitiesForDay(_selectedDay, currentDayBudget);
+    final perPersonDayBudget = currentDayBudget / groupSize;
+    final activities = _getCuratedActivitiesForDay(_selectedDay, perPersonDayBudget)
+        .map((a) => {
+              ...a,
+              'cost': ((a['cost'] as num).toDouble()) * groupSize,
+            })
+        .toList();
 
-    // Activity costs
+    // Activity costs (total across group)
     double totalActivityCost = 0;
     for (var a in activities) {
       totalActivityCost += (a['cost'] as num).toDouble();
@@ -1005,23 +1034,30 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(act['icon'] as IconData? ?? Icons.star, size: 14, color: color),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${act['period']} • ${act['time']}',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
-                      ),
-                    ],
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(act['icon'] as IconData? ?? Icons.star, size: 14, color: color),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            '${act['period']} • ${act['time']}',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
+                const SizedBox(width: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
@@ -1077,15 +1113,18 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Text(
-                    act['tag'] as String? ?? 'Experience',
-                    style: TextStyle(fontSize: 10, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      act['tag'] as String? ?? 'Experience',
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 10, color: Colors.grey.shade700, fontWeight: FontWeight.w600),
+                    ),
                   ),
                 ),
                 TextButton.icon(
@@ -1131,10 +1170,12 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
               icon: Icon(_isSaved ? Icons.bookmark : Icons.bookmark_border, color: _isSaved ? Colors.green : Colors.grey[700]),
               tooltip: 'Save Trip & Route',
               onPressed: () async {
-                setState(() => _isSaved = !_isSaved);
-                if (_isSaved) {
+                final messenger = ScaffoldMessenger.of(context);
+                if (!_isSaved) {
+                  final tripId = _savedTripId ??
+                      'trip_${widget.destination.toLowerCase().replaceAll(RegExp(r'\s+'), '_')}_${DateTime.now().millisecondsSinceEpoch}';
                   final newTrip = SavedTrip(
-                    id: 'trip_${widget.destination.toLowerCase().replaceAll(RegExp(r'\s+'), '_')}_${DateTime.now().millisecondsSinceEpoch}',
+                    id: tripId,
                     title: '${widget.destination} Tour',
                     destination: widget.destination,
                     origin: widget.origin,
@@ -1147,7 +1188,11 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                   );
                   await SavedTripsService().saveTrip(newTrip);
                   if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  setState(() {
+                    _savedTripId = tripId;
+                    _isSaved = true;
+                  });
+                  messenger.showSnackBar(
                     SnackBar(
                       content: Text('Trip "${newTrip.title}" saved! Visible in Safar Khata.'),
                       backgroundColor: Colors.green,
@@ -1166,9 +1211,16 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                     ),
                   );
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
+                  if (_savedTripId != null) {
+                    await SavedTripsService().deleteTrip(_savedTripId!);
+                  }
+                  if (!mounted) return;
+                  setState(() {
+                    _isSaved = false;
+                  });
+                  messenger.showSnackBar(
                     SnackBar(
-                      content: const Text('Removed from favorites'),
+                      content: const Text('Removed from saved trips'),
                       backgroundColor: Colors.grey[800],
                     ),
                   );
@@ -1384,13 +1436,21 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                                     ),
                                   );
 
+                                  final groupSize = widget.travelers > 0 ? widget.travelers : 1;
                                   final List<Map<String, dynamic>> sections = sortedSelected.map((dayIdx) {
                                     final dayDate = widget.startDate.add(Duration(days: dayIdx));
                                     final dayBudget = _dayBudgets[dayIdx] ?? (_totalTripBudget / _dayCount);
+                                    final perPersonDayBudget = dayBudget / groupSize;
+                                    final scaledActivities = _getCuratedActivitiesForDay(dayIdx, perPersonDayBudget)
+                                        .map((a) => {
+                                              ...a,
+                                              'cost': ((a['cost'] as num).toDouble()) * groupSize,
+                                            })
+                                        .toList();
                                     return {
                                       'dayTitle': 'Day ${dayIdx + 1} (${dayDate.month}/${dayDate.day}/${dayDate.year})',
                                       'budget': currency.formatPrice(dayBudget),
-                                      'activities': _getCuratedActivitiesForDay(dayIdx, dayBudget),
+                                      'activities': scaledActivities,
                                     };
                                   }).toList();
 
@@ -1398,6 +1458,7 @@ class _ItineraryScreenState extends State<ItineraryScreen> {
                                     destination: widget.destination,
                                     origin: widget.origin,
                                     daySections: sections,
+                                    formatCurrency: currency.formatPrice,
                                     budgetSummary: {
                                       'grossBudget': currency.formatPrice(_grossTripBudget),
                                       'transportCost': currency.formatPrice(_transportDeduction),

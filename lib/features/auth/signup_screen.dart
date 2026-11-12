@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/theme.dart';
+import 'user_role_service.dart';
 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
@@ -148,6 +149,11 @@ class _SignupScreenState extends State<SignupScreen> {
         email: email,
         password: password,
       );
+
+      // Set reactive role immediately before authStateChanges rebuilds MainScreen
+      if (userCredential.user != null) {
+        UserRoleService.setLocalRole(_selectedRole, uid: userCredential.user!.uid);
+      }
 
       // 2. Update Display Name
       await userCredential.user?.updateDisplayName(name);

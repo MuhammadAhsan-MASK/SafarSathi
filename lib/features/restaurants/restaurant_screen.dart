@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../core/theme.dart';
 import '../../core/currency_provider.dart';
 import '../../core/favorites_provider.dart';
+import '../../core/url_helper.dart';
 import '../../core/widgets/app_image.dart';
 import 'services/restaurant_service.dart';
 import 'models/restaurant_model.dart';
@@ -27,16 +28,7 @@ class _RestaurantScreenState extends State<RestaurantScreen> {
     'Skardu', 'Swat', 'Murree', 'Peshawar', 'Quetta', 'Multan',
   ];
 
-  Future<void> _launchUrl(String urlString) async {
-    final Uri uri = Uri.parse(urlString);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open $urlString')),
-        );
-      }
-    }
-  }
+  Future<void> _launchUrl(String urlString) => launchExternalUrl(context, urlString);
 
   Future<void> _callPhone(String phone) async {
     final Uri uri = Uri(scheme: 'tel', path: phone);

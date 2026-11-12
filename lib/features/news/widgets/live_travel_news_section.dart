@@ -56,42 +56,51 @@ class _LiveTravelNewsSectionState extends State<LiveTravelNewsSection> {
     super.dispose();
   }
 
-  void _refreshData() {
+  Future<void> _refreshData() async {
     setState(() {
       _isRefreshing = true;
     });
 
-    Future.delayed(const Duration(milliseconds: 600), () {
-      if (mounted) {
-        setState(() {
-          _lastRefreshed = DateTime.now();
-          _advisories = TravelNewsService.getLiveAdvisories();
-          _isRefreshing = false;
-        });
+    try {
+      final latest = await TravelNewsService.getLiveAdvisoriesStream()
+          .first
+          .timeout(const Duration(seconds: 3));
+      if (!mounted) return;
+      setState(() {
+        _advisories = latest;
+        _lastRefreshed = DateTime.now();
+        _isRefreshing = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _lastRefreshed = DateTime.now();
+        _isRefreshing = false;
+      });
+    }
 
-        ScaffoldMessenger.of(context).hideCurrentSnackBar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Live travel news & weather updated from NDMA & PMD feeds',
-                    style: GoogleFonts.poppins(fontSize: 12),
-                  ),
-                ),
-              ],
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Travel advisories synced with live alerts feed',
+                style: GoogleFonts.poppins(fontSize: 12),
+              ),
             ),
-            backgroundColor: const Color(0xFF10B981),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    });
+          ],
+        ),
+        backgroundColor: const Color(0xFF10B981),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 
   List<TravelNewsItem> get _filteredAdvisories {

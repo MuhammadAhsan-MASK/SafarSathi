@@ -3,9 +3,15 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
 class PDFService {
-  /// Sanitizes text so PDF standard fonts render cleanly without missing-glyph boxes.
+  static String sanitizeText(String text) => _pdfSafe(text);
+
+  /// Sanitizes text so PDF standard fonts render cleanly without missing-glyph boxes,
+  /// preserving non-ASCII currency symbols as ASCII codes.
   static String _pdfSafe(String text) {
     return text
+        .replaceAll('£', 'GBP')
+        .replaceAll('€', 'EUR')
+        .replaceAll('﷼', 'SAR')
         .replaceAll('➔', '->')
         .replaceAll('→', '->')
         .replaceAll('•', '-')
@@ -21,6 +27,7 @@ class PDFService {
     List<Map<String, dynamic>> activities = const [],
     List<Map<String, dynamic>>? daySections,
     Map<String, String>? budgetSummary,
+    String Function(double pkrAmount)? formatCurrency,
   }) async {
     final pdf = pw.Document();
 
@@ -197,7 +204,11 @@ class PDFService {
               final period = _pdfSafe((activity['period'] ?? '').toString());
               final desc = _pdfSafe((activity['desc'] ?? '').toString());
               final costNum = ((activity['cost'] ?? 0) as num).toDouble();
-              final costLabel = costNum <= 0 ? 'FREE' : 'PKR ${costNum.toStringAsFixed(0)}';
+              final costLabel = costNum <= 0
+                  ? 'FREE'
+                  : _pdfSafe(formatCurrency != null
+                      ? formatCurrency(costNum)
+                      : 'PKR ${costNum.toStringAsFixed(0)}');
 
               widgets.add(
                 pw.Container(
@@ -245,13 +256,16 @@ class PDFService {
               );
             }
 
+            final subtotalLabel = _pdfSafe(formatCurrency != null
+                ? formatCurrency(dayActivityTotal)
+                : 'PKR ${dayActivityTotal.toStringAsFixed(0)}');
             widgets.add(
               pw.Align(
                 alignment: pw.Alignment.centerRight,
                 child: pw.Padding(
                   padding: const pw.EdgeInsets.only(bottom: 14),
                   child: pw.Text(
-                    'Day Activity Subtotal: PKR ${dayActivityTotal.toStringAsFixed(0)}',
+                    'Day Activity Subtotal: $subtotalLabel',
                     style: pw.TextStyle(
                       fontSize: 11,
                       fontWeight: pw.FontWeight.bold,

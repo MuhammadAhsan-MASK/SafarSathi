@@ -48,10 +48,11 @@ class ReviewsScreen extends StatelessWidget {
                     ))
                   else
                     ...reviews.map((review) => _buildReviewCard(
-                      review.userName, 
-                      review.rating, 
-                      review.comment, 
-                      DateFormat('MMM dd, yyyy').format(review.timestamp)
+                      context,
+                      review.userName,
+                      review.rating,
+                      review.comment,
+                      DateFormat('MMM dd, yyyy').format(review.timestamp),
                     )),
                 ],
               ),
@@ -81,7 +82,7 @@ class ReviewsScreen extends StatelessWidget {
             children: [
               Text(avg.toStringAsFixed(1), style: GoogleFonts.poppins(fontSize: 48, fontWeight: FontWeight.bold, color: AppTheme.primaryPurple)),
               Row(
-                children: List.generate(5, (index) => Icon(Icons.star, color: index < avg.floor() ? Colors.amber : Colors.grey[300], size: 16)),
+                children: List.generate(5, (index) => Icon(Icons.star, color: index < avg.round() ? Colors.amber : Colors.grey[300], size: 16)),
               ),
               const SizedBox(height: 4),
               const Text('Overall Rating', style: TextStyle(fontSize: 12, color: Colors.grey)),
@@ -127,7 +128,43 @@ class ReviewsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildReviewCard(String user, int rating, String comment, String time) {
+  void _showRespondDialog(BuildContext context, String guestName) {
+    final replyCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text('Reply to $guestName', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 16)),
+        content: TextField(
+          controller: replyCtrl,
+          maxLines: 3,
+          decoration: const InputDecoration(
+            hintText: 'Write a polite response to this guest review...',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              if (replyCtrl.text.trim().isEmpty) return;
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Reply posted to $guestName!'),
+                  backgroundColor: Colors.green,
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryPurple, foregroundColor: Colors.white),
+            child: const Text('Send Reply'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReviewCard(BuildContext context, String user, int rating, String comment, String time) {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(20),
@@ -155,7 +192,7 @@ class ReviewsScreen extends StatelessWidget {
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
-              onPressed: () {},
+              onPressed: () => _showRespondDialog(context, user),
               child: const Text('Respond', style: TextStyle(color: AppTheme.primaryPurple, fontWeight: FontWeight.bold)),
             ),
           ),

@@ -33,6 +33,14 @@ class Restaurant {
 
   factory Restaurant.fromFirestore(DocumentSnapshot doc) {
     Map data = doc.data() as Map<String, dynamic>;
+    final rawPrices = data['typePrices'];
+    final Map<String, double> parsedPrices = {};
+    if (rawPrices is Map) {
+      rawPrices.forEach((key, val) {
+        if (val is num) parsedPrices[key.toString()] = val.toDouble();
+      });
+    }
+
     return Restaurant(
       id: doc.id,
       name: data['name'] ?? '',
@@ -45,7 +53,7 @@ class Restaurant {
       description: data['description'],
       vendorId: data['vendorId'] ?? '',
       createdAt: data['createdAt'] != null ? (data['createdAt'] as Timestamp).toDate() : null,
-      typePrices: Map<String, double>.from(data['typePrices'] ?? {}),
+      typePrices: parsedPrices,
       isVerified: data['isVerified'] ?? true,
     );
   }

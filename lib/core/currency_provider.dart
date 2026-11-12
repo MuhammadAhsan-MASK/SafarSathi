@@ -31,6 +31,10 @@ class CurrencyProvider extends ChangeNotifier {
     }
   }
 
+  double convertFromPkr(double pkrAmount) => pkrAmount / rate;
+
+  double toPkr(double displayAmount) => displayAmount * rate;
+
   String formatPrice(double amount) {
     double converted = amount / rate;
     // For smaller values (like USD/GBP), show 2 decimal places. For PKR, show 0.

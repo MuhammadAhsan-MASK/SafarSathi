@@ -20,7 +20,7 @@ class HotelService {
       List<Hotel> csvHotels = [];
       for (int i = 1; i < listData.length; i++) {
         var row = listData[i];
-        if (row.length >= 16) {
+        if (row.length >= 17) {
           String idStr = row[0].toString();
           String nameStr = row[1].toString().replaceAll('_', ' ');
           String cityStr = row[2].toString();
@@ -60,7 +60,10 @@ class HotelService {
     if (!SeedData.useSeedData) {
       try {
         await for (final snapshot in _firestore.collection('hotels').snapshots()) {
-          yield snapshot.docs.map((doc) => Hotel.fromFirestore(doc)).toList();
+          yield snapshot.docs
+              .map((doc) => Hotel.fromFirestore(doc))
+              .where((h) => h.isVerified)
+              .toList();
         }
       } catch (_) {
         yield [];
@@ -101,6 +104,12 @@ class HotelService {
     final data = hotel.toMap();
     data['createdAt'] = FieldValue.serverTimestamp();
     await _firestore.collection('hotels').add(data);
+  }
+
+  Future<void> updateHotelPrice(String id, double newPrice) async {
+    await _firestore.collection('hotels').doc(id).update({
+      'price': newPrice,
+    });
   }
 
   Future<void> deleteHotel(String id) async {

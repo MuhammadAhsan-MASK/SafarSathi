@@ -33,7 +33,18 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
   }
 
   Future<void> _openWhatsApp(String waNumber, String guideName) async {
-    final cleanNumber = waNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    var cleanNumber = waNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    if (cleanNumber.startsWith('0') && cleanNumber.length >= 10) {
+      cleanNumber = '92${cleanNumber.substring(1)}';
+    }
+    if (cleanNumber.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No WhatsApp number provided for this guide.')),
+        );
+      }
+      return;
+    }
     final message = Uri.encodeComponent(
       'Hello $guideName! I found your profile on SastaSafar. I am interested in hiring you for a tour in ${widget.guide.region}. Are you available?',
     );
@@ -53,9 +64,9 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        DateTime? localStart = _startDate ?? DateTime.now().add(const Duration(days: 1));
-        DateTime? localEnd = _endDate ?? DateTime.now().add(const Duration(days: 4));
-        int days = localEnd.difference(localStart).inDays;
+        DateTime localStart = _startDate ?? DateTime.now().add(const Duration(days: 1));
+        DateTime localEnd = _endDate ?? localStart.add(const Duration(days: 2));
+        int days = localEnd.difference(localStart).inDays + 1;
         if (days <= 0) days = 1;
 
         return StatefulBuilder(
@@ -118,10 +129,44 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
                   ),
                   const Divider(height: 24),
 
-                  // Date range picker summary
-                  Text(
-                    'Trip Duration: $days ${days == 1 ? "Day" : "Days"}',
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  // Interactive Trip Duration Stepper
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Trip Duration: $days ${days == 1 ? "Day" : "Days"}',
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: days > 1
+                                ? () => setSheetState(() {
+                                      days--;
+                                      _startDate = localStart;
+                                      _endDate = localStart.add(Duration(days: days - 1));
+                                    })
+                                : null,
+                            icon: const Icon(Icons.remove_circle_outline, color: AppTheme.primaryPurple),
+                          ),
+                          Text('$days', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                          IconButton(
+                            onPressed: days < 30
+                                ? () => setSheetState(() {
+                                      days++;
+                                      _startDate = localStart;
+                                      _endDate = localStart.add(Duration(days: days - 1));
+                                    })
+                                : null,
+                            icon: const Icon(Icons.add_circle_outline, color: AppTheme.primaryPurple),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   Container(
@@ -134,23 +179,30 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Estimated Total', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
-                            Text(
-                              currencyProvider.formatPrice(totalEst),
-                              style: const TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: AppTheme.primaryPurple,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Estimated Total', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                              Text(
+                                currencyProvider.formatPrice(totalEst),
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.primaryPurple,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                        Text(
-                          '(${currencyProvider.formatPrice(widget.guide.dailyRatePkr)}/day)',
-                          style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            '(${currencyProvider.formatPrice(widget.guide.dailyRatePkr)}/day)',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                          ),
                         ),
                       ],
                     ),
@@ -580,10 +632,14 @@ class _GuideDetailScreenState extends State<GuideDetailScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Direct Contact Details',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              const Expanded(
+                child: Text(
+                  'Direct Contact Details',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
+              const SizedBox(width: 8),
               Text(
                 'Available Now',
                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.green.shade700),

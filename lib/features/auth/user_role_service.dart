@@ -9,13 +9,19 @@ class UserRoleService {
   /// Immediate in-memory role state so UI transitions work instantaneously
   /// even when Firestore network writes are queued or offline.
   static final ValueNotifier<String?> localRoleNotifier = ValueNotifier<String?>(null);
+  static String? _localRoleUid;
+
+  static void setLocalRole(String? role, {String? uid}) {
+    _localRoleUid = uid ?? FirebaseAuth.instance.currentUser?.uid;
+    localRoleNotifier.value = role;
+  }
 
   Future<String?> getUserRole() async {
-    if (localRoleNotifier.value != null) {
-      return localRoleNotifier.value;
-    }
     final user = _auth.currentUser;
     if (user == null) return null;
+    if (localRoleNotifier.value != null && _localRoleUid == user.uid) {
+      return localRoleNotifier.value;
+    }
 
     int retries = 0;
     while (retries < 5) {
@@ -35,7 +41,9 @@ class UserRoleService {
 
   Stream<String?> getUserRoleStream() {
     final user = _auth.currentUser;
-    if (user == null) return Stream.value(localRoleNotifier.value);
+    if (user == null) {
+      return Stream.value(_localRoleUid == null ? localRoleNotifier.value : null);
+    }
 
     return _firestore.collection('users').doc(user.uid).snapshots().map((doc) {
       if (doc.exists) {
@@ -46,9 +54,6 @@ class UserRoleService {
   }
 
   Future<void> updateUserRole(String newRole, {Map<String, dynamic>? additionalData}) async {
-    // Immediately update local reactive role for instant UI transition
-    localRoleNotifier.value = newRole;
-
     User? user = _auth.currentUser;
     if (user == null) {
       try {
@@ -58,7 +63,12 @@ class UserRoleService {
         debugPrint('Anonymous signin fallback error: $e');
       }
     }
-    if (user == null) return;
+    if (user == null) {
+      throw Exception('Unable to sign in to switch account mode.');
+    }
+
+    // Update local reactive role scoped to this authenticated uid
+    setLocalRole(newRole, uid: user.uid);
 
     final Map<String, dynamic> data = {
       'role': newRole,

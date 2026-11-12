@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/theme.dart';
+import 'user_role_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -235,12 +236,14 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
             .get();
 
         if (!userDoc.exists) {
+          UserRoleService.setLocalRole('Traveler', uid: userCredential.user!.uid);
           await FirebaseFirestore.instance
               .collection('users')
               .doc(userCredential.user!.uid)
               .set({
             'name': userCredential.user!.displayName ?? '',
             'email': userCredential.user!.email ?? '',
+            'role': 'Traveler',
             'createdAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
         }
@@ -868,6 +871,7 @@ class _SignupFormState extends State<SignupForm> {
             .get();
 
         if (!userDoc.exists) {
+          UserRoleService.setLocalRole(_selectedRole, uid: userCredential.user!.uid);
           await _firestore
               .collection('users')
               .doc(userCredential.user!.uid)
@@ -880,9 +884,12 @@ class _SignupFormState extends State<SignupForm> {
         } else {
           final data = userDoc.data();
           if (data != null && data['role'] == null) {
+            UserRoleService.setLocalRole(_selectedRole, uid: userCredential.user!.uid);
             await _firestore.collection('users').doc(userCredential.user!.uid).update({
               'role': _selectedRole,
             });
+          } else if (data != null && data['role'] is String) {
+            UserRoleService.setLocalRole(data['role'] as String, uid: userCredential.user!.uid);
           }
         }
       }
@@ -928,6 +935,7 @@ class _SignupFormState extends State<SignupForm> {
       );
 
       if (userCredential.user != null) {
+        UserRoleService.setLocalRole(_selectedRole, uid: userCredential.user!.uid);
         await userCredential.user!.updateDisplayName(name);
 
         await _firestore.collection('users').doc(userCredential.user!.uid).set({

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/currency_provider.dart';
+import '../../core/url_helper.dart';
 import '../../core/widgets/app_image.dart';
 import 'models/restaurant_model.dart';
 import '../../core/theme.dart';
@@ -16,16 +17,7 @@ class RestaurantDetailScreen extends StatefulWidget {
 }
 
 class _RestaurantDetailScreenState extends State<RestaurantDetailScreen> {
-  Future<void> _launchUrl(String urlString) async {
-    final Uri uri = Uri.parse(urlString);
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not open $urlString')),
-        );
-      }
-    }
-  }
+  Future<void> _launchUrl(String urlString) => launchExternalUrl(context, urlString);
 
   Future<void> _callPhone(String phone) async {
     final Uri uri = Uri(scheme: 'tel', path: phone);

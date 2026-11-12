@@ -1725,8 +1725,12 @@ class _SurpriseMeResultSheetState extends State<_SurpriseMeResultSheet>
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: () {
-                    Navigator.pop(context);
-                    // Re-open planner sheet for another suggestion
+                    setState(() {
+                      _loading = true;
+                      _result = null;
+                    });
+                    _animCtrl.reset();
+                    _fetchSuggestion();
                   },
                   icon: const Icon(Icons.refresh_rounded, size: 18),
                   label: Text('Try Again',

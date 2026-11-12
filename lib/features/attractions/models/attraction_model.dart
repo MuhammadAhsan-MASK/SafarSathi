@@ -32,7 +32,10 @@ class Attraction {
   });
 
   String get effectiveVideoUrl {
-    final query = Uri.encodeComponent(name);
+    if (videoUrl != null && videoUrl!.trim().isNotEmpty) {
+      return videoUrl!.trim();
+    }
+    final query = Uri.encodeComponent('$name $city Pakistan');
     return 'https://m.youtube.com/results?search_query=$query';
   }
 

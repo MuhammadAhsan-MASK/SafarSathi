@@ -26,16 +26,24 @@ class _EcoTrackerScreenState extends State<EcoTrackerScreen> {
   }
 
   void _recalculate() {
-    final kgCO2 = _calculateFootprint();
     setState(() {
-      if (kgCO2 < 20) {
-        _ecoPoints = 50; 
-      } else if (kgCO2 < 50) {
-        _ecoPoints = 25;
-      } else if (kgCO2 < 100) {
-        _ecoPoints = 10;
-      } else {
-        _ecoPoints = 0;
+      switch (_transportMode) {
+        case 'Train':
+          _ecoPoints = 50;
+          break;
+        case 'Bus':
+          _ecoPoints = 40;
+          break;
+        case 'Car':
+          _ecoPoints = 20;
+          break;
+        case 'Jeep / SUV':
+          _ecoPoints = 10;
+          break;
+        case 'Air':
+        default:
+          _ecoPoints = 5;
+          break;
       }
     });
   }
@@ -124,6 +132,7 @@ class _EcoTrackerScreenState extends State<EcoTrackerScreen> {
           const SizedBox(height: 10),
           DropdownButtonFormField<String>(
             value: _transportMode,
+            isExpanded: true,
             decoration: InputDecoration(
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
               prefixIcon: Icon(Icons.directions_transit, color: Colors.green.shade700),
@@ -172,7 +181,7 @@ class _EcoTrackerScreenState extends State<EcoTrackerScreen> {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: co2 > 100 
+          colors: co2 >= 100
             ? [Colors.orange.shade400, Colors.deepOrange.shade600]
             : [Colors.green.shade400, Colors.teal.shade600],
           begin: Alignment.topLeft,
@@ -217,19 +226,22 @@ class _EcoTrackerScreenState extends State<EcoTrackerScreen> {
                 size: 28,
               ),
               const SizedBox(width: 10),
-              Text(
-                '$_ecoPoints Eco-Points earned',
-                style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green.shade800),
+              Flexible(
+                child: Text(
+                  '$_ecoPoints Eco-Points earned',
+                  style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.green.shade800),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 10),
           Text(
-            _ecoPoints == 50
-                ? "Incredible! You're a true Eco-Warrior."
-                : _ecoPoints > 0
-                    ? "Good job choosing sustainable travel options!"
-                    : "Consider taking a bus or train to reduce your emissions.",
+            _ecoPoints >= 40
+                ? "Incredible! Public rail & bus travel keeps your per-km footprint ultra-low."
+                : _ecoPoints >= 20
+                    ? "Moderate impact — sharing a car or switching to bus/train cuts emissions further!"
+                    : "High emissions per km. Switch to Bus or Train when possible to earn max Eco-Points.",
             textAlign: TextAlign.center,
             style: GoogleFonts.poppins(color: Colors.grey.shade700, fontSize: 13),
           ),

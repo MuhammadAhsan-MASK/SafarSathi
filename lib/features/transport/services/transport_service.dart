@@ -6,61 +6,68 @@ import '../../../core/seed_data.dart';
 class TransportService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  static bool isRouteMatch(String route, {String? source, String? destination}) {
-    final r = route.toLowerCase();
-    
-    bool matchesCity(String text, String city) {
-      final t = text.trim().toLowerCase();
-      final c = city.trim().toLowerCase();
-      if (c.isEmpty || c == 'all' || c == 'all cities') return true;
-      if (t.contains(c) || c.contains(t)) return true;
-
-      // Handle common Pakistani abbreviations & aliases
-      if ((c.contains('karachi') || c == 'khi') && (t.contains('karachi') || t.contains('khi'))) return true;
-      if ((c.contains('islamabad') || c.contains('rawalpindi') || c == 'isb' || c == 'isd' || c == 'rwp') &&
-          (t.contains('islamabad') || t.contains('rawalpindi') || t.contains('isb') || t.contains('isd') || t.contains('rwp'))) {
-        return true;
-      }
-      if ((c.contains('lahore') || c == 'lhr') && (t.contains('lahore') || t.contains('lhr'))) return true;
-      if ((c.contains('peshawar') || c == 'pew') && (t.contains('peshawar') || t.contains('pew'))) return true;
-      if ((c.contains('skardu') || c == 'kdu') && (t.contains('skardu') || t.contains('kdu'))) return true;
-      if ((c.contains('gilgit') || c.contains('hunza') || c == 'gil') &&
-          (t.contains('gilgit') || t.contains('hunza') || t.contains('gil'))) {
-        return true;
-      }
-      if (c.contains('swat') && t.contains('swat')) return true;
-      if (c.contains('quetta') && t.contains('quetta')) return true;
-      if (c.contains('multan') && t.contains('multan')) return true;
-      if (c.contains('murree') && t.contains('murree')) return true;
-
-      return false;
+  static bool _matchesCity(String text, String city) {
+    final t = text.trim().toLowerCase();
+    final c = city.trim().toLowerCase();
+    if (c.isEmpty || c == 'all' || c == 'all cities') return true;
+    if (t.isEmpty) return false;
+    if (t == c || (t.length >= 3 && c.contains(t)) || (c.length >= 3 && t.contains(c))) {
+      return true;
     }
 
-    final hasSource = source != null && source.trim().isNotEmpty && source.trim().toLowerCase() != 'all' && source.trim().toLowerCase() != 'all cities';
-    final hasDest = destination != null && destination.trim().isNotEmpty && destination.trim().toLowerCase() != 'all' && destination.trim().toLowerCase() != 'all cities';
+    // Handle common Pakistani abbreviations & aliases
+    if ((c.contains('karachi') || c == 'khi') && (t.contains('karachi') || t == 'khi')) return true;
+    if ((c.contains('islamabad') || c.contains('rawalpindi') || c == 'isb' || c == 'isd' || c == 'rwp') &&
+        (t.contains('islamabad') || t.contains('rawalpindi') || t == 'isb' || t == 'isd' || t == 'rwp')) {
+      return true;
+    }
+    if ((c.contains('lahore') || c == 'lhr') && (t.contains('lahore') || t == 'lhr')) return true;
+    if ((c.contains('peshawar') || c == 'pew') && (t.contains('peshawar') || t == 'pew')) return true;
+    if ((c.contains('skardu') || c == 'kdu') && (t.contains('skardu') || t == 'kdu')) return true;
+    if ((c.contains('gilgit') || c.contains('hunza') || c == 'gil') &&
+        (t.contains('gilgit') || t.contains('hunza') || t == 'gil')) {
+      return true;
+    }
+    if (c.contains('swat') && t.contains('swat')) return true;
+    if (c.contains('quetta') && t.contains('quetta')) return true;
+    if (c.contains('multan') && t.contains('multan')) return true;
+    if (c.contains('murree') && t.contains('murree')) return true;
+
+    return false;
+  }
+
+  static bool isRouteMatch(String route, {String? source, String? destination}) {
+    final r = route.toLowerCase();
+
+    final hasSource = source != null &&
+        source.trim().isNotEmpty &&
+        source.trim().toLowerCase() != 'all' &&
+        source.trim().toLowerCase() != 'all cities';
+    final hasDest = destination != null &&
+        destination.trim().isNotEmpty &&
+        destination.trim().toLowerCase() != 'all' &&
+        destination.trim().toLowerCase() != 'all cities';
 
     if (!hasSource && !hasDest) return true;
 
-    // Route format often "Origin -> Destination"
-    if (route.contains('->') || route.contains(' to ') || route.contains('-')) {
-      final parts = route.split(RegExp(r'->|to|-'));
-      if (parts.length >= 2) {
-        final originPart = parts[0];
-        final destPart = parts[1];
+    // Route format often "Origin -> Destination" (avoid splitting inside words like "Attock")
+    final parts = route.split(RegExp(r'\s*(?:->|\sto\s|\s-\s)\s*', caseSensitive: false));
+    if (parts.length >= 2) {
+      final originPart = parts.first;
+      final destPart = parts.sublist(1).join(' -> ');
 
-        if (hasSource && hasDest) {
-          return matchesCity(originPart, source) && matchesCity(destPart, destination);
-        }
-        if (hasSource) return matchesCity(originPart, source);
-        if (hasDest) return matchesCity(destPart, destination);
+      if (hasSource && hasDest) {
+        return _matchesCity(originPart, source) && _matchesCity(destPart, destination);
       }
+      if (hasSource) return _matchesCity(originPart, source);
+      if (hasDest) return _matchesCity(destPart, destination);
     }
 
     if (hasSource && hasDest) {
-      return matchesCity(r, source) && matchesCity(r, destination);
+      return _matchesCity(r, source) && _matchesCity(r, destination);
     }
-    if (hasSource) return matchesCity(r, source);
-    if (hasDest) return matchesCity(r, destination);
+    if (hasSource) return _matchesCity(r, source);
+    if (hasDest) return _matchesCity(r, destination);
 
     return true;
   }
@@ -80,17 +87,29 @@ class TransportService {
       if (matched.isNotEmpty) return matched;
 
       // Intelligent Connecting Route Fallback for unlisted pairs
-      final hasSource = source != null && source.trim().isNotEmpty && source.trim().toLowerCase() != 'all' && source.trim().toLowerCase() != 'all cities';
-      final hasDest = destination != null && destination.trim().isNotEmpty && destination.trim().toLowerCase() != 'all' && destination.trim().toLowerCase() != 'all cities';
+      final hasSource = source != null &&
+          source.trim().isNotEmpty &&
+          source.trim().toLowerCase() != 'all' &&
+          source.trim().toLowerCase() != 'all cities';
+      final hasDest = destination != null &&
+          destination.trim().isNotEmpty &&
+          destination.trim().toLowerCase() != 'all' &&
+          destination.trim().toLowerCase() != 'all cities';
 
-      if (hasSource && hasDest && source != destination) {
+      final sameCity = hasSource && hasDest && _matchesCity(source, destination);
+      if (sameCity) return matched;
+
+      if (hasSource && hasDest) {
         matched = generateConnectingOptions(source, destination, cat);
         if (matched.isNotEmpty) return matched;
       }
 
       // If still empty and category is 'train' for a mountain city, recommend bus & flight connections
-      final isMountainDest = destination != null && (destination.toLowerCase().contains('hunza') || destination.toLowerCase().contains('skardu') || destination.toLowerCase().contains('swat'));
-      if (isMountainDest && cat == 'train') {
+      final isMountainDest = hasDest &&
+          (destination.toLowerCase().contains('hunza') ||
+              destination.toLowerCase().contains('skardu') ||
+              destination.toLowerCase().contains('swat'));
+      if (isMountainDest && cat == 'train' && (!_matchesCity(source ?? 'Islamabad', 'Islamabad') || !hasSource)) {
         return _generateMountainConnectingOptions(source ?? 'Islamabad', destination);
       }
 
@@ -103,7 +122,10 @@ class TransportService {
     if (!SeedData.useSeedData) {
       try {
         await for (final snapshot in _firestore.collection('transport').snapshots()) {
-          final firestoreTransports = snapshot.docs.map((doc) => TransportOption.fromFirestore(doc)).toList();
+          final firestoreTransports = snapshot.docs
+              .map((doc) => TransportOption.fromFirestore(doc))
+              .where((t) => t.isVerified)
+              .toList();
           yield filterList(firestoreTransports);
         }
       } catch (_) {
@@ -127,28 +149,32 @@ class TransportService {
   }
 
   static List<TransportOption> generateConnectingOptions(String src, String dst, [String? category]) {
+    if (_matchesCity(src, dst)) return [];
     final list = <TransportOption>[];
     final isFlight = category == null || category == 'flight' || category == 'all';
     final isBus = category == null || category == 'bus' || category == 'all';
     final isTrain = category == null || category == 'train' || category == 'all';
 
     final isMountain = dst.toLowerCase().contains('hunza') || dst.toLowerCase().contains('skardu') || dst.toLowerCase().contains('swat');
+    final srcIsIslamabad = _matchesCity(src, 'Islamabad');
 
     if (isFlight && !dst.toLowerCase().contains('swat')) {
       list.add(TransportOption(
         id: 'conn_flight_${src}_$dst',
-        type: 'PIA / AirSial Connecting Flight',
-        route: '$src -> $dst (via Islamabad)',
-        fare: 34000,
-        time: '3h 45m',
+        type: srcIsIslamabad ? 'PIA / AirSial Direct Northern Flight' : 'PIA / AirSial Connecting Flight',
+        route: srcIsIslamabad ? '$src -> $dst' : '$src -> $dst (via Islamabad)',
+        fare: srcIsIslamabad ? 22000 : 34000,
+        time: srcIsIslamabad ? '1h 15m' : '3h 45m',
         icon: Icons.flight,
         vendorId: 'pia_official',
         websiteUrl: 'https://www.piac.com.pk/',
         category: 'flight',
         departureTime: '08:00',
         availableSeats: 16,
-        operator: 'Connecting Flight (via ISB)',
-        typePrices: {'Economy': 34000, 'Business': 55000},
+        operator: srcIsIslamabad ? 'Direct Air Service' : 'Connecting Flight (via ISB)',
+        typePrices: srcIsIslamabad
+            ? {'Economy': 22000, 'Business': 38000}
+            : {'Economy': 34000, 'Business': 55000},
       ));
     }
 

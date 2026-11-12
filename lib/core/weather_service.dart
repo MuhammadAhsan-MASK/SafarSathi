@@ -39,7 +39,7 @@ class WeatherService {
       // 1. Geocode the destination
       final geoUrl = Uri.parse(
           'https://geocoding-api.open-meteo.com/v1/search?name=${Uri.encodeComponent(destination)}&count=1&format=json');
-      final geoResponse = await http.get(geoUrl);
+      final geoResponse = await http.get(geoUrl).timeout(const Duration(seconds: 4));
 
       if (geoResponse.statusCode != 200) return null;
 
@@ -48,13 +48,13 @@ class WeatherService {
         return null;
       }
 
-      final lat = geoData['results'][0]['latitude'] as double;
-      final lon = geoData['results'][0]['longitude'] as double;
+      final lat = (geoData['results'][0]['latitude'] as num).toDouble();
+      final lon = (geoData['results'][0]['longitude'] as num).toDouble();
 
       // 2. Fetch current weather
       final weatherUrl = Uri.parse(
           'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current_weather=true');
-      final weatherResponse = await http.get(weatherUrl);
+      final weatherResponse = await http.get(weatherUrl).timeout(const Duration(seconds: 4));
 
       if (weatherResponse.statusCode != 200) return null;
 
@@ -80,15 +80,6 @@ class WeatherService {
         warningMsg = 'Disaster Alert: Extreme freezing conditions ($temp°C) in $destination. Weather is not suitable for travelling.';
       }
 
-      // Fallback alerts for typical local risk zones
-      if (warningMsg == null) {
-        if (destination.toLowerCase().contains("kashmir")) {
-          warningMsg = 'Natural Disaster Alert: Landslide reported in some parts of Kashmir right now. Not suitable for travelling.';
-        } else if (destination.toLowerCase().contains("karachi") && temp > 38.0) {
-          warningMsg = 'Disaster Alert: Extreme heatwave temperatures are uncomfortably high in Karachi right now.';
-        }
-      }
-
       if (warningMsg != null) {
         return WeatherWarning(warningMsg, lat, lon);
       }
@@ -104,7 +95,7 @@ class WeatherService {
     try {
       final geoUrl = Uri.parse(
           'https://geocoding-api.open-meteo.com/v1/search?name=${Uri.encodeComponent(destination)}&count=1&format=json');
-      final geoResponse = await http.get(geoUrl);
+      final geoResponse = await http.get(geoUrl).timeout(const Duration(seconds: 4));
       if (geoResponse.statusCode != 200) return null;
 
       final geoData = jsonDecode(geoResponse.body);
@@ -112,12 +103,12 @@ class WeatherService {
         return null;
       }
 
-      final lat = geoData['results'][0]['latitude'] as double;
-      final lon = geoData['results'][0]['longitude'] as double;
+      final lat = (geoData['results'][0]['latitude'] as num).toDouble();
+      final lon = (geoData['results'][0]['longitude'] as num).toDouble();
 
       final weatherUrl = Uri.parse(
           'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current_weather=true');
-      final weatherResponse = await http.get(weatherUrl);
+      final weatherResponse = await http.get(weatherUrl).timeout(const Duration(seconds: 4));
       if (weatherResponse.statusCode != 200) return null;
 
       final weatherData = jsonDecode(weatherResponse.body);
@@ -146,18 +137,32 @@ class WeatherService {
         icon = '⛈️';
       }
 
-      // Advisory calculation
+      // Advisory calculation (aligned with checkWeatherWarning thresholds)
       String advice;
       bool isSevere = false;
 
       if ([95, 96, 99].contains(code)) {
         advice = 'Thunderstorms detected! Avoid open mountain passes and stay indoors.';
         isSevere = true;
-      } else if ([71, 73, 75, 85, 86].contains(code)) {
-        advice = 'Snowfall detected! Pack heavy thermals, woolen socks, and snow grip boots.';
+      } else if (wind > 75.0) {
+        advice = 'Cyclone-force winds ($wind km/h)! Travel is unsafe right now.';
         isSevere = true;
-      } else if ([61, 63, 65, 81, 82].contains(code)) {
-        advice = 'Wet rain conditions! Carry waterproof raincoats, umbrellas, and shoe covers.';
+      } else if (temp > 45.0) {
+        advice = 'Extreme heatwave ($temp°C)! Avoid daytime travel and stay hydrated.';
+        isSevere = true;
+      } else if (temp < -15.0) {
+        advice = 'Extreme freeze ($temp°C)! High risk of icy roads and frostbite.';
+        isSevere = true;
+      } else if ([73, 75, 86].contains(code)) {
+        advice = 'Heavy snowfall detected! High risk of roadblocks. Pack heavy thermals and snow grip boots.';
+        isSevere = true;
+      } else if ([71, 77, 85].contains(code)) {
+        advice = 'Light snowfall expected ($temp°C). Pack warm thermal layers and waterproof boots.';
+      } else if ([63, 65, 81, 82].contains(code)) {
+        advice = 'Heavy rain alert! Watch for slippery roads or landslides and carry waterproof gear.';
+        isSevere = true;
+      } else if ([51, 53, 55, 61, 80].contains(code)) {
+        advice = 'Light to moderate rain! Carry waterproof raincoats, umbrellas, and shoe covers.';
       } else if (temp <= 5.0) {
         advice = 'Freezing mountain cold ($temp°C). Wear thermal base layers, down jackets, and beanies.';
       } else if (temp <= 15.0) {
