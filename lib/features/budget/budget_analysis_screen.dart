@@ -60,6 +60,12 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
   double? _customStayCost;
   bool _isRoundTripTransport = true;
 
+  bool _transportLoaded = false;
+  bool _hasAffordableTransport = true;
+  double? _minRouteTransportFare;
+  bool _hotelsLoaded = false;
+  bool _hasAffordableHotels = true;
+
   @override
   void initState() {
     super.initState();
@@ -95,34 +101,57 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
           maxFare: _maxTransportBudget,
         )
         .then((options) {
-      if (mounted && _selectedTransport == null && _customTransportCost == null && options.isNotEmpty) {
+      if (mounted) {
         final affordable = options.where((o) => o.fare <= _maxTransportBudget).toList();
+        double? cheapest;
+        if (options.isNotEmpty) {
+          cheapest = options.map((o) => o.fare).reduce((a, b) => a < b ? a : b);
+        }
         final pool = affordable.isNotEmpty ? affordable : options;
-        final pickIdx = (pool.length > 2 && rawTransportPerPerson > 15000)
-            ? (pool.length ~/ 2)
-            : 0;
+        TransportOption? autoPick;
+        if (_selectedTransport == null && _customTransportCost == null && pool.isNotEmpty) {
+          final pickIdx = (pool.length > 2 && rawTransportPerPerson > 15000)
+              ? (pool.length ~/ 2)
+              : 0;
+          autoPick = pool[pickIdx];
+        }
         setState(() {
-          _selectedTransport = pool[pickIdx];
+          _transportLoaded = true;
+          _minRouteTransportFare = cheapest;
+          _hasAffordableTransport = affordable.isNotEmpty &&
+              cheapest != null &&
+              (cheapest * transportLegs * groupSize) <= widget.budget;
+          if (autoPick != null) _selectedTransport = autoPick;
         });
       }
       return options;
     });
 
-    _hotelFuture = _nightsCount == 0
-        ? Future.value(<Hotel>[])
-        : _matcherService
-            .getAffordableHotels(widget.destination, _maxNightlyHotelBudget)
-            .then((hotels) {
-          if (mounted && _selectedHotel == null && _customStayCost == null && hotels.isNotEmpty) {
+    if (_nightsCount == 0) {
+      _hotelsLoaded = true;
+      _hasAffordableHotels = true;
+      _hotelFuture = Future.value(<Hotel>[]);
+    } else {
+      _hotelFuture = _matcherService
+          .getAffordableHotels(widget.destination, _maxNightlyHotelBudget)
+          .then((hotels) {
+        if (mounted) {
+          Hotel? autoPick;
+          if (_selectedHotel == null && _customStayCost == null && hotels.isNotEmpty) {
             final pickIdx = (hotels.length > 2 && rawNightlyHotel > 12000)
                 ? (hotels.length ~/ 2)
                 : 0;
-            setState(() {
-              _selectedHotel = hotels[pickIdx];
-            });
+            autoPick = hotels[pickIdx];
           }
-          return hotels;
-        });
+          setState(() {
+            _hotelsLoaded = true;
+            _hasAffordableHotels = hotels.isNotEmpty;
+            if (autoPick != null) _selectedHotel = autoPick;
+          });
+        }
+        return hotels;
+      });
+    }
 
     _restaurantFuture = _matcherService.getAffordableRestaurants(widget.destination, _maxMealBudget);
     _attractionFuture = _matcherService.getAffordableAttractions(widget.destination, _maxActivityBudget);
@@ -167,6 +196,21 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
 
   double get _surplusReserve => (_netDailySpendable - _recommendedFoodActivityCost).clamp(0.0, widget.budget);
 
+  bool get _isTripImpossible {
+    if (_effectiveTransportCost + _effectiveStayCost > widget.budget) return true;
+    if (_transportLoaded && !_hasAffordableTransport && _customTransportCost == null) {
+      final groupSize = widget.travelers > 0 ? widget.travelers : 1;
+      final legs = _isRoundTripTransport ? 2 : 1;
+      if (_minRouteTransportFare == null || (_minRouteTransportFare! * legs * groupSize) > widget.budget) {
+        return true;
+      }
+      if (_nightsCount > 0 && _hotelsLoaded && !_hasAffordableHotels && _customStayCost == null) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   Future<void> _launchUrl(String url) => launchExternalUrl(context, url);
 
   @override
@@ -189,6 +233,13 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: _buildHealthScoreCard(),
             ),
+            if (_isTripImpossible) ...[
+              const SizedBox(height: 14),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: _buildImpossibleTripBanner(currency),
+              ),
+            ],
             const SizedBox(height: 18),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -221,21 +272,53 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
               '< ${currency.formatPrice(_maxTransportBudget)} /person',
               Icons.directions_bus,
             ),
-            _buildFutureBuilder<List<TransportOption>>(_transportFuture, (transports) => _buildTransportList(transports)),
+            if (_transportLoaded && !_hasAffordableTransport && _customTransportCost == null)
+              _buildNoBudgetTransportBanner(currency),
+            _buildFutureBuilder<List<TransportOption>>(
+              _transportFuture,
+              (transports) => _buildTransportList(transports),
+              emptyBuilder: () => _buildNoBudgetTransportBanner(currency),
+            ),
 
             const SizedBox(height: 18),
 
             // 2. Hotels
-            _buildSectionHeader(
-              'Hotels in ${widget.destination}',
-              '< ${currency.formatPrice(_maxNightlyHotelBudget)} /night',
-              Icons.hotel,
-            ),
-            _buildFutureBuilder<List<Hotel>>(
-              _hotelFuture,
-              (hotels) => _buildHotelList(hotels),
-              emptyBuilder: () => _buildNoBudgetHotelsCard(currency),
-            ),
+            if (_nightsCount == 0)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFECFDF5),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFA7F3D0)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.wb_sunny_outlined, color: Color(0xFF059669), size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          '1-Day Trip Selected — No overnight hotel stay required.',
+                          style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF065F46)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+            else ...[
+              _buildSectionHeader(
+                'Hotels in ${widget.destination}',
+                '< ${currency.formatPrice(_maxNightlyHotelBudget)} /night',
+                Icons.hotel,
+              ),
+              _buildFutureBuilder<List<Hotel>>(
+                _hotelFuture,
+                (hotels) => _buildHotelList(hotels),
+                emptyBuilder: () => _buildNoBudgetHotelsCard(currency),
+              ),
+            ],
 
             const SizedBox(height: 18),
 
@@ -990,6 +1073,130 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
     );
   }
 
+  Widget _buildImpossibleTripBanner(CurrencyProvider currency) {
+    final groupSize = widget.travelers > 0 ? widget.travelers : 1;
+    final legs = _isRoundTripTransport ? 2 : 1;
+    final minTransTotal = _minRouteTransportFare != null
+        ? _minRouteTransportFare! * legs * groupSize
+        : _effectiveTransportCost;
+    final noHotels = _nightsCount > 0 && _hotelsLoaded && !_hasAffordableHotels && _customStayCost == null;
+
+    String reason;
+    if (minTransTotal > widget.budget && noHotels) {
+      reason =
+          'In your budget of ${currency.formatPrice(widget.budget)}, this trip isn\'t possible. Even the cheapest ${legs == 2 ? 'round-trip' : 'one-way'} transport alone for $groupSize traveler${groupSize > 1 ? 's' : ''} costs ${currency.formatPrice(minTransTotal)}, and no listed hotels fit under ${currency.formatPrice(_maxNightlyHotelBudget)}/night.';
+    } else if (_effectiveTransportCost + _effectiveStayCost > widget.budget) {
+      reason =
+          'In this budget (${currency.formatPrice(widget.budget)}), the trip isn\'t possible with selected costs: Transport (${currency.formatPrice(_effectiveTransportCost)}) + Stay (${currency.formatPrice(_effectiveStayCost)}) exceed your total budget.';
+    } else if (minTransTotal > widget.budget) {
+      reason =
+          'In your budget of ${currency.formatPrice(widget.budget)}, this route isn\'t possible. Cheapest transport costs ${currency.formatPrice(minTransTotal)} for $groupSize traveler${groupSize > 1 ? 's' : ''}.';
+    } else {
+      reason =
+          'In this budget (${currency.formatPrice(widget.budget)}), neither suitable transport nor hotels in ${widget.destination} fit your travel allocation.';
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: const Color(0xFFFCA5A5), width: 1.4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.error_outline_rounded, color: Color(0xFFDC2626), size: 22),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Not Possible in This Budget',
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14.5,
+                    color: const Color(0xFF991B1B),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            reason,
+            style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF7F1D1D), height: 1.4),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Tip: Increase your total budget, shorten trip days, or tap "Edit Split" if using your own car or family stay.',
+            style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w500, color: const Color(0xFF991B1B)),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.tune_rounded, size: 17),
+              label: const Text('Go Back & Adjust Budget', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFDC2626),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildNoBudgetTransportBanner(CurrencyProvider currency) {
+    final groupSize = widget.travelers > 0 ? widget.travelers : 1;
+    final legs = _isRoundTripTransport ? 2 : 1;
+    final minPerPerson = _minRouteTransportFare;
+    final minTotal = minPerPerson != null ? minPerPerson * legs * groupSize : null;
+    final exceedsTotalBudget = minTotal != null && minTotal > widget.budget;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: exceedsTotalBudget ? const Color(0xFFFEF2F2) : const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: exceedsTotalBudget ? const Color(0xFFFCA5A5) : const Color(0xFFFDBA74),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            exceedsTotalBudget ? Icons.warning_amber_rounded : Icons.directions_bus_outlined,
+            color: exceedsTotalBudget ? const Color(0xFFDC2626) : const Color(0xFFC2410C),
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              minTotal == null
+                  ? 'No listed transport options found for ${widget.origin} -> ${widget.destination} within this budget.'
+                  : exceedsTotalBudget
+                      ? 'In this budget (${currency.formatPrice(widget.budget)}), transport isn\'t possible: minimum ${legs == 2 ? 'round-trip' : 'one-way'} fare is ${currency.formatPrice(minTotal)} for $groupSize traveler${groupSize > 1 ? 's' : ''}.'
+                      : 'No transport fits your < ${currency.formatPrice(_maxTransportBudget)}/person budget cap. Minimum route fare is ${currency.formatPrice(minPerPerson!)}/person (${currency.formatPrice(minTotal)} total).',
+              style: GoogleFonts.poppins(
+                fontSize: 11.5,
+                color: exceedsTotalBudget ? const Color(0xFF7F1D1D) : const Color(0xFF9A3412),
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHealthScoreCard() {
     final totalBudget = widget.budget > 0 ? widget.budget : 1.0;
     final groupSize = widget.travelers > 0 ? widget.travelers : 1;
@@ -998,8 +1205,8 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
     final perPersonPerDay = remaining / (_dayCount * groupSize);
 
     double rawScore;
-    if (remaining < 0) {
-      rawScore = 0.25;
+    if (_isTripImpossible || remaining < 0) {
+      rawScore = 0.20;
     } else {
       final spareRatio = (remaining / totalBudget).clamp(0.0, 1.0);
       final allowanceFactor = (perPersonPerDay / 3500.0).clamp(0.0, 1.0);
@@ -1011,11 +1218,11 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
     final String statusLabel;
     final String headline;
 
-    if (remaining < 0 || pct < 45) {
+    if (_isTripImpossible || remaining < 0 || pct < 45) {
       statusColor = Colors.red;
-      statusLabel = 'Tight';
-      headline = remaining < 0
-          ? 'Budget Feasibility: Over Budget'
+      statusLabel = _isTripImpossible ? 'Not Possible' : 'Tight';
+      headline = _isTripImpossible || remaining < 0
+          ? 'Budget Insufficient for Trip'
           : 'Budget Feasibility: Very Tight';
     } else if (pct < 70) {
       statusColor = Colors.orange;
@@ -1071,8 +1278,8 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  remaining < 0
-                      ? 'Selected transport & stay exceed total budget. Pick cheaper options or tap "Edit Split".'
+                  _isTripImpossible || remaining < 0
+                      ? 'Current budget cannot support transport & stay. Adjust budget or customize split below.'
                       : '${widget.destination} trip for $groupSize traveler${groupSize > 1 ? 's' : ''} over $_dayCount day${_dayCount > 1 ? 's' : ''}${_nightsCount == 0 ? ' (day trip)' : ' ($_roomsNeeded room${_roomsNeeded > 1 ? 's' : ''})'}.',
                   style: const TextStyle(fontSize: 12, color: Colors.black54),
                 ),
