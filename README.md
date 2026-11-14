@@ -193,12 +193,4 @@ flutter run
 flutter build apk --release
 ```
 
----
-
-## 👥 Final Year Project (FYP) Team
-
-* **Department of Computer Science**
-* **Project Name:** SafarSathi (SastaSafar)
-* **Lead Developer / Author:** [Muhammad Ahsan](https://github.com/MuhammadAhsan-MASK)
-* **Institution:** Riphah International University
 
