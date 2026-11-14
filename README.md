@@ -6,8 +6,6 @@
 [![Firebase](https://img.shields.io/badge/Firebase-Auth%20%7C%20Firestore-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com)
 [![Google Gemini AI](https://img.shields.io/badge/AI-Gemini%202.5%20%2F%202.0-8E75C2?logo=google&logoColor=white)](https://ai.google.dev)
 [![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20iOS-green.svg)](https://flutter.dev)
-[![Tests](https://img.shields.io/badge/Tests-18%2F18%20Passing-brightgreen.svg)](test/)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ---
 
@@ -197,25 +195,6 @@ flutter build apk --release
 
 ---
 
-## 🧪 Testing & Code Quality
-
-SafarSathi is verified with unit tests, widget interaction tests, and strict static analysis:
-
-```bash
-# Run all unit and widget tests
-flutter test
-
-# Run static code analysis
-flutter analyze
-```
-
-### Test Suite Highlights
-- **`test/core_logic_test.dart`**: Validates budget calculations, date edge cases, carbon metric formulas, and weather error bounds.
-- **`test/split_bill_test.dart`**: Verifies zero-sum transaction minimization in Safar Khata.
-- **`test/widget_flows_test.dart`**: Ensures UI resilience, screen navigation, and zero `RenderFlex` layout overflows across various device form factors.
-
----
-
 ## 👥 Final Year Project (FYP) Team
 
 * **Department of Computer Science**
@@ -223,8 +202,3 @@ flutter analyze
 * **Lead Developer / Author:** [Muhammad Ahsan](https://github.com/MuhammadAhsan-MASK)
 * **Institution:** Riphah International University
 
----
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
