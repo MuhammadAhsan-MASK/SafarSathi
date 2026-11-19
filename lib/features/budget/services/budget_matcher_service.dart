@@ -115,7 +115,16 @@ class BudgetMatcherService {
 
     // Filter strictly by calculated nightly budget cap — never return over-budget hotels
     final budgetMatches = destinationHotels.where((h) => getLowestPrice(h) <= maxPricePerNight).toList();
-    budgetMatches.sort((a, b) => getLowestPrice(a).compareTo(getLowestPrice(b)));
+    if (maxPricePerNight >= 18000) {
+      // Luxury / Premium budget: surface top-rated luxury hotels first
+      budgetMatches.sort((a, b) {
+        final rCmp = b.rating.compareTo(a.rating);
+        if (rCmp != 0) return rCmp;
+        return getLowestPrice(b).compareTo(getLowestPrice(a));
+      });
+    } else {
+      budgetMatches.sort((a, b) => getLowestPrice(a).compareTo(getLowestPrice(b)));
+    }
     return budgetMatches;
   }
 
@@ -148,11 +157,20 @@ class BudgetMatcherService {
 
     final budgetMatches = destinationRests.where((r) => getLowestMealPrice(r) <= maxPricePerMeal).toList();
     if (budgetMatches.isNotEmpty) {
-      budgetMatches.sort((a, b) => getLowestMealPrice(a).compareTo(getLowestMealPrice(b)));
+      if (maxPricePerMeal >= 1800) {
+        // Generous / fine dining budget: surface top dining experiences first
+        budgetMatches.sort((a, b) => getLowestMealPrice(b).compareTo(getLowestMealPrice(a)));
+      } else {
+        budgetMatches.sort((a, b) => getLowestMealPrice(a).compareTo(getLowestMealPrice(b)));
+      }
       return budgetMatches;
     }
 
-    destinationRests.sort((a, b) => getLowestMealPrice(a).compareTo(getLowestMealPrice(b)));
+    if (maxPricePerMeal >= 1800) {
+      destinationRests.sort((a, b) => getLowestMealPrice(b).compareTo(getLowestMealPrice(a)));
+    } else {
+      destinationRests.sort((a, b) => getLowestMealPrice(a).compareTo(getLowestMealPrice(b)));
+    }
     return destinationRests;
   }
 

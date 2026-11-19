@@ -58,7 +58,6 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
   late double _maxOutboundTransportBudget;
   late double _maxReturnTransportBudget;
   late double _maxActivityBudget;
-  double get _maxTransportBudget => _maxOutboundTransportBudget;
   late int _dayCount;
   late int _nightsCount;
   late int _roomsNeeded;
@@ -96,40 +95,82 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
   double _getModeMarketBaseline(String mode) {
     switch (mode) {
       case 'flight':
-        return 24000.0;
+        return 22000.0;
       case 'train':
         return 4500.0;
       case 'bus':
-        return 4800.0;
+        return 4500.0;
       default:
-        return 4800.0;
+        return 4500.0;
+    }
+  }
+
+  double _getModeCeiling(String mode) {
+    switch (mode) {
+      case 'flight':
+        return 32000.0; // Realistic domestic flight max in Pakistan (PIA, Serene, Airblue)
+      case 'train':
+        return 12000.0; // AC Sleeper / Green Line max
+      case 'bus':
+        return 9500.0;  // Daewoo Sleeper / Faisal Movers Business max
+      default:
+        return 10000.0;
     }
   }
 
   void _calculateCaps() {
     final groupSize = widget.travelers > 0 ? widget.travelers : 1;
     final outBase = _getModeMarketBaseline(_effectiveOutboundMode);
+    final outCeil = _getModeCeiling(_effectiveOutboundMode);
     final retBase = _isRoundTripTransport ? _getModeMarketBaseline(_effectiveReturnMode) : 0.0;
+    final retCeil = _isRoundTripTransport ? _getModeCeiling(_effectiveReturnMode) : 0.0;
 
-    // Check if flights or rail are chosen to assign appropriate transport allocation
-    final bool hasFlight = _effectiveOutboundMode == 'flight' || (_isRoundTripTransport && _effectiveReturnMode == 'flight');
-    final double defaultTransportRatio = hasFlight ? 0.65 : 0.25;
-
-    final double transportPool = _customTransportCost != null
-        ? _customTransportCost!.clamp(0.0, _budget)
-        : (_budget * defaultTransportRatio).clamp(0.0, _budget);
-
-    if (_customTransportCost != null && _customTransportCost == 0) {
-      _maxOutboundTransportBudget = 0.0;
-      _maxReturnTransportBudget = 0.0;
-    } else if (_isRoundTripTransport && (outBase + retBase) > 0) {
-      final outRatio = outBase / (outBase + retBase);
-      final retRatio = retBase / (outBase + retBase);
-      _maxOutboundTransportBudget = ((transportPool * outRatio) / groupSize).clamp(1000.0, 75000.0);
-      _maxReturnTransportBudget = ((transportPool * retRatio) / groupSize).clamp(1000.0, 75000.0);
+    if (_customTransportCost != null) {
+      if (_customTransportCost == 0) {
+        _maxOutboundTransportBudget = 0.0;
+        _maxReturnTransportBudget = 0.0;
+      } else {
+        final totalBase = outBase + retBase;
+        if (_isRoundTripTransport && totalBase > 0) {
+          final outRatio = outBase / totalBase;
+          final retRatio = retBase / totalBase;
+          _maxOutboundTransportBudget = ((_customTransportCost! * outRatio) / groupSize).clamp(1000.0, 50000.0);
+          _maxReturnTransportBudget = ((_customTransportCost! * retRatio) / groupSize).clamp(1000.0, 50000.0);
+        } else {
+          _maxOutboundTransportBudget = (_customTransportCost! / groupSize).clamp(1000.0, 50000.0);
+          _maxReturnTransportBudget = 0.0;
+        }
+      }
     } else {
-      _maxOutboundTransportBudget = (transportPool / groupSize).clamp(1000.0, 75000.0);
-      _maxReturnTransportBudget = 0.0;
+      // Smart Realistic Transport Allocation:
+      // A bus ticket never costs 27K, and domestic flights top out around 30K-32K.
+      // Therefore, transport caps scale realistically between market baseline and ceiling,
+      // without consuming an arbitrary 65% of large/luxury trip budgets.
+      final totalBaseForGroup = (outBase + retBase) * groupSize;
+      final totalCeilForGroup = (outCeil + retCeil) * groupSize;
+
+      if (_budget >= totalCeilForGroup * 1.5) {
+        // High/Luxury budget: cap transport at the realistic market ceiling!
+        _maxOutboundTransportBudget = outCeil;
+        _maxReturnTransportBudget = _isRoundTripTransport ? retCeil : 0.0;
+      } else if (_budget <= totalBaseForGroup) {
+        // Very tight budget: cap transport near baseline proportionally
+        final availPerPerson = (_budget * 0.70) / groupSize;
+        if (_isRoundTripTransport && (outBase + retBase) > 0) {
+          _maxOutboundTransportBudget = (availPerPerson * (outBase / (outBase + retBase))).clamp(1000.0, outCeil);
+          _maxReturnTransportBudget = (availPerPerson * (retBase / (outBase + retBase))).clamp(1000.0, retCeil);
+        } else {
+          _maxOutboundTransportBudget = availPerPerson.clamp(1000.0, outCeil);
+          _maxReturnTransportBudget = 0.0;
+        }
+      } else {
+        // Mid-range budget: smoothly interpolate between baseline and ceiling
+        final factor = ((_budget - totalBaseForGroup) / (totalCeilForGroup * 1.5 - totalBaseForGroup)).clamp(0.0, 1.0);
+        _maxOutboundTransportBudget = (outBase + (outCeil - outBase) * factor).clamp(outBase, outCeil);
+        _maxReturnTransportBudget = _isRoundTripTransport
+            ? (retBase + (retCeil - retBase) * factor).clamp(retBase, retCeil)
+            : 0.0;
+      }
     }
 
     final totalAllocatedTransport = (_customTransportCost != null)
@@ -138,11 +179,21 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
 
     final remainingForStayFood = (_budget - totalAllocatedTransport).clamp(0.0, _budget);
 
-    final rawNightlyHotel = (_customStayCost != null)
-        ? ((_nightsCount > 0 && _roomsNeeded > 0) ? (_customStayCost! / (_nightsCount * _roomsNeeded)) : 0.0)
-        : (_nightsCount > 0
-            ? (remainingForStayFood * 0.55) / (_nightsCount * _roomsNeeded)
-            : 0.0);
+    // Hotel allocation:
+    // When remaining budget is generous, allow hotel cap to comfortably match 4-star and 5-star luxury suites
+    // (e.g. Serena, Marriott, PC @ 35k - 60k/night) rather than clamping down to budget stays.
+    final double rawNightlyHotel;
+    if (_customStayCost != null) {
+      rawNightlyHotel = (_nightsCount > 0 && _roomsNeeded > 0)
+          ? (_customStayCost! / (_nightsCount * _roomsNeeded))
+          : 0.0;
+    } else if (_nightsCount > 0) {
+      final double stayShare = (_budget >= 300000) ? 0.70 : (_nightsCount >= 5 ? 0.60 : 0.55);
+      final allocatedStayPool = remainingForStayFood * stayShare;
+      rawNightlyHotel = allocatedStayPool / (_nightsCount * _roomsNeeded);
+    } else {
+      rawNightlyHotel = 0.0;
+    }
 
     final totalAllocatedStay = (_customStayCost != null)
         ? _customStayCost!.clamp(0.0, _budget)
@@ -150,14 +201,16 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
 
     final remainingForFoodActivities = (_budget - totalAllocatedTransport - totalAllocatedStay).clamp(0.0, _budget);
 
+    // Dining & Activities:
+    // Scale meal budget realistically: fine dining restaurants (Monal, Tuscany, Sumo) cost 2,500 - 4,500/meal.
     final rawMeal = (remainingForFoodActivities * 0.65) / (_dayCount * 3 * groupSize);
     final rawActivity = (remainingForFoodActivities * 0.35) / (_dayCount * groupSize);
 
     _maxNightlyHotelBudget = (_customStayCost != null && _customStayCost == 0)
         ? 0.0
-        : rawNightlyHotel.clamp(500.0, 45000.0);
-    _maxMealBudget = rawMeal.clamp(150.0, 8000.0);
-    _maxActivityBudget = rawActivity.clamp(100.0, 15000.0);
+        : rawNightlyHotel.clamp(500.0, 80000.0);
+    _maxMealBudget = rawMeal.clamp(150.0, 15000.0);
+    _maxActivityBudget = rawActivity.clamp(100.0, 25000.0);
   }
 
   void _loadAllMatchedOptions({bool preserveUserPicks = true}) {
@@ -275,10 +328,7 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
               _selectedHotel == null ||
               (_selectedHotel != null && _lowestHotelPrice(_selectedHotel!) > _maxNightlyHotelBudget);
           if (needsPick && hotels.isNotEmpty) {
-            final pickIdx = (hotels.length > 2 && _maxNightlyHotelBudget > 12000)
-                ? (hotels.length ~/ 2)
-                : 0;
-            autoPick = hotels[pickIdx];
+            autoPick = hotels.first;
           }
           setState(() {
             _hotelsLoaded = true;
@@ -365,8 +415,7 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
     if (_selectedGoingTransport != null) {
       return _selectedGoingTransport!.fare * groupSize;
     }
-    final perLegCap = _maxTransportBudget * groupSize;
-    return (_budget * 0.10).clamp(0.0, perLegCap > 0 ? perLegCap : 45000.0 * groupSize);
+    return _maxOutboundTransportBudget * groupSize;
   }
 
   double get _effectiveReturnCost {
@@ -375,8 +424,7 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
     if (_selectedReturnTransport != null) {
       return _selectedReturnTransport!.fare * groupSize;
     }
-    final perLegCap = _maxTransportBudget * groupSize;
-    return (_budget * 0.10).clamp(0.0, perLegCap > 0 ? perLegCap : 45000.0 * groupSize);
+    return _maxReturnTransportBudget * groupSize;
   }
 
   double get _effectiveTransportCost {
@@ -391,7 +439,7 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
       return _lowestHotelPrice(_selectedHotel!) * _nightsCount * _roomsNeeded;
     }
     final remaining = (_budget - _effectiveTransportCost).clamp(0.0, _budget);
-    return (_budget * 0.40).clamp(0.0, 35000.0 * _nightsCount * _roomsNeeded).clamp(0.0, remaining);
+    return (_maxNightlyHotelBudget * _nightsCount * _roomsNeeded).clamp(0.0, remaining);
   }
 
   double get _netDailySpendable => (_budget - _effectiveTransportCost - _effectiveStayCost).clamp(0.0, _budget);
@@ -1995,13 +2043,15 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                   const SizedBox(height: 6),
                   Wrap(
                     spacing: 6,
+                    runSpacing: 4,
                     children: [
                       ActionChip(
                         label: const Text('Auto Market Split', style: TextStyle(fontSize: 11)),
                         onPressed: () {
                           setDlgState(() {
-                            final bool hasFlight = _effectiveOutboundMode == 'flight' || (_effectiveReturnMode == 'flight' && tempRoundTrip);
-                            final defaultT = _budget * (hasFlight ? 0.65 : 0.25);
+                            final outCeil = _getModeCeiling(_effectiveOutboundMode);
+                            final retCeil = tempRoundTrip ? _getModeCeiling(_effectiveReturnMode) : 0.0;
+                            final defaultT = ((outCeil + retCeil) * groupSize).clamp(0.0, _budget * 0.70);
                             transportCtrl.text = currency.convertFromPkr(defaultT).toStringAsFixed(decimals);
                           });
                         },
@@ -2027,12 +2077,18 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                   const SizedBox(height: 6),
                   Wrap(
                     spacing: 6,
+                    runSpacing: 4,
                     children: [
                       ActionChip(
                         label: const Text('Auto Market Split', style: TextStyle(fontSize: 11)),
                         onPressed: () {
                           setDlgState(() {
-                            final defaultStay = _nightsCount > 0 ? (_budget * 0.35) : 0.0;
+                            final outCeil = _getModeCeiling(_effectiveOutboundMode);
+                            final retCeil = tempRoundTrip ? _getModeCeiling(_effectiveReturnMode) : 0.0;
+                            final defaultT = ((outCeil + retCeil) * groupSize).clamp(0.0, _budget * 0.70);
+                            final defaultStay = _nightsCount > 0
+                                ? ((_budget - defaultT).clamp(0.0, _budget) * 0.65)
+                                : 0.0;
                             stayCtrl.text = currency.convertFromPkr(defaultStay).toStringAsFixed(decimals);
                           });
                         },
@@ -2045,7 +2101,7 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                   ),
                   const SizedBox(height: 12),
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                     decoration: BoxDecoration(
                       color: remainingPkr >= 0 ? const Color(0xFFF8FAFC) : const Color(0xFFFEF2F2),
                       borderRadius: BorderRadius.circular(10),
@@ -2057,23 +2113,46 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('Trip Budget:', style: GoogleFonts.poppins(fontSize: 11, color: Colors.black54)),
-                            Text(currency.formatPrice(_budget), style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.bold)),
+                            Expanded(
+                              child: Text(
+                                'Total Trip Budget:',
+                                style: GoogleFonts.poppins(fontSize: 11, color: Colors.black54),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                currency.formatPrice(_budget),
+                                style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                            ),
                           ],
                         ),
-                        const SizedBox(height: 3),
+                        const SizedBox(height: 4),
                         Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Text('Remaining for Dining & Buffer:', style: GoogleFonts.poppins(fontSize: 11, color: Colors.black54)),
-                            Text(
-                              currency.formatPrice(remainingPkr > 0 ? remainingPkr : 0),
-                              style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                color: remainingPkr >= 0 ? const Color(0xFF059669) : Colors.red,
+                            Expanded(
+                              child: Text(
+                                'Dining, Activities & Buffer:',
+                                style: GoogleFonts.poppins(fontSize: 11, color: Colors.black54),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Text(
+                                currency.formatPrice(remainingPkr > 0 ? remainingPkr : 0),
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: remainingPkr >= 0 ? const Color(0xFF059669) : Colors.red,
+                                ),
                               ),
                             ),
                           ],
