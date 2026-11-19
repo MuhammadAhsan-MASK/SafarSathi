@@ -889,90 +889,115 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
     );
   }
 
+  Widget _buildSingleModeCard(Map<String, dynamic> m, bool isSelected, Function(String) onSelect) {
+    return InkWell(
+      onTap: () => onSelect(m['id'] as String),
+      borderRadius: BorderRadius.circular(14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppTheme.primaryPurple : const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? AppTheme.primaryPurple : const Color(0xFFE2E8F0),
+            width: isSelected ? 1.8 : 1.0,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: AppTheme.primaryPurple.withValues(alpha: 0.22),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 3,
+                    offset: const Offset(0, 1),
+                  ),
+                ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: isSelected ? Colors.white.withValues(alpha: 0.2) : AppTheme.primaryPurple.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                m['icon'] as IconData,
+                color: isSelected ? Colors.white : AppTheme.primaryPurple,
+                size: 19,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    m['label'] as String,
+                    style: GoogleFonts.poppins(
+                      fontSize: 11,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                      color: isSelected ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    m['hint'] as String,
+                    style: GoogleFonts.poppins(
+                      fontSize: 9.5,
+                      color: isSelected ? Colors.white70 : Colors.grey[500],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            if (isSelected)
+              const Icon(Icons.check_circle_rounded, size: 14, color: Colors.white),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildModeCards({
     required String selectedId,
     required Function(String) onSelect,
   }) {
     final modes = [
       {'id': 'bus', 'label': 'Bus / Coach', 'icon': Icons.directions_bus_rounded, 'hint': 'Budget friendly'},
-      {'id': 'train', 'label': 'Train', 'icon': Icons.train_rounded, 'hint': 'Scenic & relaxed'},
-      {'id': 'flight', 'label': 'Flight', 'icon': Icons.flight_rounded, 'hint': 'Fastest travel'},
-      {'id': 'any', 'label': 'Any Mode', 'icon': Icons.auto_awesome_rounded, 'hint': 'Auto match'},
+      {'id': 'train', 'label': 'Train / Rail', 'icon': Icons.train_rounded, 'hint': 'Scenic & relaxed'},
+      {'id': 'flight', 'label': 'Flight / Air', 'icon': Icons.flight_rounded, 'hint': 'Fastest travel'},
+      {'id': 'any', 'label': 'Any Mode', 'icon': Icons.auto_awesome_rounded, 'hint': 'Best match'},
     ];
 
-    return Row(
-      children: modes.map((m) {
-        final isSelected = selectedId == m['id'];
-        return Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 2.5),
-            child: InkWell(
-              onTap: () => onSelect(m['id'] as String),
-              borderRadius: BorderRadius.circular(14),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 3),
-                decoration: BoxDecoration(
-                  color: isSelected ? AppTheme.primaryPurple : Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: isSelected ? AppTheme.primaryPurple : Colors.grey.withValues(alpha: 0.25),
-                    width: isSelected ? 1.8 : 1.0,
-                  ),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: AppTheme.primaryPurple.withValues(alpha: 0.22),
-                            blurRadius: 7,
-                            offset: const Offset(0, 3),
-                          ),
-                        ]
-                      : [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.02),
-                            blurRadius: 3,
-                            offset: const Offset(0, 1),
-                          ),
-                        ],
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      m['icon'] as IconData,
-                      color: isSelected ? Colors.white : AppTheme.primaryPurple,
-                      size: 20,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      m['label'] as String,
-                      style: GoogleFonts.poppins(
-                        fontSize: 10,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                        color: isSelected ? Colors.white : Colors.black87,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 1),
-                    Text(
-                      m['hint'] as String,
-                      style: GoogleFonts.poppins(
-                        fontSize: 8.5,
-                        color: isSelected ? Colors.white70 : Colors.grey[500],
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: _buildSingleModeCard(modes[0], selectedId == modes[0]['id'], onSelect)),
+            const SizedBox(width: 8),
+            Expanded(child: _buildSingleModeCard(modes[1], selectedId == modes[1]['id'], onSelect)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(child: _buildSingleModeCard(modes[2], selectedId == modes[2]['id'], onSelect)),
+            const SizedBox(width: 8),
+            Expanded(child: _buildSingleModeCard(modes[3], selectedId == modes[3]['id'], onSelect)),
+          ],
+        ),
+      ],
     );
   }
 
@@ -998,29 +1023,29 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: AppTheme.primaryPurple.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.sync_alt_rounded, size: 16, color: AppTheme.primaryPurple),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Transport (Both Ways)',
-                    style: GoogleFonts.poppins(
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.bold,
-                      color: const Color(0xFF1E293B),
-                    ),
-                  ),
-                ],
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryPurple.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.sync_alt_rounded, size: 16, color: AppTheme.primaryPurple),
               ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Transport Mode (Both Ways)',
+                  style: GoogleFonts.poppins(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: const Color(0xFF1E293B),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: 8),
               InkWell(
                 onTap: () {
                   setState(() {
@@ -1054,7 +1079,7 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        _syncReturnWithGoing ? 'Same Return' : 'Custom Return',
+                        _syncReturnWithGoing ? 'Synced' : 'Custom',
                         style: GoogleFonts.poppins(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
