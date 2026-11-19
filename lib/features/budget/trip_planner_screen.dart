@@ -19,6 +19,7 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
   DateTime? _startDate;
   DateTime? _endDate;
   int _travelers = 1;
+  String _selectedTransportMode = 'bus'; // 'bus', 'train', 'flight', 'any'
   bool _isLoading = false;
   bool _showDateError = false;
 
@@ -199,6 +200,10 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
                   _buildTravelersInput(),
                   const SizedBox(height: 20),
 
+                  // ── Mode of Transport ─────────────────────────────────────
+                  _buildTransportModeSelector(),
+                  const SizedBox(height: 20),
+
                   // ── Budget ────────────────────────────────────────────────
                   _buildInputField(
                     'Total Budget (PKR)',
@@ -324,14 +329,6 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
                         try {
                           int days = endDate.difference(startDate).inDays + 1;
                           if (days < 1) days = 1;
-                          final minBudget = days * 1500 * _travelers;
-                          
-                          if (parsedBudget < minBudget) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Budget too low for $days day(s) and $_travelers traveler(s). Minimum realistic budget is PKR $minBudget.')),
-                            );
-                            return;
-                          }
                         } catch (e) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text("Error calculating minimum budget constraints.")),
@@ -392,6 +389,7 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
                                 startDate: startDate,
                                 endDate: endDate,
                                 travelers: _travelers,
+                                preferredTransportMode: _selectedTransportMode,
                               ),
                             ),
                           );
@@ -882,6 +880,136 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
           label,
           style: const TextStyle(fontSize: 10, color: Colors.grey),
           textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTransportModeSelector() {
+    final modes = [
+      {'id': 'bus', 'label': 'Bus / Coach', 'icon': Icons.directions_bus_rounded, 'hint': 'Budget friendly'},
+      {'id': 'train', 'label': 'Train', 'icon': Icons.train_rounded, 'hint': 'Scenic & relaxed'},
+      {'id': 'flight', 'label': 'Flight', 'icon': Icons.flight_rounded, 'hint': 'Fastest travel'},
+      {'id': 'any', 'label': 'Any Mode', 'icon': Icons.auto_awesome_rounded, 'hint': 'Auto match'},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Mode of Transport',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey[700],
+              ),
+            ),
+            Text(
+              'Preferred travel',
+              style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[500]),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: modes.map((m) {
+            final isSelected = _selectedTransportMode == m['id'];
+            return Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 3),
+                child: InkWell(
+                  onTap: () => setState(() => _selectedTransportMode = m['id'] as String),
+                  borderRadius: BorderRadius.circular(14),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppTheme.primaryPurple : Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isSelected ? AppTheme.primaryPurple : Colors.grey.withValues(alpha: 0.25),
+                        width: isSelected ? 1.8 : 1.0,
+                      ),
+                      boxShadow: isSelected
+                          ? [
+                              BoxShadow(
+                                color: AppTheme.primaryPurple.withValues(alpha: 0.25),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              ),
+                            ]
+                          : [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.02),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          m['icon'] as IconData,
+                          color: isSelected ? Colors.white : AppTheme.primaryPurple,
+                          size: 22,
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          m['label'] as String,
+                          style: GoogleFonts.poppins(
+                            fontSize: 11,
+                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                            color: isSelected ? Colors.white : Colors.black87,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          m['hint'] as String,
+                          style: GoogleFonts.poppins(
+                            fontSize: 9,
+                            color: isSelected ? Colors.white70 : Colors.grey[500],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppTheme.primaryPurple.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.info_outline_rounded, size: 14, color: AppTheme.primaryPurple),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  _selectedTransportMode == 'any'
+                      ? 'All available bus, train, and flight routes will be matched in budget.'
+                      : 'Only ${_selectedTransportMode.toUpperCase()} options will be filtered and added to your budget analysis.',
+                  style: GoogleFonts.poppins(fontSize: 11, color: AppTheme.primaryPurple, fontWeight: FontWeight.w500),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );

@@ -196,22 +196,40 @@ class TransportService {
       ));
     }
 
-    if (isTrain && !isMountain) {
-      list.add(TransportOption(
-        id: 'conn_train_${src}_$dst',
-        type: 'Pakistan Railways Intercity',
-        route: '$src -> $dst (Express Service)',
-        fare: 4200,
-        time: '16h 30m',
-        icon: Icons.train,
-        vendorId: 'pak_railways',
-        websiteUrl: 'https://pakrail.gov.pk/',
-        category: 'train',
-        departureTime: '10:30',
-        availableSeats: 35,
-        operator: 'Pakistan Railways',
-        typePrices: {'Economy': 2400, 'AC Std': 4200},
-      ));
+    if (isTrain) {
+      if (!isMountain) {
+        list.add(TransportOption(
+          id: 'conn_train_${src}_$dst',
+          type: 'Pakistan Railways Intercity',
+          route: '$src -> $dst (Express Service)',
+          fare: 4200,
+          time: '16h 30m',
+          icon: Icons.train,
+          vendorId: 'pak_railways',
+          websiteUrl: 'https://pakrail.gov.pk/',
+          category: 'train',
+          departureTime: '10:30',
+          availableSeats: 35,
+          operator: 'Pakistan Railways',
+          typePrices: {'Economy': 2400, 'AC Std': 4200},
+        ));
+      } else {
+        list.add(TransportOption(
+          id: 'conn_train_mountain_${src}_$dst',
+          type: 'Pakistan Railways + Mountain Coach',
+          route: '$src -> Rawalpindi (Train) + NATCO/Coaster to $dst',
+          fare: 5800,
+          time: '24h 00m',
+          icon: Icons.train,
+          vendorId: 'pak_railways',
+          websiteUrl: 'https://pakrail.gov.pk/',
+          category: 'train',
+          departureTime: '09:30',
+          availableSeats: 30,
+          operator: 'Connecting Rail & Northern Coaster',
+          typePrices: {'Economy + Coaster': 4200, 'AC Standard + Luxury Bus': 5800},
+        ));
+      }
     }
 
     return list;

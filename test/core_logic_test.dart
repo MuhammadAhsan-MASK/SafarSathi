@@ -71,6 +71,21 @@ void main() {
       final khiToHunza = TransportService.generateConnectingOptions('Karachi', 'Hunza');
       expect(khiToHunza.any((t) => t.route.contains('via Islamabad')), isTrue);
     });
+
+    test('generateConnectingOptions filters by preferred category including mountain rail', () {
+      final flightOnly = TransportService.generateConnectingOptions('Karachi', 'Hunza', 'flight');
+      expect(flightOnly, isNotEmpty);
+      expect(flightOnly.every((t) => t.category == 'flight'), isTrue);
+
+      final trainMountain = TransportService.generateConnectingOptions('Lahore', 'Hunza', 'train');
+      expect(trainMountain, isNotEmpty);
+      expect(trainMountain.every((t) => t.category == 'train'), isTrue);
+      expect(trainMountain.first.type, contains('Pakistan Railways + Mountain Coach'));
+
+      final busOnly = TransportService.generateConnectingOptions('Islamabad', 'Skardu', 'bus');
+      expect(busOnly, isNotEmpty);
+      expect(busOnly.every((t) => t.category == 'bus'), isTrue);
+    });
   });
 
   group('PDFService Sanitization Tests', () {

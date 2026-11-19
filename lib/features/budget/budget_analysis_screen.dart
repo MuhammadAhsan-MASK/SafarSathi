@@ -22,6 +22,7 @@ class BudgetAnalysisScreen extends StatefulWidget {
   final DateTime startDate;
   final DateTime endDate;
   final int travelers;
+  final String? preferredTransportMode;
 
   const BudgetAnalysisScreen({
     super.key,
@@ -31,6 +32,7 @@ class BudgetAnalysisScreen extends StatefulWidget {
     required this.startDate,
     required this.endDate,
     required this.travelers,
+    this.preferredTransportMode = 'any',
   });
 
   @override
@@ -40,6 +42,7 @@ class BudgetAnalysisScreen extends StatefulWidget {
 class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
   final BudgetMatcherService _matcherService = BudgetMatcherService();
 
+  late double _budget;
   late Future<List<TransportOption>> _transportFuture;
   late Future<List<Hotel>> _hotelFuture;
   late Future<List<Restaurant>> _restaurantFuture;
@@ -66,9 +69,47 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
   bool _hotelsLoaded = false;
   bool _hasAffordableHotels = true;
 
+  void _calculateCaps() {
+    final groupSize = widget.travelers > 0 ? widget.travelers : 1;
+    final transportLegs = _isRoundTripTransport ? 2 : 1;
+    final rawTransportPerPerson = (_budget * 0.20) / (groupSize * transportLegs);
+    final rawNightlyHotel = _nightsCount > 0
+        ? (_budget * 0.40) / (_nightsCount * _roomsNeeded)
+        : 0.0;
+    final foodShare = _nightsCount > 0 ? 0.25 : 0.50;
+    final activityShare = _nightsCount > 0 ? 0.15 : 0.30;
+    final rawMeal = (_budget * foodShare) / (_dayCount * 3 * groupSize);
+    final rawActivity = (_budget * activityShare) / (_dayCount * groupSize);
+
+    _maxTransportBudget = rawTransportPerPerson.clamp(0.0, 45000.0);
+    _maxNightlyHotelBudget = rawNightlyHotel.clamp(0.0, 35000.0);
+    _maxMealBudget = rawMeal.clamp(0.0, 6000.0);
+    _maxActivityBudget = rawActivity.clamp(0.0, 10000.0);
+  }
+
+  void _applyRecommendedBudget(double newBudget) {
+    setState(() {
+      _budget = newBudget;
+      _calculateCaps();
+      final groupSize = widget.travelers > 0 ? widget.travelers : 1;
+      final transportLegs = _isRoundTripTransport ? 2 : 1;
+      if (_minRouteTransportFare != null) {
+        _hasAffordableTransport = (_minRouteTransportFare! * transportLegs * groupSize) <= _budget;
+      }
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Budget updated to PKR ${newBudget.toStringAsFixed(0)}! Trip is now viable.'),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
+    _budget = widget.budget;
     final days = widget.endDate.isBefore(widget.startDate)
         ? 1
         : widget.endDate.difference(widget.startDate).inDays + 1;
@@ -77,28 +118,20 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
     final groupSize = widget.travelers > 0 ? widget.travelers : 1;
     _roomsNeeded = (groupSize / 2).ceil();
 
-    // Smart real-world market caps so extreme budgets (e.g. PKR 500k for 1 person)
-    // do not inflate transport or stay beyond realistic Pakistani prices.
-    final transportLegs = _isRoundTripTransport ? 2 : 1;
-    final rawTransportPerPerson = (widget.budget * 0.20) / (groupSize * transportLegs);
-    final rawNightlyHotel = _nightsCount > 0
-        ? (widget.budget * 0.40) / (_nightsCount * _roomsNeeded)
-        : 0.0;
-    final foodShare = _nightsCount > 0 ? 0.25 : 0.50;
-    final activityShare = _nightsCount > 0 ? 0.15 : 0.30;
-    final rawMeal = (widget.budget * foodShare) / (_dayCount * 3 * groupSize);
-    final rawActivity = (widget.budget * activityShare) / (_dayCount * groupSize);
+    _calculateCaps();
 
-    _maxTransportBudget = rawTransportPerPerson.clamp(0.0, 45000.0);
-    _maxNightlyHotelBudget = rawNightlyHotel.clamp(0.0, 35000.0);
-    _maxMealBudget = rawMeal.clamp(0.0, 6000.0);
-    _maxActivityBudget = rawActivity.clamp(0.0, 10000.0);
+    final transportLegs = _isRoundTripTransport ? 2 : 1;
+    final rawTransportPerPerson = (_budget * 0.20) / (groupSize * transportLegs);
+    final rawNightlyHotel = _nightsCount > 0
+        ? (_budget * 0.40) / (_nightsCount * _roomsNeeded)
+        : 0.0;
 
     _transportFuture = _matcherService
         .getAffordableTransport(
           origin: widget.origin,
           destination: widget.destination,
           maxFare: _maxTransportBudget,
+          transportMode: widget.preferredTransportMode,
         )
         .then((options) {
       if (mounted) {
@@ -120,7 +153,7 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
           _minRouteTransportFare = cheapest;
           _hasAffordableTransport = affordable.isNotEmpty &&
               cheapest != null &&
-              (cheapest * transportLegs * groupSize) <= widget.budget;
+              (cheapest * transportLegs * groupSize) <= _budget;
           if (autoPick != null) _selectedTransport = autoPick;
         });
       }
@@ -165,6 +198,34 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
     return h.price > 0 ? h.price : 3500.0;
   }
 
+  String _formatModeTitle() {
+    final mode = (widget.preferredTransportMode ?? 'any').toLowerCase().trim();
+    switch (mode) {
+      case 'bus':
+        return 'Bus & Coach (${widget.origin} → ${widget.destination})';
+      case 'train':
+        return 'Train & Rail (${widget.origin} → ${widget.destination})';
+      case 'flight':
+        return 'Flights (${widget.origin} → ${widget.destination})';
+      default:
+        return 'Transport (${widget.origin} → ${widget.destination})';
+    }
+  }
+
+  IconData _formatModeIcon() {
+    final mode = (widget.preferredTransportMode ?? 'any').toLowerCase().trim();
+    switch (mode) {
+      case 'train':
+        return Icons.train_rounded;
+      case 'flight':
+        return Icons.flight_rounded;
+      case 'bus':
+        return Icons.directions_bus_rounded;
+      default:
+        return Icons.commute_rounded;
+    }
+  }
+
   double get _effectiveTransportCost {
     if (_customTransportCost != null) return _customTransportCost!;
     final groupSize = widget.travelers > 0 ? widget.travelers : 1;
@@ -172,7 +233,7 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
     if (_selectedTransport != null) {
       return _selectedTransport!.fare * multiplier * groupSize;
     }
-    return (widget.budget * 0.20).clamp(0.0, 45000.0 * groupSize * multiplier);
+    return (_budget * 0.20).clamp(0.0, 45000.0 * groupSize * multiplier);
   }
 
   double get _effectiveStayCost {
@@ -181,11 +242,11 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
     if (_selectedHotel != null) {
       return _lowestHotelPrice(_selectedHotel!) * _nightsCount * _roomsNeeded;
     }
-    final remaining = (widget.budget - _effectiveTransportCost).clamp(0.0, widget.budget);
-    return (widget.budget * 0.40).clamp(0.0, 35000.0 * _nightsCount * _roomsNeeded).clamp(0.0, remaining);
+    final remaining = (_budget - _effectiveTransportCost).clamp(0.0, _budget);
+    return (_budget * 0.40).clamp(0.0, 35000.0 * _nightsCount * _roomsNeeded).clamp(0.0, remaining);
   }
 
-  double get _netDailySpendable => (widget.budget - _effectiveTransportCost - _effectiveStayCost).clamp(0.0, widget.budget);
+  double get _netDailySpendable => (_budget - _effectiveTransportCost - _effectiveStayCost).clamp(0.0, _budget);
 
   double get _recommendedFoodActivityCost {
     final groupSize = widget.travelers > 0 ? widget.travelers : 1;
@@ -194,14 +255,54 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
     return (cappedFood + cappedActivity).clamp(0.0, _netDailySpendable);
   }
 
-  double get _surplusReserve => (_netDailySpendable - _recommendedFoodActivityCost).clamp(0.0, widget.budget);
+  double get _surplusReserve => (_netDailySpendable - _recommendedFoodActivityCost).clamp(0.0, _budget);
+
+  double get _recommendedBudget {
+    final groupSize = widget.travelers > 0 ? widget.travelers : 1;
+    final legs = _isRoundTripTransport ? 2 : 1;
+
+    // 1. Minimum Transport needed for the route/mode
+    double minTransport = 0.0;
+    if (_selectedTransport != null) {
+      minTransport = _selectedTransport!.fare * legs * groupSize;
+    } else if (_minRouteTransportFare != null && _minRouteTransportFare! > 0) {
+      minTransport = _minRouteTransportFare! * legs * groupSize;
+    } else {
+      final mode = (widget.preferredTransportMode ?? 'any').toLowerCase();
+      double baselineFare = 3500.0;
+      if (mode == 'flight') baselineFare = 22000.0;
+      if (mode == 'train') baselineFare = 4200.0;
+      minTransport = baselineFare * legs * groupSize;
+    }
+
+    // 2. Minimum Stay needed
+    double minStay = 0.0;
+    if (_nightsCount > 0) {
+      if (_selectedHotel != null) {
+        minStay = _lowestHotelPrice(_selectedHotel!) * _nightsCount * _roomsNeeded;
+      } else {
+        minStay = 2800.0 * _nightsCount * _roomsNeeded;
+      }
+    }
+
+    // 3. Minimum Daily Subsistence (Food ~ PKR 1,200/day/person)
+    final minFood = 1200.0 * _dayCount * groupSize;
+
+    // 4. Basic Sightseeing / Local transit (~ PKR 600/day/person)
+    final minActivities = 600.0 * _dayCount * groupSize;
+
+    // 5. Total with 5% safety buffer
+    final rawTotal = (minTransport + minStay + minFood + minActivities) * 1.05;
+    final rounded = (rawTotal / 500).ceil() * 500.0;
+    return rounded > _budget ? rounded : (_budget + 5000.0);
+  }
 
   bool get _isTripImpossible {
-    if (_effectiveTransportCost + _effectiveStayCost > widget.budget) return true;
+    if (_effectiveTransportCost + _effectiveStayCost > _budget) return true;
     if (_transportLoaded && !_hasAffordableTransport && _customTransportCost == null) {
       final groupSize = widget.travelers > 0 ? widget.travelers : 1;
       final legs = _isRoundTripTransport ? 2 : 1;
-      if (_minRouteTransportFare == null || (_minRouteTransportFare! * legs * groupSize) > widget.budget) {
+      if (_minRouteTransportFare == null || (_minRouteTransportFare! * legs * groupSize) > _budget) {
         return true;
       }
       if (_nightsCount > 0 && _hotelsLoaded && !_hasAffordableHotels && _customStayCost == null) {
@@ -268,9 +369,9 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
 
             // 1. Transport Options
             _buildSectionHeader(
-              'Transport (${widget.origin} → ${widget.destination})',
+              _formatModeTitle(),
               '< ${currency.formatPrice(_maxTransportBudget)} /person',
-              Icons.directions_bus,
+              _formatModeIcon(),
             ),
             if (_transportLoaded && !_hasAffordableTransport && _customTransportCost == null)
               _buildNoBudgetTransportBanner(currency),
@@ -362,7 +463,7 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                         destination: widget.destination,
                         startDate: widget.startDate,
                         endDate: widget.endDate,
-                        budget: widget.budget,
+                        budget: _budget,
                         travelers: widget.travelers,
                         transportCost: _effectiveTransportCost,
                         stayCost: _effectiveStayCost,
@@ -1080,21 +1181,31 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
         ? _minRouteTransportFare! * legs * groupSize
         : _effectiveTransportCost;
     final noHotels = _nightsCount > 0 && _hotelsLoaded && !_hasAffordableHotels && _customStayCost == null;
+    final recommended = _recommendedBudget;
+    final shortfall = (recommended - _budget).clamp(0.0, double.infinity);
+    final modeLabel = (widget.preferredTransportMode != null && widget.preferredTransportMode != 'any')
+        ? widget.preferredTransportMode!.toUpperCase()
+        : 'transport';
 
     String reason;
-    if (minTransTotal > widget.budget && noHotels) {
+    if (minTransTotal > _budget && noHotels) {
       reason =
-          'In your budget of ${currency.formatPrice(widget.budget)}, this trip isn\'t possible. Even the cheapest ${legs == 2 ? 'round-trip' : 'one-way'} transport alone for $groupSize traveler${groupSize > 1 ? 's' : ''} costs ${currency.formatPrice(minTransTotal)}, and no listed hotels fit under ${currency.formatPrice(_maxNightlyHotelBudget)}/night.';
-    } else if (_effectiveTransportCost + _effectiveStayCost > widget.budget) {
+          'In your budget of ${currency.formatPrice(_budget)}, this trip isn\'t possible. Even the cheapest $modeLabel alone for $groupSize traveler${groupSize > 1 ? 's' : ''} costs ${currency.formatPrice(minTransTotal)}, and no listed hotels in ${widget.destination} fit under ${currency.formatPrice(_maxNightlyHotelBudget)}/night.';
+    } else if (_effectiveTransportCost + _effectiveStayCost > _budget) {
       reason =
-          'In this budget (${currency.formatPrice(widget.budget)}), the trip isn\'t possible with selected costs: Transport (${currency.formatPrice(_effectiveTransportCost)}) + Stay (${currency.formatPrice(_effectiveStayCost)}) exceed your total budget.';
-    } else if (minTransTotal > widget.budget) {
+          'In this budget (${currency.formatPrice(_budget)}), the trip isn\'t possible with selected costs: $modeLabel (${currency.formatPrice(_effectiveTransportCost)}) + Stay (${currency.formatPrice(_effectiveStayCost)}) exceed your total budget.';
+    } else if (minTransTotal > _budget) {
       reason =
-          'In your budget of ${currency.formatPrice(widget.budget)}, this route isn\'t possible. Cheapest transport costs ${currency.formatPrice(minTransTotal)} for $groupSize traveler${groupSize > 1 ? 's' : ''}.';
+          'In your budget of ${currency.formatPrice(_budget)}, $modeLabel isn\'t possible. Minimum ${legs == 2 ? 'round-trip' : 'one-way'} fare is ${currency.formatPrice(minTransTotal)} for $groupSize traveler${groupSize > 1 ? 's' : ''}.';
     } else {
       reason =
-          'In this budget (${currency.formatPrice(widget.budget)}), neither suitable transport nor hotels in ${widget.destination} fit your travel allocation.';
+          'In this budget (${currency.formatPrice(_budget)}), neither suitable $modeLabel nor hotels in ${widget.destination} fit your travel allocation.';
     }
+
+    final estimatedStayCost = _effectiveStayCost > 0
+        ? _effectiveStayCost
+        : (_nightsCount > 0 ? 2800.0 * _nightsCount * _roomsNeeded : 0.0);
+    final estimatedDailyCost = 1800.0 * _dayCount * groupSize;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1112,7 +1223,7 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Not Possible in This Budget',
+                  'Budget Too Low for This Trip',
                   style: GoogleFonts.poppins(
                     fontWeight: FontWeight.bold,
                     fontSize: 14.5,
@@ -1127,25 +1238,116 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
             reason,
             style: GoogleFonts.poppins(fontSize: 12, color: const Color(0xFF7F1D1D), height: 1.4),
           ),
-          const SizedBox(height: 10),
-          Text(
-            'Tip: Increase your total budget, shorten trip days, or tap "Edit Split" if using your own car or family stay.',
-            style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w500, color: const Color(0xFF991B1B)),
-          ),
           const SizedBox(height: 12),
-          SizedBox(
+          // Suggested budget box
+          Container(
             width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.tune_rounded, size: 17),
-              label: const Text('Go Back & Adjust Budget', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFDC2626),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-              ),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFBEB),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFFDE68A), width: 1.2),
             ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.lightbulb_rounded, color: Color(0xFFD97706), size: 19),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Suggested Budget to Make Trip Possible',
+                        style: GoogleFonts.poppins(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF92400E),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Realistic Minimum Needed', style: GoogleFonts.poppins(fontSize: 10.5, color: Colors.grey[700])),
+                        Text(
+                          currency.formatPrice(recommended),
+                          style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFFB45309)),
+                        ),
+                      ],
+                    ),
+                    if (shortfall > 0)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEF2F2),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFFFCA5A5)),
+                        ),
+                        child: Text(
+                          '+${currency.formatPrice(shortfall)} more',
+                          style: GoogleFonts.poppins(fontSize: 11.5, fontWeight: FontWeight.bold, color: const Color(0xFFDC2626)),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Divider(height: 1, color: Color(0xFFFDE68A)),
+                const SizedBox(height: 8),
+                Text(
+                  'Estimated Cost Breakdown:',
+                  style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF92400E)),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '• $modeLabel ($legs leg${legs > 1 ? 's' : ''}, $groupSize traveler${groupSize > 1 ? 's' : ''}): ${currency.formatPrice(minTransTotal)}\n'
+                  '${_nightsCount > 0 ? '• Hotel ($_nightsCount night${_nightsCount > 1 ? 's' : ''}, $_roomsNeeded room${_roomsNeeded > 1 ? 's' : ''}): ${currency.formatPrice(estimatedStayCost)}\n' : ''}'
+                  '• Meals & Local Transit ($_dayCount day${_dayCount > 1 ? 's' : ''}): ${currency.formatPrice(estimatedDailyCost)}',
+                  style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF78350F), height: 1.4),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => _applyRecommendedBudget(recommended),
+                  icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
+                  label: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'Apply ${currency.formatPrice(recommended)}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFD97706),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF991B1B),
+                  side: const BorderSide(color: Color(0xFFFCA5A5)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                ),
+                child: const Text('Edit Details', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+              ),
+            ],
           ),
         ],
       ),
@@ -1157,7 +1359,10 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
     final legs = _isRoundTripTransport ? 2 : 1;
     final minPerPerson = _minRouteTransportFare;
     final minTotal = minPerPerson != null ? minPerPerson * legs * groupSize : null;
-    final exceedsTotalBudget = minTotal != null && minTotal > widget.budget;
+    final exceedsTotalBudget = minTotal != null && minTotal > _budget;
+    final modeLabel = (widget.preferredTransportMode != null && widget.preferredTransportMode != 'any')
+        ? widget.preferredTransportMode!.toUpperCase()
+        : 'transport';
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
@@ -1181,10 +1386,10 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
           Expanded(
             child: Text(
               minTotal == null
-                  ? 'No listed transport options found for ${widget.origin} -> ${widget.destination} within this budget.'
+                  ? 'No listed $modeLabel options found for ${widget.origin} -> ${widget.destination} within this budget.'
                   : exceedsTotalBudget
-                      ? 'In this budget (${currency.formatPrice(widget.budget)}), transport isn\'t possible: minimum ${legs == 2 ? 'round-trip' : 'one-way'} fare is ${currency.formatPrice(minTotal)} for $groupSize traveler${groupSize > 1 ? 's' : ''}.'
-                      : 'No transport fits your < ${currency.formatPrice(_maxTransportBudget)}/person budget cap. Minimum route fare is ${currency.formatPrice(minPerPerson!)}/person (${currency.formatPrice(minTotal)} total).',
+                      ? 'In this budget (${currency.formatPrice(_budget)}), $modeLabel isn\'t possible: minimum ${legs == 2 ? 'round-trip' : 'one-way'} fare is ${currency.formatPrice(minTotal)} for $groupSize traveler${groupSize > 1 ? 's' : ''}.'
+                      : 'No $modeLabel fits your < ${currency.formatPrice(_maxTransportBudget)}/person budget cap. Minimum route fare is ${currency.formatPrice(minPerPerson!)}/person (${currency.formatPrice(minTotal)} total).',
               style: GoogleFonts.poppins(
                 fontSize: 11.5,
                 color: exceedsTotalBudget ? const Color(0xFF7F1D1D) : const Color(0xFF9A3412),
@@ -1198,10 +1403,10 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
   }
 
   Widget _buildHealthScoreCard() {
-    final totalBudget = widget.budget > 0 ? widget.budget : 1.0;
+    final totalBudget = _budget > 0 ? _budget : 1.0;
     final groupSize = widget.travelers > 0 ? widget.travelers : 1;
     final fixedTotal = _effectiveTransportCost + _effectiveStayCost;
-    final remaining = widget.budget - fixedTotal;
+    final remaining = _budget - fixedTotal;
     final perPersonPerDay = remaining / (_dayCount * groupSize);
 
     double rawScore;
@@ -1338,7 +1543,7 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                       fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
                       child: Text(
-                        currency.formatPrice(widget.budget),
+                        currency.formatPrice(_budget),
                         style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.primaryPurple),
                       ),
                     ),
@@ -1540,7 +1745,7 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                   }
                   final parsedT = currency.toPkr(tDisplay);
                   final parsedS = currency.toPkr(sDisplay);
-                  if (parsedT + parsedS > widget.budget + 1) {
+                  if (parsedT + parsedS > _budget + 1) {
                     ScaffoldMessenger.of(this.context).showSnackBar(
                       const SnackBar(content: Text('Combined Transport & Stay cannot exceed Total Trip Budget.')),
                     );

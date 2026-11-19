@@ -160,6 +160,7 @@ class BudgetMatcherService {
     required String origin,
     required String destination,
     double? maxFare,
+    String? transportMode,
   }) async {
     List<TransportOption> allTrans = [...SeedData.initialTransports];
     try {
@@ -172,6 +173,8 @@ class BudgetMatcherService {
       }
     } catch (_) {}
 
+    final normalizedMode = (transportMode ?? 'any').trim().toLowerCase();
+
     // 1. Filter strictly by route: Origin -> Destination
     final routeMatches = allTrans.where((t) {
       return TransportService.isRouteMatch(t.route, source: origin, destination: destination);
@@ -183,11 +186,35 @@ class BudgetMatcherService {
       candidates = routeMatches;
     } else {
       // Intelligently generate connecting intercity options for any unlisted city pair
-      final connecting = TransportService.generateConnectingOptions(origin, destination);
+      final connecting = TransportService.generateConnectingOptions(
+        origin,
+        destination,
+        normalizedMode != 'any' ? normalizedMode : null,
+      );
       if (connecting.isNotEmpty) {
         candidates = connecting;
       } else {
         candidates = allTrans;
+      }
+    }
+
+    // 2. Filter strictly by preferred transport mode if specified
+    if (normalizedMode != 'any') {
+      final modeFiltered = candidates
+          .where((t) => t.category.toLowerCase() == normalizedMode)
+          .toList();
+      if (modeFiltered.isNotEmpty) {
+        candidates = modeFiltered;
+      } else {
+        final fallbackConnecting =
+            TransportService.generateConnectingOptions(origin, destination, normalizedMode);
+        if (fallbackConnecting.isNotEmpty) {
+          candidates = fallbackConnecting;
+        } else {
+          candidates = candidates
+              .where((t) => t.category.toLowerCase() == normalizedMode)
+              .toList();
+        }
       }
     }
 
