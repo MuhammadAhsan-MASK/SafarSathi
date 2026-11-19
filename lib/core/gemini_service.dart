@@ -9,9 +9,12 @@ class GeminiService {
   static const String _apiKey = AppSecrets.geminiApiKey;
 
   static const List<String> _models = [
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-2.0-flash-lite',
+    'gemini-3.5-flash-lite',
+    'gemini-flash-lite-latest',
+    'gemini-3.1-flash-lite',
+    'gemini-3-flash-preview',
+    'gemini-3.8-flash',
+    'gemini-3.5-flash',
   ];
 
   static Future<http.Response> _postGenerateContent(
@@ -32,11 +35,9 @@ class GeminiService {
           return res;
         }
         lastResponse = res;
-        // Try next available model on 404/429/503
-        if (res.statusCode == 503 || res.statusCode == 404 || res.statusCode == 429) {
-          continue;
-        }
-        return res;
+        debugPrint('Gemini model $model returned ${res.statusCode}');
+        // Try next available candidate model on any non-200 code
+        continue;
       } catch (e) {
         debugPrint('Gemini model $model request error: $e');
       }
@@ -93,12 +94,30 @@ If asked something outside travel/Pakistan, politely redirect to travel topics.
     }
 
     try {
+      // Keep up to the last 8 conversation turns to maintain context without hitting token limits
+      final recentHistory =
+          history.length > 8 ? history.sublist(history.length - 8) : history;
+
       final contents = <Map<String, dynamic>>[];
 
-      for (final msg in history) {
+      for (final msg in recentHistory) {
+        final text = (msg['text'] ?? '').trim();
+        if (text.isEmpty) continue;
         contents.add({
           'role': msg['role'] == 'user' ? 'user' : 'model',
-          'parts': [{'text': msg['text'] ?? ''}],
+          'parts': [{'text': text}],
+        });
+      }
+
+      // Gemini contents array must start with role 'user'
+      while (contents.isNotEmpty && contents.first['role'] != 'user') {
+        contents.removeAt(0);
+      }
+
+      if (contents.isEmpty) {
+        contents.add({
+          'role': 'user',
+          'parts': [{'text': lastUserText.isNotEmpty ? lastUserText : 'Hello'}],
         });
       }
 
@@ -108,8 +127,8 @@ If asked something outside travel/Pakistan, politely redirect to travel topics.
         },
         'contents': contents,
         'generationConfig': {
-          'temperature': 0.8,
-          'maxOutputTokens': 512,
+          'temperature': 0.7,
+          'maxOutputTokens': 650,
         },
       });
 
@@ -362,6 +381,72 @@ Reply ONLY in exact JSON format (an array of categories), no markdown blocks, no
           '• 📅 Itinerary planning\n\n'
           'Where would you like to explore first?';
     }
+    if (q.contains('murree') || q.contains('galiyat') || q.contains('nathia')) {
+      return '🌲 **Murree & Galiyat Travel Guide:**\n\n'
+          '• **Distance:** 1.5–2 hours from Islamabad via Murree Expressway\n'
+          '• **Budget:** PKR 4,000–8,000 per person for a 1-day or weekend trip\n'
+          '• **Must-see:** Mall Road, Pindi Point, Kashmir Point, Patriata Chairlift\n'
+          '• **Transport:** Hi-Ace van from Faizabad (~PKR 350) or private taxi (~PKR 3,500)\n'
+          '• **Tip:** Visit on weekdays to avoid traffic congestion on Mall Road.';
+    }
+    if (q.contains('islamabad') || q.contains('isb') || q.contains('rawalpindi') || q.contains('pindi')) {
+      return '🏛️ **Islamabad & Rawalpindi Guide:**\n\n'
+          '• **Must-see:** Faisal Mosque, Daman-e-Koh, Monal (Margalla Hills), Lok Virsa, Pakistan Monument\n'
+          '• **Budget:** PKR 3,000–6,000/day for food and local commute\n'
+          '• **Food:** Cheezious, Savour Foods (Pindi), Melody Food Park, Saidpur Village\n'
+          '• **Transport:** Metro Bus (PKR 30 flat), Careem, or Yango.';
+    }
+    if (q.contains('karachi') || q.contains('clifton') || q.contains('sea view')) {
+      return '🌊 **Karachi — City of Lights:**\n\n'
+          '• **Must-see:** Clifton Beach, Port Grand, Mazar-e-Quaid, Burns Road, Mohatta Palace\n'
+          '• **Food:** Burns Road Nihari & Haleem, Student Biryani, Kolachi at Do Darya\n'
+          '• **Best time:** November to February (cool coastal breezes)\n'
+          '• **Budget:** PKR 4,000–8,000/day (hotels + food + transport).';
+    }
+    if (q.contains('swat') || q.contains('kalam') || q.contains('malam jabba')) {
+      return '🏞️ **Swat & Kalam Valley:**\n\n'
+          '• **Best time:** April to October (lush green) or Jan–Feb for skiing at Malam Jabba\n'
+          '• **Budget:** PKR 15,000–25,000 per person (3–4 days)\n'
+          '• **Must-see:** Malam Jabba Ski Resort, Mahodand Lake, Ushu Forest, Mingora Bazaar\n'
+          '• **Transport:** Swat Express via M-16 Motorway (4–5 hours from Islamabad).';
+    }
+    if (q.contains('naran') || q.contains('kaghan') || q.contains('saif ul malook') || q.contains('babusar')) {
+      return '🏔️ **Naran & Kaghan Valley:**\n\n'
+          '• **Best time:** June to September (roads clear of snow)\n'
+          '• **Budget:** PKR 18,000–30,000 per person (3–4 days)\n'
+          '• **Must-see:** Lake Saif-ul-Malook (jeep ride), Babusar Top, Lulusar Lake, Shogran\n'
+          '• **Jeep rent:** PKR 3,500–5,000 for Saif-ul-Malook return.';
+    }
+    if (q.contains('neelum') || q.contains('kashmir') || q.contains('arang kel')) {
+      return '🌲 **Neelum Valley, Azad Kashmir:**\n\n'
+          '• **Best time:** May to October\n'
+          '• **Budget:** PKR 14,000–25,000 per person (3–4 days)\n'
+          '• **Must-see:** Dhani Waterfall, Kutton, Keran (LOC view), Sharda Peeth, Arang Kel\n'
+          '• **Important:** Carry original CNIC / passport as security checkpoints are mandatory.';
+    }
+    if (q.contains('transport') || q.contains('bus') || q.contains('train') || q.contains('daewoo') || q.contains('flight')) {
+      return '🚌 **Pakistan Transport Options:**\n\n'
+          '• **Intercity Bus:** Faisal Movers, Daewoo Express, Road Master, Sania Express (comfortable, punctual, PKR 1,500–3,500)\n'
+          '• **Northern Areas:** NATCO (Rawalpindi Pirwadhai) for Gilgit, Hunza, and Skardu\n'
+          '• **Train:** Pakistan Railways (Green Line & Tezgam recommended for Karachi-Lahore-ISB)\n'
+          '• **Flights:** PIA, Airblue, Serene, Fly Jinnah (ISB–Skardu/Gilgit depends on weather).';
+    }
+    if (q.contains('hotel') || q.contains('stay') || q.contains('guesthouse') || q.contains('room')) {
+      return '🏨 **Accommodation & Lodging Advice:**\n\n'
+          '• **Budget Guesthouses:** PKR 2,000–3,500/night (clean, basic amenities)\n'
+          '• **Mid-Range Hotels:** PKR 5,000–10,000/night (hot water, Wi-Fi, generator)\n'
+          '• **Luxury / Resorts:** PKR 15,000–35,000/night (Serena, Pearl Continental, Luxus)\n'
+          '• **Tip:** Book 2 weeks in advance during peak summer (July–August) in northern valleys.';
+    }
+    if (q.contains('safety') || q.contains('safe') || q.contains('emergency') || q.contains('police') || q.contains('1122')) {
+      return '🚨 **Safety & Emergency Helplines:**\n\n'
+          '• **Rescue 1122:** Emergency medical & rescue across Punjab, KPK, and AJK\n'
+          '• **Motorway & Highway Police:** Call 130\n'
+          '• **Tourist Police Helpline:** 1422 (KPK Tourism)\n'
+          '• **General Emergency:** 15 (Police)\n'
+          '• **Safety Tip:** Always check local road conditions and landslides before crossing high mountain passes like Babusar or Lowari.';
+    }
+
     if (q.contains('food') || q.contains('eat') || q.contains('restaurant')) {
       return '🍽️ **Pakistan\'s must-try foods:**\n\n'
           '• **Karahi** — best in Peshawar & Lahore (~PKR 800–1,500)\n'
