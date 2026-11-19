@@ -183,7 +183,11 @@ Suggest ONE perfect Pakistan destination for them. Reply ONLY in this exact JSON
             'parts': [{'text': prompt}],
           }
         ],
-        'generationConfig': {'temperature': 0.9, 'maxOutputTokens': 512},
+        'generationConfig': {
+          'temperature': 0.85,
+          'maxOutputTokens': 850,
+          'responseMimeType': 'application/json',
+        },
       });
 
       final text = _extractResponseText(response);
@@ -200,40 +204,84 @@ Suggest ONE perfect Pakistan destination for them. Reply ONLY in this exact JSON
       debugPrint('SurpriseMe API parse error: $e');
     }
 
-    // Diverse Fallbacks if API fails or is offline
+    // Diverse, highly curated regional fallbacks if API is offline or quota exceeded
     final fallbacks = [
       {
+        'destination': 'Gorakh Hill Station',
+        'tagline': 'The Murree of Sindh with freezing night breezes!',
+        'why': 'Gorakh Hills offers a completely unexpected alpine escape in Dadu, Sindh. Perfect for a $vibe getaway within PKR ${budget.toStringAsFixed(0)}.',
+        'highlight1': '4x4 Jeep safari from Wahi Pandi — PKR 4,000–6,000 shared',
+        'highlight2': 'Sunset view from Benazir Viewpoint — Free',
+        'highlight3': 'Night bonfire & stargazing under zero light pollution — Free',
+        'accommodation': 'Sindh Tourism (STDC) Rest House or camping tents (PKR 2,500–5,000/night)',
+        'bestTime': 'October – March',
+        'tip': 'Bring warm jackets even in summer; night temperatures can drop below 10°C.',
+      },
+      {
+        'destination': 'Kumrat Valley',
+        'tagline': 'Untouched deodar pine forests and roaring turquoise waters!',
+        'why': 'Kumrat is ideal for an authentic $vibe retreat within PKR ${budget.toStringAsFixed(0)}. Its dense canopy and waterfalls feel like a fairytale.',
+        'highlight1': 'Katora Lake high-altitude trek — Jeep to Jandrai (~PKR 3,500)',
+        'highlight2': 'Kumrat Riverbank camping & trout fishing — PKR 1,500',
+        'highlight3': 'Do Kala Chashma waterfall hike — Free',
+        'accommodation': 'Riverside wooden pods & luxury camping tents (PKR 3,000–6,500/night)',
+        'bestTime': 'May – September',
+        'tip': 'Rent a 4x4 from Thal bazaar; standard cars cannot clear the forest trails.',
+      },
+      {
+        'destination': 'Makran Coastal Highway & Ormara',
+        'tagline': 'Where golden desert dunes collide with the Arabian Sea!',
+        'why': 'A breathtaking coastal road trip that fits your $vibe preference and PKR ${budget.toStringAsFixed(0)} budget with scenic freedom.',
+        'highlight1': 'Princess of Hope & Sphinx natural rock formations in Hingol — Free',
+        'highlight2': 'Bioluminescent night tides at Ormara Beach — Free',
+        'highlight3': 'Fresh fish bbq caught straight from the sea — PKR 800–1,500',
+        'accommodation': 'Ormara Beach resorts or coastal cottages (PKR 3,500–7,000/night)',
+        'bestTime': 'November – February',
+        'tip': 'Fuel up completely in Hub or Zero Point; gas stations are sparse on the highway.',
+      },
+      {
         'destination': 'Hunza Valley',
-        'tagline': 'Where heaven meets the mountains of Pakistan!',
-        'why': 'Hunza is perfect for your $vibe adventure within PKR ${budget.toStringAsFixed(0)}. The stunning scenery and rich culture make it unmissable.',
-        'highlight1': 'Eagle\'s Nest Viewpoint — Free (jeep hire ~PKR 3,000)',
-        'highlight2': 'Attabad Lake boat ride — PKR 500/person',
-        'highlight3': 'Baltit Fort — Entry PKR 500',
-        'accommodation': 'Guesthouses PKR 2,500–5,500/night',
-        'bestTime': 'May – October',
-        'tip': 'Try the local dried apricots and cherry juice — a Hunza specialty!',
+        'tagline': 'Where heaven meets the majestic Karakoram peaks!',
+        'why': 'Hunza is perfect for your $vibe adventure within PKR ${budget.toStringAsFixed(0)}. Stunning mountain vistas and hospitable culture await.',
+        'highlight1': 'Eagle\'s Nest Viewpoint over Rakaposhi — Free (jeep ~PKR 2,500)',
+        'highlight2': 'Attabad Lake jet ski & motorboat ride — PKR 1,000/person',
+        'highlight3': 'Baltit & Altit Heritage Forts entry — PKR 600',
+        'accommodation': 'Karimabad guesthouses (PKR 3,000–6,500/night)',
+        'bestTime': 'April – October',
+        'tip': 'Try local walnut cakes at Cafe de Hunza and fresh dried apricots.',
       },
       {
-        'destination': 'Swat Valley',
-        'tagline': 'The Switzerland of the East!',
-        'why': 'Swat offers incredible $vibe experiences that fit your PKR ${budget.toStringAsFixed(0)} budget perfectly. Lush green meadows and rivers await.',
-        'highlight1': 'Malam Jabba Ski Resort — Entry PKR 1,000',
-        'highlight2': 'Kalam Valley exploring — Jeep PKR 4,000',
-        'highlight3': 'Mahodand Lake — Boat ride PKR 1,000',
-        'accommodation': 'Hotels PKR 2,500–6,000/night',
-        'bestTime': 'April – September',
-        'tip': 'Bargain for local Swati shawls at the Mingora bazaar!',
+        'destination': 'Skardu & Deosai Plains',
+        'tagline': 'Gateway to K2 and the mystical Land of Giants!',
+        'why': 'Skardu matches your $vibe journey with alpine lakes and desert dunes within PKR ${budget.toStringAsFixed(0)}.',
+        'highlight1': 'Deosai National Park & Sheosar Lake safari — Shared jeep PKR 4,000',
+        'highlight2': 'Katpana Desert cold-desert quad biking — PKR 1,500',
+        'highlight3': 'Upper Kachura Lake boat ride — PKR 500',
+        'accommodation': 'Traditional riverside lodges (PKR 3,500–7,500/night)',
+        'bestTime': 'June – September',
+        'tip': 'Carry plenty of battery banks; northern cold drains phone batteries quickly.',
       },
       {
-        'destination': 'Neelum Valley',
-        'tagline': 'A paradise on Earth in Kashmir!',
-        'why': 'Neelum Valley matches your $vibe needs and PKR ${budget.toStringAsFixed(0)} limit. The blue waters and thick forests are magical.',
-        'highlight1': 'Arang Kel hike — Cable car PKR 500',
-        'highlight2': 'Dhani Waterfall — Free to visit',
-        'highlight3': 'Kutton Jagran Resort — Relaxing views',
-        'accommodation': 'Wooden Cabins PKR 3,000–6,000/night',
+        'destination': 'Neelum Valley & Arang Kel',
+        'tagline': 'The emerald jewel of Azad Kashmir!',
+        'why': 'Neelum Valley fits your $vibe aspirations within PKR ${budget.toStringAsFixed(0)}. Lush green terraced fields and crystal rivers surround you.',
+        'highlight1': 'Arang Kel cable car & panoramic mountain hike — PKR 500',
+        'highlight2': 'Dhani & Kutton waterfalls — Free to explore',
+        'highlight3': 'Keran riverside walk with view of the Line of Control — Free',
+        'accommodation': 'Wooden riverside cabins (PKR 2,500–6,000/night)',
         'bestTime': 'May – October',
-        'tip': 'Carry original CNIC as there are many security checkpoints.',
+        'tip': 'Carry your original CNIC / passport as security checkpoints are mandatory.',
+      },
+      {
+        'destination': 'Swat Valley & Malam Jabba',
+        'tagline': 'The Switzerland of the East with rich Gandhara history!',
+        'why': 'Swat offers incredible $vibe experiences that fit your PKR ${budget.toStringAsFixed(0)} budget with great motorways and lush valleys.',
+        'highlight1': 'Malam Jabba zipline & chairlift — PKR 1,200',
+        'highlight2': 'Mahodand Lake off-road jeep excursion — Shared jeep PKR 3,000',
+        'highlight3': 'Ushu pine forest picnic — Free',
+        'accommodation': 'Hotels in Mingora or Kalam (PKR 2,500–6,000/night)',
+        'bestTime': 'April – October',
+        'tip': 'Bargain for authentic handmade Swati shawls in Mingora bazaar.',
       },
     ];
 
@@ -277,7 +325,11 @@ Reply ONLY in exact JSON format (an array of categories), no markdown blocks, no
           'parts': [{'text': prompt}],
         }
       ],
-      'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 900},
+      'generationConfig': {
+        'temperature': 0.7,
+        'maxOutputTokens': 900,
+        'responseMimeType': 'application/json',
+      },
     });
 
     final text = _extractResponseText(response);
