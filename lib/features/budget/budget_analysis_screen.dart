@@ -23,6 +23,8 @@ class BudgetAnalysisScreen extends StatefulWidget {
   final DateTime endDate;
   final int travelers;
   final String? preferredTransportMode;
+  final String? outboundTransportMode;
+  final String? returnTransportMode;
 
   const BudgetAnalysisScreen({
     super.key,
@@ -33,6 +35,8 @@ class BudgetAnalysisScreen extends StatefulWidget {
     required this.endDate,
     required this.travelers,
     this.preferredTransportMode = 'any',
+    this.outboundTransportMode,
+    this.returnTransportMode,
   });
 
   @override
@@ -43,7 +47,8 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
   final BudgetMatcherService _matcherService = BudgetMatcherService();
 
   late double _budget;
-  late Future<List<TransportOption>> _transportFuture;
+  late Future<List<TransportOption>> _outboundTransportFuture;
+  late Future<List<TransportOption>> _returnTransportFuture;
   late Future<List<Hotel>> _hotelFuture;
   late Future<List<Restaurant>> _restaurantFuture;
   late Future<List<Attraction>> _attractionFuture;
@@ -56,18 +61,35 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
   late int _nightsCount;
   late int _roomsNeeded;
 
-  // Smart selectable & customizable Transport & Stay tracking
-  TransportOption? _selectedTransport;
+  // Smart selectable & customizable Transport (Both Ways) & Stay tracking
+  TransportOption? _selectedGoingTransport;
+  TransportOption? _selectedReturnTransport;
   Hotel? _selectedHotel;
   double? _customTransportCost;
   double? _customStayCost;
   bool _isRoundTripTransport = true;
 
-  bool _transportLoaded = false;
-  bool _hasAffordableTransport = true;
-  double? _minRouteTransportFare;
+  bool _outboundLoaded = false;
+  bool _returnLoaded = false;
+  double? _minGoingFare;
+  double? _minReturnFare;
+  bool _hasAffordableOutbound = true;
+  bool _hasAffordableReturn = true;
   bool _hotelsLoaded = false;
   bool _hasAffordableHotels = true;
+
+  String get _effectiveOutboundMode =>
+      (widget.outboundTransportMode ?? widget.preferredTransportMode ?? 'any').trim().toLowerCase();
+
+  String get _effectiveReturnMode =>
+      (widget.returnTransportMode ?? widget.preferredTransportMode ?? 'any').trim().toLowerCase();
+
+  // Backward compatibility getters
+  bool get _transportLoaded => _outboundLoaded && (!_isRoundTripTransport || _returnLoaded);
+  bool get _hasAffordableTransport => _hasAffordableOutbound && (!_isRoundTripTransport || _hasAffordableReturn);
+  double? get _minRouteTransportFare => (_minGoingFare != null && _minReturnFare != null)
+      ? ((_minGoingFare! + _minReturnFare!) / 2)
+      : _minGoingFare;
 
   void _calculateCaps() {
     final groupSize = widget.travelers > 0 ? widget.travelers : 1;
@@ -92,9 +114,11 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
       _budget = newBudget;
       _calculateCaps();
       final groupSize = widget.travelers > 0 ? widget.travelers : 1;
-      final transportLegs = _isRoundTripTransport ? 2 : 1;
-      if (_minRouteTransportFare != null) {
-        _hasAffordableTransport = (_minRouteTransportFare! * transportLegs * groupSize) <= _budget;
+      if (_minGoingFare != null) {
+        _hasAffordableOutbound = (_minGoingFare! * groupSize) <= (_budget * 0.30);
+      }
+      if (_minReturnFare != null) {
+        _hasAffordableReturn = (_minReturnFare! * groupSize) <= (_budget * 0.30);
       }
     });
     ScaffoldMessenger.of(context).showSnackBar(
@@ -126,12 +150,13 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
         ? (_budget * 0.40) / (_nightsCount * _roomsNeeded)
         : 0.0;
 
-    _transportFuture = _matcherService
+    // 1. Outbound (Going) Transport
+    _outboundTransportFuture = _matcherService
         .getAffordableTransport(
           origin: widget.origin,
           destination: widget.destination,
           maxFare: _maxTransportBudget,
-          transportMode: widget.preferredTransportMode,
+          transportMode: _effectiveOutboundMode,
         )
         .then((options) {
       if (mounted) {
@@ -142,19 +167,54 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
         }
         final pool = affordable.isNotEmpty ? affordable : options;
         TransportOption? autoPick;
-        if (_selectedTransport == null && _customTransportCost == null && pool.isNotEmpty) {
+        if (_selectedGoingTransport == null && _customTransportCost == null && pool.isNotEmpty) {
           final pickIdx = (pool.length > 2 && rawTransportPerPerson > 15000)
               ? (pool.length ~/ 2)
               : 0;
           autoPick = pool[pickIdx];
         }
         setState(() {
-          _transportLoaded = true;
-          _minRouteTransportFare = cheapest;
-          _hasAffordableTransport = affordable.isNotEmpty &&
+          _outboundLoaded = true;
+          _minGoingFare = cheapest;
+          _hasAffordableOutbound = affordable.isNotEmpty &&
               cheapest != null &&
-              (cheapest * transportLegs * groupSize) <= _budget;
-          if (autoPick != null) _selectedTransport = autoPick;
+              (cheapest * groupSize) <= (_budget * 0.35);
+          if (autoPick != null) _selectedGoingTransport = autoPick;
+        });
+      }
+      return options;
+    });
+
+    // 2. Return Transport (Coming Back)
+    _returnTransportFuture = _matcherService
+        .getAffordableTransport(
+          origin: widget.destination,
+          destination: widget.origin,
+          maxFare: _maxTransportBudget,
+          transportMode: _effectiveReturnMode,
+        )
+        .then((options) {
+      if (mounted) {
+        final affordable = options.where((o) => o.fare <= _maxTransportBudget).toList();
+        double? cheapest;
+        if (options.isNotEmpty) {
+          cheapest = options.map((o) => o.fare).reduce((a, b) => a < b ? a : b);
+        }
+        final pool = affordable.isNotEmpty ? affordable : options;
+        TransportOption? autoPick;
+        if (_selectedReturnTransport == null && _customTransportCost == null && pool.isNotEmpty) {
+          final pickIdx = (pool.length > 2 && rawTransportPerPerson > 15000)
+              ? (pool.length ~/ 2)
+              : 0;
+          autoPick = pool[pickIdx];
+        }
+        setState(() {
+          _returnLoaded = true;
+          _minReturnFare = cheapest;
+          _hasAffordableReturn = affordable.isNotEmpty &&
+              cheapest != null &&
+              (cheapest * groupSize) <= (_budget * 0.35);
+          if (autoPick != null) _selectedReturnTransport = autoPick;
         });
       }
       return options;
@@ -198,22 +258,20 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
     return h.price > 0 ? h.price : 3500.0;
   }
 
-  String _formatModeTitle() {
-    final mode = (widget.preferredTransportMode ?? 'any').toLowerCase().trim();
+  String _formatModeName(String mode) {
     switch (mode) {
       case 'bus':
-        return 'Bus & Coach (${widget.origin} → ${widget.destination})';
+        return 'Bus & Coach';
       case 'train':
-        return 'Train & Rail (${widget.origin} → ${widget.destination})';
+        return 'Train & Rail';
       case 'flight':
-        return 'Flights (${widget.origin} → ${widget.destination})';
+        return 'Flight';
       default:
-        return 'Transport (${widget.origin} → ${widget.destination})';
+        return 'All Modes';
     }
   }
 
-  IconData _formatModeIcon() {
-    final mode = (widget.preferredTransportMode ?? 'any').toLowerCase().trim();
+  IconData _formatModeIcon(String mode) {
     switch (mode) {
       case 'train':
         return Icons.train_rounded;
@@ -226,14 +284,28 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
     }
   }
 
+  double get _effectiveGoingCost {
+    final groupSize = widget.travelers > 0 ? widget.travelers : 1;
+    if (_selectedGoingTransport != null) {
+      return _selectedGoingTransport!.fare * groupSize;
+    }
+    final perLegCap = _maxTransportBudget * groupSize;
+    return (_budget * 0.10).clamp(0.0, perLegCap > 0 ? perLegCap : 45000.0 * groupSize);
+  }
+
+  double get _effectiveReturnCost {
+    if (!_isRoundTripTransport) return 0.0;
+    final groupSize = widget.travelers > 0 ? widget.travelers : 1;
+    if (_selectedReturnTransport != null) {
+      return _selectedReturnTransport!.fare * groupSize;
+    }
+    final perLegCap = _maxTransportBudget * groupSize;
+    return (_budget * 0.10).clamp(0.0, perLegCap > 0 ? perLegCap : 45000.0 * groupSize);
+  }
+
   double get _effectiveTransportCost {
     if (_customTransportCost != null) return _customTransportCost!;
-    final groupSize = widget.travelers > 0 ? widget.travelers : 1;
-    final multiplier = _isRoundTripTransport ? 2 : 1;
-    if (_selectedTransport != null) {
-      return _selectedTransport!.fare * multiplier * groupSize;
-    }
-    return (_budget * 0.20).clamp(0.0, 45000.0 * groupSize * multiplier);
+    return _effectiveGoingCost + _effectiveReturnCost;
   }
 
   double get _effectiveStayCost {
@@ -259,21 +331,16 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
 
   double get _recommendedBudget {
     final groupSize = widget.travelers > 0 ? widget.travelers : 1;
-    final legs = _isRoundTripTransport ? 2 : 1;
 
-    // 1. Minimum Transport needed for the route/mode
-    double minTransport = 0.0;
-    if (_selectedTransport != null) {
-      minTransport = _selectedTransport!.fare * legs * groupSize;
-    } else if (_minRouteTransportFare != null && _minRouteTransportFare! > 0) {
-      minTransport = _minRouteTransportFare! * legs * groupSize;
-    } else {
-      final mode = (widget.preferredTransportMode ?? 'any').toLowerCase();
-      double baselineFare = 3500.0;
-      if (mode == 'flight') baselineFare = 22000.0;
-      if (mode == 'train') baselineFare = 4200.0;
-      minTransport = baselineFare * legs * groupSize;
-    }
+    // 1. Minimum Transport needed for both legs
+    double outBaseline = _effectiveOutboundMode == 'flight' ? 22000.0 : (_effectiveOutboundMode == 'train' ? 4200.0 : 3500.0);
+    double retBaseline = _effectiveReturnMode == 'flight' ? 22000.0 : (_effectiveReturnMode == 'train' ? 4200.0 : 3500.0);
+
+    double minOutFare = _selectedGoingTransport?.fare.toDouble() ?? _minGoingFare ?? outBaseline;
+    double minRetFare = _isRoundTripTransport
+        ? (_selectedReturnTransport?.fare.toDouble() ?? _minReturnFare ?? retBaseline)
+        : 0.0;
+    double minTransport = (minOutFare + minRetFare) * groupSize;
 
     // 2. Minimum Stay needed
     double minStay = 0.0;
@@ -367,21 +434,38 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
             ),
             const SizedBox(height: 12),
 
-            // 1. Transport Options
+            // 1. Going Transport (Departure)
             _buildSectionHeader(
-              _formatModeTitle(),
+              'Going: ${widget.origin} → ${widget.destination} (${_formatModeName(_effectiveOutboundMode)})',
               '< ${currency.formatPrice(_maxTransportBudget)} /person',
-              _formatModeIcon(),
+              _formatModeIcon(_effectiveOutboundMode),
             ),
-            if (_transportLoaded && !_hasAffordableTransport && _customTransportCost == null)
-              _buildNoBudgetTransportBanner(currency),
+            if (_outboundLoaded && !_hasAffordableOutbound && _customTransportCost == null)
+              _buildNoBudgetTransportBanner(currency, isReturn: false),
             _buildFutureBuilder<List<TransportOption>>(
-              _transportFuture,
-              (transports) => _buildTransportList(transports),
-              emptyBuilder: () => _buildNoBudgetTransportBanner(currency),
+              _outboundTransportFuture,
+              (transports) => _buildTransportList(transports, isReturn: false),
+              emptyBuilder: () => _buildNoBudgetTransportBanner(currency, isReturn: false),
             ),
 
             const SizedBox(height: 18),
+
+            // 2. Return Transport (Coming Back)
+            if (_isRoundTripTransport) ...[
+              _buildSectionHeader(
+                'Coming Back: ${widget.destination} → ${widget.origin} (${_formatModeName(_effectiveReturnMode)})',
+                '< ${currency.formatPrice(_maxTransportBudget)} /person',
+                _formatModeIcon(_effectiveReturnMode),
+              ),
+              if (_returnLoaded && !_hasAffordableReturn && _customTransportCost == null)
+                _buildNoBudgetTransportBanner(currency, isReturn: true),
+              _buildFutureBuilder<List<TransportOption>>(
+                _returnTransportFuture,
+                (transports) => _buildTransportList(transports, isReturn: true),
+                emptyBuilder: () => _buildNoBudgetTransportBanner(currency, isReturn: true),
+              ),
+              const SizedBox(height: 18),
+            ],
 
             // 2. Hotels
             if (_nightsCount == 0)
@@ -758,8 +842,10 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
     );
   }
 
-  Widget _buildTransportList(List<TransportOption> options) {
+  Widget _buildTransportList(List<TransportOption> options, {bool isReturn = false}) {
     final currency = Provider.of<CurrencyProvider>(context, listen: false);
+    final activeSelected = isReturn ? _selectedReturnTransport : _selectedGoingTransport;
+
     return SizedBox(
       height: 158,
       child: ListView.builder(
@@ -769,12 +855,16 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
         itemBuilder: (context, index) {
           final t = options[index];
           final isWithin = t.fare <= _maxTransportBudget;
-          final isSelected = _selectedTransport?.id == t.id && _customTransportCost == null;
+          final isSelected = activeSelected?.id == t.id && _customTransportCost == null;
 
           return InkWell(
             onTap: () {
               setState(() {
-                _selectedTransport = t;
+                if (isReturn) {
+                  _selectedReturnTransport = t;
+                } else {
+                  _selectedGoingTransport = t;
+                }
                 _customTransportCost = null;
               });
             },
@@ -1176,30 +1266,39 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
 
   Widget _buildImpossibleTripBanner(CurrencyProvider currency) {
     final groupSize = widget.travelers > 0 ? widget.travelers : 1;
-    final legs = _isRoundTripTransport ? 2 : 1;
-    final minTransTotal = _minRouteTransportFare != null
-        ? _minRouteTransportFare! * legs * groupSize
-        : _effectiveTransportCost;
+    final outBase = _effectiveOutboundMode == 'flight' ? 22000.0 : (_effectiveOutboundMode == 'train' ? 4200.0 : 3500.0);
+    final retBase = _effectiveReturnMode == 'flight' ? 22000.0 : (_effectiveReturnMode == 'train' ? 4200.0 : 3500.0);
+
+    final goingMin = _selectedGoingTransport != null
+        ? _selectedGoingTransport!.fare * groupSize
+        : ((_minGoingFare ?? outBase) * groupSize);
+    final returnMin = _isRoundTripTransport
+        ? (_selectedReturnTransport != null
+            ? _selectedReturnTransport!.fare * groupSize
+            : ((_minReturnFare ?? retBase) * groupSize))
+        : 0.0;
+    final minTransTotal = goingMin + returnMin;
+
     final noHotels = _nightsCount > 0 && _hotelsLoaded && !_hasAffordableHotels && _customStayCost == null;
     final recommended = _recommendedBudget;
     final shortfall = (recommended - _budget).clamp(0.0, double.infinity);
-    final modeLabel = (widget.preferredTransportMode != null && widget.preferredTransportMode != 'any')
-        ? widget.preferredTransportMode!.toUpperCase()
-        : 'transport';
+
+    final outMode = _formatModeName(_effectiveOutboundMode);
+    final retMode = _formatModeName(_effectiveReturnMode);
 
     String reason;
     if (minTransTotal > _budget && noHotels) {
       reason =
-          'In your budget of ${currency.formatPrice(_budget)}, this trip isn\'t possible. Even the cheapest $modeLabel alone for $groupSize traveler${groupSize > 1 ? 's' : ''} costs ${currency.formatPrice(minTransTotal)}, and no listed hotels in ${widget.destination} fit under ${currency.formatPrice(_maxNightlyHotelBudget)}/night.';
+          'In your budget of ${currency.formatPrice(_budget)}, this trip isn\'t possible. Transport both ways ($outMode going + $retMode return) for $groupSize traveler${groupSize > 1 ? 's' : ''} costs ${currency.formatPrice(minTransTotal)}, and no listed hotels in ${widget.destination} fit under ${currency.formatPrice(_maxNightlyHotelBudget)}/night.';
     } else if (_effectiveTransportCost + _effectiveStayCost > _budget) {
       reason =
-          'In this budget (${currency.formatPrice(_budget)}), the trip isn\'t possible with selected costs: $modeLabel (${currency.formatPrice(_effectiveTransportCost)}) + Stay (${currency.formatPrice(_effectiveStayCost)}) exceed your total budget.';
+          'In this budget (${currency.formatPrice(_budget)}), the trip isn\'t possible with selected costs: Transport (${currency.formatPrice(_effectiveTransportCost)}) + Stay (${currency.formatPrice(_effectiveStayCost)}) exceed your total budget.';
     } else if (minTransTotal > _budget) {
       reason =
-          'In your budget of ${currency.formatPrice(_budget)}, $modeLabel isn\'t possible. Minimum ${legs == 2 ? 'round-trip' : 'one-way'} fare is ${currency.formatPrice(minTransTotal)} for $groupSize traveler${groupSize > 1 ? 's' : ''}.';
+          'In your budget of ${currency.formatPrice(_budget)}, transport both ways isn\'t possible. Minimum combined fare ($outMode going + $retMode return) is ${currency.formatPrice(minTransTotal)} for $groupSize traveler${groupSize > 1 ? 's' : ''}.';
     } else {
       reason =
-          'In this budget (${currency.formatPrice(_budget)}), neither suitable $modeLabel nor hotels in ${widget.destination} fit your travel allocation.';
+          'In this budget (${currency.formatPrice(_budget)}), neither suitable transport nor hotels in ${widget.destination} fit your travel allocation.';
     }
 
     final estimatedStayCost = _effectiveStayCost > 0
@@ -1263,6 +1362,8 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                           fontWeight: FontWeight.bold,
                           color: const Color(0xFF92400E),
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -1324,12 +1425,13 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                 const Divider(height: 1, color: Color(0xFFFDE68A)),
                 const SizedBox(height: 8),
                 Text(
-                  'Estimated Cost Breakdown:',
+                  'Estimated Cost Breakdown (Both Ways):',
                   style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF92400E)),
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  '• $modeLabel ($legs leg${legs > 1 ? 's' : ''}, $groupSize traveler${groupSize > 1 ? 's' : ''}): ${currency.formatPrice(minTransTotal)}\n'
+                  '• Going ($outMode, $groupSize traveler${groupSize > 1 ? 's' : ''}): ${currency.formatPrice(goingMin)}\n'
+                  '${_isRoundTripTransport ? '• Return ($retMode, $groupSize traveler${groupSize > 1 ? 's' : ''}): ${currency.formatPrice(returnMin)}\n' : ''}'
                   '${_nightsCount > 0 ? '• Hotel ($_nightsCount night${_nightsCount > 1 ? 's' : ''}, $_roomsNeeded room${_roomsNeeded > 1 ? 's' : ''}): ${currency.formatPrice(estimatedStayCost)}\n' : ''}'
                   '• Meals & Local Transit ($_dayCount day${_dayCount > 1 ? 's' : ''}): ${currency.formatPrice(estimatedDailyCost)}',
                   style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF78350F), height: 1.4),
@@ -1384,15 +1486,16 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
     );
   }
 
-  Widget _buildNoBudgetTransportBanner(CurrencyProvider currency) {
+  Widget _buildNoBudgetTransportBanner(CurrencyProvider currency, {bool isReturn = false}) {
     final groupSize = widget.travelers > 0 ? widget.travelers : 1;
-    final legs = _isRoundTripTransport ? 2 : 1;
-    final minPerPerson = _minRouteTransportFare;
-    final minTotal = minPerPerson != null ? minPerPerson * legs * groupSize : null;
+    final minPerPerson = isReturn ? _minReturnFare : _minGoingFare;
+    final minTotal = minPerPerson != null ? minPerPerson * groupSize : null;
     final exceedsTotalBudget = minTotal != null && minTotal > _budget;
-    final modeLabel = (widget.preferredTransportMode != null && widget.preferredTransportMode != 'any')
-        ? widget.preferredTransportMode!.toUpperCase()
-        : 'transport';
+    final mode = isReturn ? _effectiveReturnMode : _effectiveOutboundMode;
+    final modeLabel = _formatModeName(mode);
+    final legLabel = isReturn
+        ? 'return journey (${widget.destination} → ${widget.origin})'
+        : 'going journey (${widget.origin} → ${widget.destination})';
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
@@ -1416,10 +1519,10 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
           Expanded(
             child: Text(
               minTotal == null
-                  ? 'No listed $modeLabel options found for ${widget.origin} -> ${widget.destination} within this budget.'
+                  ? 'No listed $modeLabel options found for $legLabel within this budget.'
                   : exceedsTotalBudget
-                      ? 'In this budget (${currency.formatPrice(_budget)}), $modeLabel isn\'t possible: minimum ${legs == 2 ? 'round-trip' : 'one-way'} fare is ${currency.formatPrice(minTotal)} for $groupSize traveler${groupSize > 1 ? 's' : ''}.'
-                      : 'No $modeLabel fits your < ${currency.formatPrice(_maxTransportBudget)}/person budget cap. Minimum route fare is ${currency.formatPrice(minPerPerson!)}/person (${currency.formatPrice(minTotal)} total).',
+                      ? 'In this budget (${currency.formatPrice(_budget)}), $modeLabel for $legLabel isn\'t possible: minimum fare is ${currency.formatPrice(minTotal)} for $groupSize traveler${groupSize > 1 ? 's' : ''}.'
+                      : 'No $modeLabel fits your < ${currency.formatPrice(_maxTransportBudget)}/person cap for $legLabel. Minimum fare is ${currency.formatPrice(minPerPerson!)}/person (${currency.formatPrice(minTotal)} total).',
               style: GoogleFonts.poppins(
                 fontSize: 11.5,
                 color: exceedsTotalBudget ? const Color(0xFF7F1D1D) : const Color(0xFF9A3412),
@@ -1535,7 +1638,7 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
 
     final transportLabel = _customTransportCost != null
         ? '🚗 Transport (Custom)'
-        : (_selectedTransport != null ? '🚗 ${_selectedTransport!.type}' : '🚗 Transport (Capped)');
+        : (_isRoundTripTransport ? '🚗 Transport (Both Ways)' : '🚗 Transport (One-Way)');
     final stayLabel = _customStayCost != null
         ? '🏨 Stay (Custom)'
         : (_nightsCount == 0
@@ -1685,17 +1788,21 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                 children: [
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: Text('Round-Trip Transport (×2)', style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.w600)),
-                    subtitle: Text('Double one-way fare when auto-calculating', style: GoogleFonts.poppins(fontSize: 10.5, color: Colors.grey)),
+                    title: Text('Round-Trip Transport (Both Ways)', style: GoogleFonts.poppins(fontSize: 12.5, fontWeight: FontWeight.w600)),
+                    subtitle: Text('Includes Going and Return transport legs', style: GoogleFonts.poppins(fontSize: 10.5, color: Colors.grey)),
                     value: tempRoundTrip,
                     activeColor: AppTheme.primaryPurple,
                     onChanged: (val) {
                       setDlgState(() {
                         tempRoundTrip = val;
-                        if (_selectedTransport != null) {
-                          final updatedPkr = _selectedTransport!.fare * (val ? 2 : 1) * groupSize;
-                          transportCtrl.text = currency.convertFromPkr(updatedPkr).toStringAsFixed(decimals);
-                        }
+                        final outCost = (_selectedGoingTransport != null)
+                            ? _selectedGoingTransport!.fare * groupSize
+                            : (_budget * 0.10);
+                        final retCost = (_selectedReturnTransport != null)
+                            ? _selectedReturnTransport!.fare * groupSize
+                            : outCost;
+                        final updatedPkr = outCost + (val ? retCost : 0.0);
+                        transportCtrl.text = currency.convertFromPkr(updatedPkr).toStringAsFixed(decimals);
                       });
                     },
                   ),

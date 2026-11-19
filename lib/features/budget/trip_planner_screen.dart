@@ -19,7 +19,9 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
   DateTime? _startDate;
   DateTime? _endDate;
   int _travelers = 1;
-  String _selectedTransportMode = 'bus'; // 'bus', 'train', 'flight', 'any'
+  String _outboundTransportMode = 'bus'; // 'bus', 'train', 'flight', 'any'
+  String _returnTransportMode = 'bus';   // 'bus', 'train', 'flight', 'any'
+  bool _syncReturnWithGoing = true;
   bool _isLoading = false;
   bool _showDateError = false;
 
@@ -389,7 +391,9 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
                                 startDate: startDate,
                                 endDate: endDate,
                                 travelers: _travelers,
-                                preferredTransportMode: _selectedTransportMode,
+                                preferredTransportMode: _outboundTransportMode,
+                                outboundTransportMode: _outboundTransportMode,
+                                returnTransportMode: _returnTransportMode,
                               ),
                             ),
                           );
@@ -885,7 +889,10 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
     );
   }
 
-  Widget _buildTransportModeSelector() {
+  Widget _buildModeCards({
+    required String selectedId,
+    required Function(String) onSelect,
+  }) {
     final modes = [
       {'id': 'bus', 'label': 'Bus / Coach', 'icon': Icons.directions_bus_rounded, 'hint': 'Budget friendly'},
       {'id': 'train', 'label': 'Train', 'icon': Icons.train_rounded, 'hint': 'Scenic & relaxed'},
@@ -893,125 +900,270 @@ class _TripPlannerScreenState extends State<TripPlannerScreen> {
       {'id': 'any', 'label': 'Any Mode', 'icon': Icons.auto_awesome_rounded, 'hint': 'Auto match'},
     ];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Mode of Transport',
-              style: GoogleFonts.poppins(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[700],
-              ),
-            ),
-            Text(
-              'Preferred travel',
-              style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[500]),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: modes.map((m) {
-            final isSelected = _selectedTransportMode == m['id'];
-            return Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 3),
-                child: InkWell(
-                  onTap: () => setState(() => _selectedTransportMode = m['id'] as String),
+    return Row(
+      children: modes.map((m) {
+        final isSelected = selectedId == m['id'];
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2.5),
+            child: InkWell(
+              onTap: () => onSelect(m['id'] as String),
+              borderRadius: BorderRadius.circular(14),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 3),
+                decoration: BoxDecoration(
+                  color: isSelected ? AppTheme.primaryPurple : Colors.white,
                   borderRadius: BorderRadius.circular(14),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-                    decoration: BoxDecoration(
-                      color: isSelected ? AppTheme.primaryPurple : Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: isSelected ? AppTheme.primaryPurple : Colors.grey.withValues(alpha: 0.25),
-                        width: isSelected ? 1.8 : 1.0,
-                      ),
-                      boxShadow: isSelected
-                          ? [
-                              BoxShadow(
-                                color: AppTheme.primaryPurple.withValues(alpha: 0.25),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
-                              ),
-                            ]
-                          : [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.02),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          m['icon'] as IconData,
-                          color: isSelected ? Colors.white : AppTheme.primaryPurple,
-                          size: 22,
-                        ),
-                        const SizedBox(height: 5),
-                        Text(
-                          m['label'] as String,
-                          style: GoogleFonts.poppins(
-                            fontSize: 11,
-                            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                            color: isSelected ? Colors.white : Colors.black87,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          m['hint'] as String,
-                          style: GoogleFonts.poppins(
-                            fontSize: 9,
-                            color: isSelected ? Colors.white70 : Colors.grey[500],
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
+                  border: Border.all(
+                    color: isSelected ? AppTheme.primaryPurple : Colors.grey.withValues(alpha: 0.25),
+                    width: isSelected ? 1.8 : 1.0,
                   ),
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: AppTheme.primaryPurple.withValues(alpha: 0.22),
+                            blurRadius: 7,
+                            offset: const Offset(0, 3),
+                          ),
+                        ]
+                      : [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.02),
+                            blurRadius: 3,
+                            offset: const Offset(0, 1),
+                          ),
+                        ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      m['icon'] as IconData,
+                      color: isSelected ? Colors.white : AppTheme.primaryPurple,
+                      size: 20,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      m['label'] as String,
+                      style: GoogleFonts.poppins(
+                        fontSize: 10,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                        color: isSelected ? Colors.white : Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      m['hint'] as String,
+                      style: GoogleFonts.poppins(
+                        fontSize: 8.5,
+                        color: isSelected ? Colors.white70 : Colors.grey[500],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
               ),
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppTheme.primaryPurple.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(10),
+            ),
           ),
-          child: Row(
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildTransportModeSelector() {
+    final fromCity = _originController.text.trim().isNotEmpty ? _originController.text.trim() : 'Departure';
+    final toCity = _destinationController.text.trim().isNotEmpty ? _destinationController.text.trim() : 'Destination';
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Icon(Icons.info_outline_rounded, size: 14, color: AppTheme.primaryPurple),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  _selectedTransportMode == 'any'
-                      ? 'All available bus, train, and flight routes will be matched in budget.'
-                      : 'Only ${_selectedTransportMode.toUpperCase()} options will be filtered and added to your budget analysis.',
-                  style: GoogleFonts.poppins(fontSize: 11, color: AppTheme.primaryPurple, fontWeight: FontWeight.w500),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryPurple.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.sync_alt_rounded, size: 16, color: AppTheme.primaryPurple),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Transport (Both Ways)',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF1E293B),
+                    ),
+                  ),
+                ],
+              ),
+              InkWell(
+                onTap: () {
+                  setState(() {
+                    _syncReturnWithGoing = !_syncReturnWithGoing;
+                    if (_syncReturnWithGoing) {
+                      _returnTransportMode = _outboundTransportMode;
+                    }
+                  });
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _syncReturnWithGoing
+                        ? AppTheme.primaryPurple.withValues(alpha: 0.1)
+                        : Colors.grey.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: _syncReturnWithGoing
+                          ? AppTheme.primaryPurple.withValues(alpha: 0.3)
+                          : Colors.grey.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _syncReturnWithGoing ? Icons.link_rounded : Icons.link_off_rounded,
+                        size: 13,
+                        color: _syncReturnWithGoing ? AppTheme.primaryPurple : Colors.grey[600],
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _syncReturnWithGoing ? 'Same Return' : 'Custom Return',
+                        style: GoogleFonts.poppins(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: _syncReturnWithGoing ? AppTheme.primaryPurple : Colors.grey[700],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-      ],
+          const SizedBox(height: 12),
+
+          // 1. Going Journey (Outbound)
+          Row(
+            children: [
+              const Icon(Icons.flight_takeoff_rounded, size: 15, color: Color(0xFF0284C7)),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  '1. Going: $fromCity → $toCity',
+                  style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF0F172A)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          _buildModeCards(
+            selectedId: _outboundTransportMode,
+            onSelect: (mode) {
+              setState(() {
+                _outboundTransportMode = mode;
+                if (_syncReturnWithGoing) {
+                  _returnTransportMode = mode;
+                }
+              });
+            },
+          ),
+          const SizedBox(height: 14),
+
+          // 2. Coming Back (Return Journey)
+          Row(
+            children: [
+              const Icon(Icons.flight_land_rounded, size: 15, color: Color(0xFF16A34A)),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  '2. Coming Back: $toCity → $fromCity',
+                  style: GoogleFonts.poppins(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF0F172A)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (_syncReturnWithGoing)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFECFDF5),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'Synced',
+                    style: GoogleFonts.poppins(fontSize: 9, fontWeight: FontWeight.bold, color: const Color(0xFF059669)),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          _buildModeCards(
+            selectedId: _returnTransportMode,
+            onSelect: (mode) {
+              setState(() {
+                _returnTransportMode = mode;
+                if (mode != _outboundTransportMode) {
+                  _syncReturnWithGoing = false;
+                }
+              });
+            },
+          ),
+          const SizedBox(height: 10),
+
+          // Note
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppTheme.primaryPurple.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.info_outline_rounded, size: 14, color: AppTheme.primaryPurple),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'Going: ${_outboundTransportMode.toUpperCase()}  •  Coming Back: ${_returnTransportMode.toUpperCase()}',
+                    style: GoogleFonts.poppins(fontSize: 10.5, color: AppTheme.primaryPurple, fontWeight: FontWeight.w600),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
