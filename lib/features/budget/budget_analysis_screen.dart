@@ -1269,32 +1269,55 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                 ),
                 const SizedBox(height: 8),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Realistic Minimum Needed', style: GoogleFonts.poppins(fontSize: 10.5, color: Colors.grey[700])),
-                        Text(
-                          currency.formatPrice(recommended),
-                          style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFFB45309)),
-                        ),
-                      ],
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Realistic Minimum Needed',
+                            style: GoogleFonts.poppins(fontSize: 10.5, color: Colors.grey[700]),
+                          ),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              currency.formatPrice(recommended),
+                              style: GoogleFonts.poppins(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFFB45309),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    if (shortfall > 0)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEF2F2),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFFCA5A5)),
-                        ),
-                        child: Text(
-                          '+${currency.formatPrice(shortfall)} more',
-                          style: GoogleFonts.poppins(fontSize: 11.5, fontWeight: FontWeight.bold, color: const Color(0xFFDC2626)),
+                    if (shortfall > 0) ...[
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF2F2),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFFCA5A5)),
+                          ),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              '+${currency.formatPrice(shortfall)} more',
+                              style: GoogleFonts.poppins(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFFDC2626),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -1318,14 +1341,15 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
           Row(
             children: [
               Expanded(
+                flex: 3,
                 child: ElevatedButton.icon(
                   onPressed: () => _applyRecommendedBudget(recommended),
-                  icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
+                  icon: const Icon(Icons.check_circle_outline_rounded, size: 17),
                   label: FittedBox(
                     fit: BoxFit.scaleDown,
                     child: Text(
                       'Apply ${currency.formatPrice(recommended)}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -1337,15 +1361,21 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              OutlinedButton(
-                onPressed: () => Navigator.pop(context),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF991B1B),
-                  side: const BorderSide(color: Color(0xFFFCA5A5)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+              Expanded(
+                flex: 2,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF991B1B),
+                    side: const BorderSide(color: Color(0xFFFCA5A5)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                  ),
+                  child: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text('Edit Details', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12.5)),
+                  ),
                 ),
-                child: const Text('Edit Details', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
               ),
             ],
           ),
