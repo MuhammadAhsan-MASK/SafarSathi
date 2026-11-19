@@ -113,49 +113,198 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
 
     // Check if flights or rail are chosen to assign appropriate transport allocation
     final bool hasFlight = _effectiveOutboundMode == 'flight' || (_isRoundTripTransport && _effectiveReturnMode == 'flight');
-    final double transportRatio = hasFlight ? 0.65 : 0.25;
+    final double defaultTransportRatio = hasFlight ? 0.65 : 0.25;
 
-    final double transportPool = (_budget * transportRatio).clamp(0.0, _budget);
+    final double transportPool = _customTransportCost != null
+        ? _customTransportCost!.clamp(0.0, _budget)
+        : (_budget * defaultTransportRatio).clamp(0.0, _budget);
 
-    if (_isRoundTripTransport && (outBase + retBase) > 0) {
+    if (_customTransportCost != null && _customTransportCost == 0) {
+      _maxOutboundTransportBudget = 0.0;
+      _maxReturnTransportBudget = 0.0;
+    } else if (_isRoundTripTransport && (outBase + retBase) > 0) {
       final outRatio = outBase / (outBase + retBase);
       final retRatio = retBase / (outBase + retBase);
-      _maxOutboundTransportBudget = ((transportPool * outRatio) / groupSize).clamp(2500.0, 75000.0);
-      _maxReturnTransportBudget = ((transportPool * retRatio) / groupSize).clamp(2500.0, 75000.0);
+      _maxOutboundTransportBudget = ((transportPool * outRatio) / groupSize).clamp(1000.0, 75000.0);
+      _maxReturnTransportBudget = ((transportPool * retRatio) / groupSize).clamp(1000.0, 75000.0);
     } else {
-      _maxOutboundTransportBudget = (transportPool / groupSize).clamp(2500.0, 75000.0);
+      _maxOutboundTransportBudget = (transportPool / groupSize).clamp(1000.0, 75000.0);
       _maxReturnTransportBudget = 0.0;
     }
 
-    final totalAllocatedTransport = (_maxOutboundTransportBudget + _maxReturnTransportBudget) * groupSize;
-    final remainingForStayFood = (_budget - totalAllocatedTransport).clamp(_budget * 0.20, _budget);
+    final totalAllocatedTransport = (_customTransportCost != null)
+        ? _customTransportCost!.clamp(0.0, _budget)
+        : (_maxOutboundTransportBudget + _maxReturnTransportBudget) * groupSize;
 
-    final rawNightlyHotel = _nightsCount > 0
-        ? (remainingForStayFood * 0.55) / (_nightsCount * _roomsNeeded)
-        : 0.0;
-    final rawMeal = (remainingForStayFood * 0.30) / (_dayCount * 3 * groupSize);
-    final rawActivity = (remainingForStayFood * 0.15) / (_dayCount * groupSize);
+    final remainingForStayFood = (_budget - totalAllocatedTransport).clamp(0.0, _budget);
 
-    _maxNightlyHotelBudget = rawNightlyHotel.clamp(1500.0, 45000.0);
-    _maxMealBudget = rawMeal.clamp(300.0, 8000.0);
-    _maxActivityBudget = rawActivity.clamp(200.0, 15000.0);
+    final rawNightlyHotel = (_customStayCost != null)
+        ? ((_nightsCount > 0 && _roomsNeeded > 0) ? (_customStayCost! / (_nightsCount * _roomsNeeded)) : 0.0)
+        : (_nightsCount > 0
+            ? (remainingForStayFood * 0.55) / (_nightsCount * _roomsNeeded)
+            : 0.0);
+
+    final totalAllocatedStay = (_customStayCost != null)
+        ? _customStayCost!.clamp(0.0, _budget)
+        : (rawNightlyHotel * _nightsCount * _roomsNeeded);
+
+    final remainingForFoodActivities = (_budget - totalAllocatedTransport - totalAllocatedStay).clamp(0.0, _budget);
+
+    final rawMeal = (remainingForFoodActivities * 0.65) / (_dayCount * 3 * groupSize);
+    final rawActivity = (remainingForFoodActivities * 0.35) / (_dayCount * groupSize);
+
+    _maxNightlyHotelBudget = (_customStayCost != null && _customStayCost == 0)
+        ? 0.0
+        : rawNightlyHotel.clamp(500.0, 45000.0);
+    _maxMealBudget = rawMeal.clamp(150.0, 8000.0);
+    _maxActivityBudget = rawActivity.clamp(100.0, 15000.0);
+  }
+
+  void _loadAllMatchedOptions({bool preserveUserPicks = true}) {
+    _calculateCaps();
+    final groupSize = widget.travelers > 0 ? widget.travelers : 1;
+
+    // 1. Outbound (Going) Transport
+    if (_customTransportCost != null && _customTransportCost == 0) {
+      _outboundLoaded = true;
+      _hasAffordableOutbound = true;
+      _selectedGoingTransport = null;
+      _outboundTransportFuture = Future.value(<TransportOption>[]);
+    } else {
+      _outboundTransportFuture = _matcherService
+          .getAffordableTransport(
+            origin: widget.origin,
+            destination: widget.destination,
+            maxFare: _maxOutboundTransportBudget,
+            transportMode: _effectiveOutboundMode,
+          )
+          .then((options) {
+        if (mounted) {
+          final affordable = options.where((o) => o.fare <= _maxOutboundTransportBudget).toList();
+          double? cheapest;
+          if (options.isNotEmpty) {
+            cheapest = options.map((o) => o.fare).reduce((a, b) => a < b ? a : b);
+          }
+          final pool = affordable.isNotEmpty ? affordable : options;
+          TransportOption? autoPick;
+          final bool needsPick = !preserveUserPicks ||
+              _selectedGoingTransport == null ||
+              (_selectedGoingTransport != null && _selectedGoingTransport!.fare > _maxOutboundTransportBudget);
+          if (needsPick && pool.isNotEmpty) {
+            final pickIdx = (pool.length > 2 && _maxOutboundTransportBudget > 15000)
+                ? (pool.length ~/ 2)
+                : 0;
+            autoPick = pool[pickIdx];
+          }
+          setState(() {
+            _outboundLoaded = true;
+            _minGoingFare = cheapest;
+            _hasAffordableOutbound = affordable.isNotEmpty ||
+                (autoPick != null && (autoPick.fare * groupSize) <= (_budget * 0.75));
+            if (autoPick != null) _selectedGoingTransport = autoPick;
+          });
+        }
+        return options;
+      });
+    }
+
+    // 2. Return Transport (Coming Back)
+    if (_isRoundTripTransport) {
+      if (_customTransportCost != null && _customTransportCost == 0) {
+        _returnLoaded = true;
+        _hasAffordableReturn = true;
+        _selectedReturnTransport = null;
+        _returnTransportFuture = Future.value(<TransportOption>[]);
+      } else {
+        _returnTransportFuture = _matcherService
+            .getAffordableTransport(
+              origin: widget.destination,
+              destination: widget.origin,
+              maxFare: _maxReturnTransportBudget,
+              transportMode: _effectiveReturnMode,
+            )
+            .then((options) {
+          if (mounted) {
+            final affordable = options.where((o) => o.fare <= _maxReturnTransportBudget).toList();
+            double? cheapest;
+            if (options.isNotEmpty) {
+              cheapest = options.map((o) => o.fare).reduce((a, b) => a < b ? a : b);
+            }
+            final pool = affordable.isNotEmpty ? affordable : options;
+            TransportOption? autoPick;
+            final bool needsPick = !preserveUserPicks ||
+                _selectedReturnTransport == null ||
+                (_selectedReturnTransport != null && _selectedReturnTransport!.fare > _maxReturnTransportBudget);
+            if (needsPick && pool.isNotEmpty) {
+              final pickIdx = (pool.length > 2 && _maxReturnTransportBudget > 15000)
+                  ? (pool.length ~/ 2)
+                  : 0;
+              autoPick = pool[pickIdx];
+            }
+            setState(() {
+              _returnLoaded = true;
+              _minReturnFare = cheapest;
+              _hasAffordableReturn = affordable.isNotEmpty ||
+                  (autoPick != null && (autoPick.fare * groupSize) <= (_budget * 0.75));
+              if (autoPick != null) _selectedReturnTransport = autoPick;
+            });
+          }
+          return options;
+        });
+      }
+    } else {
+      _returnLoaded = true;
+      _hasAffordableReturn = true;
+      _selectedReturnTransport = null;
+      _returnTransportFuture = Future.value(<TransportOption>[]);
+    }
+
+    // 3. Hotels
+    if (_nightsCount == 0 || (_customStayCost != null && _customStayCost == 0)) {
+      _hotelsLoaded = true;
+      _hasAffordableHotels = true;
+      _selectedHotel = null;
+      _hotelFuture = Future.value(<Hotel>[]);
+    } else {
+      _hotelFuture = _matcherService
+          .getAffordableHotels(widget.destination, _maxNightlyHotelBudget)
+          .then((hotels) {
+        if (mounted) {
+          Hotel? autoPick;
+          final bool needsPick = !preserveUserPicks ||
+              _selectedHotel == null ||
+              (_selectedHotel != null && _lowestHotelPrice(_selectedHotel!) > _maxNightlyHotelBudget);
+          if (needsPick && hotels.isNotEmpty) {
+            final pickIdx = (hotels.length > 2 && _maxNightlyHotelBudget > 12000)
+                ? (hotels.length ~/ 2)
+                : 0;
+            autoPick = hotels[pickIdx];
+          }
+          setState(() {
+            _hotelsLoaded = true;
+            _hasAffordableHotels = hotels.isNotEmpty;
+            if (autoPick != null) _selectedHotel = autoPick;
+          });
+        }
+        return hotels;
+      });
+    }
+
+    // 4. Dining & Attractions
+    _restaurantFuture = _matcherService.getAffordableRestaurants(widget.destination, _maxMealBudget);
+    _attractionFuture = _matcherService.getAffordableAttractions(widget.destination, _maxActivityBudget);
   }
 
   void _applyRecommendedBudget(double newBudget) {
     setState(() {
       _budget = newBudget;
-      _calculateCaps();
-      final groupSize = widget.travelers > 0 ? widget.travelers : 1;
-      if (_minGoingFare != null) {
-        _hasAffordableOutbound = (_minGoingFare! * groupSize) <= (_budget * 0.75);
-      }
-      if (_minReturnFare != null) {
-        _hasAffordableReturn = (_minReturnFare! * groupSize) <= (_budget * 0.75);
-      }
+      _customTransportCost = null;
+      _customStayCost = null;
+      _loadAllMatchedOptions(preserveUserPicks: false);
     });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Budget updated to PKR ${newBudget.toStringAsFixed(0)}! Trip is now viable.'),
+        content: Text('Budget updated to PKR ${newBudget.toStringAsFixed(0)}! Options refreshed.'),
         backgroundColor: Colors.green,
         behavior: SnackBarBehavior.floating,
       ),
@@ -174,104 +323,7 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
     final groupSize = widget.travelers > 0 ? widget.travelers : 1;
     _roomsNeeded = (groupSize / 2).ceil();
 
-    _calculateCaps();
-
-    // 1. Outbound (Going) Transport
-    _outboundTransportFuture = _matcherService
-        .getAffordableTransport(
-          origin: widget.origin,
-          destination: widget.destination,
-          maxFare: _maxOutboundTransportBudget,
-          transportMode: _effectiveOutboundMode,
-        )
-        .then((options) {
-      if (mounted) {
-        final affordable = options.where((o) => o.fare <= _maxOutboundTransportBudget).toList();
-        double? cheapest;
-        if (options.isNotEmpty) {
-          cheapest = options.map((o) => o.fare).reduce((a, b) => a < b ? a : b);
-        }
-        final pool = affordable.isNotEmpty ? affordable : options;
-        TransportOption? autoPick;
-        if (_selectedGoingTransport == null && _customTransportCost == null && pool.isNotEmpty) {
-          final pickIdx = (pool.length > 2 && _maxOutboundTransportBudget > 15000)
-              ? (pool.length ~/ 2)
-              : 0;
-          autoPick = pool[pickIdx];
-        }
-        setState(() {
-          _outboundLoaded = true;
-          _minGoingFare = cheapest;
-          _hasAffordableOutbound = affordable.isNotEmpty ||
-              (autoPick != null && (autoPick.fare * groupSize) <= (_budget * 0.75));
-          if (autoPick != null) _selectedGoingTransport = autoPick;
-        });
-      }
-      return options;
-    });
-
-    // 2. Return Transport (Coming Back)
-    _returnTransportFuture = _matcherService
-        .getAffordableTransport(
-          origin: widget.destination,
-          destination: widget.origin,
-          maxFare: _maxReturnTransportBudget,
-          transportMode: _effectiveReturnMode,
-        )
-        .then((options) {
-      if (mounted) {
-        final affordable = options.where((o) => o.fare <= _maxReturnTransportBudget).toList();
-        double? cheapest;
-        if (options.isNotEmpty) {
-          cheapest = options.map((o) => o.fare).reduce((a, b) => a < b ? a : b);
-        }
-        final pool = affordable.isNotEmpty ? affordable : options;
-        TransportOption? autoPick;
-        if (_selectedReturnTransport == null && _customTransportCost == null && pool.isNotEmpty) {
-          final pickIdx = (pool.length > 2 && _maxReturnTransportBudget > 15000)
-              ? (pool.length ~/ 2)
-              : 0;
-          autoPick = pool[pickIdx];
-        }
-        setState(() {
-          _returnLoaded = true;
-          _minReturnFare = cheapest;
-          _hasAffordableReturn = affordable.isNotEmpty ||
-              (autoPick != null && (autoPick.fare * groupSize) <= (_budget * 0.75));
-          if (autoPick != null) _selectedReturnTransport = autoPick;
-        });
-      }
-      return options;
-    });
-
-    if (_nightsCount == 0) {
-      _hotelsLoaded = true;
-      _hasAffordableHotels = true;
-      _hotelFuture = Future.value(<Hotel>[]);
-    } else {
-      _hotelFuture = _matcherService
-          .getAffordableHotels(widget.destination, _maxNightlyHotelBudget)
-          .then((hotels) {
-        if (mounted) {
-          Hotel? autoPick;
-          if (_selectedHotel == null && _customStayCost == null && hotels.isNotEmpty) {
-            final pickIdx = (hotels.length > 2 && _maxNightlyHotelBudget > 12000)
-                ? (hotels.length ~/ 2)
-                : 0;
-            autoPick = hotels[pickIdx];
-          }
-          setState(() {
-            _hotelsLoaded = true;
-            _hasAffordableHotels = hotels.isNotEmpty;
-            if (autoPick != null) _selectedHotel = autoPick;
-          });
-        }
-        return hotels;
-      });
-    }
-
-    _restaurantFuture = _matcherService.getAffordableRestaurants(widget.destination, _maxMealBudget);
-    _attractionFuture = _matcherService.getAffordableAttractions(widget.destination, _maxActivityBudget);
+    _loadAllMatchedOptions();
   }
 
   double _lowestHotelPrice(Hotel h) {
@@ -461,16 +513,22 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
             // 1. Going Transport (Departure)
             _buildSectionHeader(
               'Going to ${widget.destination} (${_formatModeName(_effectiveOutboundMode)})',
-              '< ${currency.formatPrice(_maxOutboundTransportBudget)} /person',
+              _customTransportCost != null && _customTransportCost == 0
+                  ? 'Own Transport (Free)'
+                  : '< ${currency.formatPrice(_maxOutboundTransportBudget)} /person',
               _formatModeIcon(_effectiveOutboundMode),
             ),
-            if (_outboundLoaded && !_hasAffordableOutbound && _customTransportCost == null)
-              _buildNoBudgetTransportBanner(currency, isReturn: false),
-            _buildFutureBuilder<List<TransportOption>>(
-              _outboundTransportFuture,
-              (transports) => _buildTransportList(transports, isReturn: false),
-              emptyBuilder: () => _buildNoBudgetTransportBanner(currency, isReturn: false),
-            ),
+            if (_customTransportCost != null && _customTransportCost == 0)
+              _buildOwnTransportCard('Own / Pre-Booked Going Journey (${widget.origin} → ${widget.destination})')
+            else ...[
+              if (_outboundLoaded && !_hasAffordableOutbound)
+                _buildNoBudgetTransportBanner(currency, isReturn: false),
+              _buildFutureBuilder<List<TransportOption>>(
+                _outboundTransportFuture,
+                (transports) => _buildTransportList(transports, isReturn: false),
+                emptyBuilder: () => _buildNoBudgetTransportBanner(currency, isReturn: false),
+              ),
+            ],
 
             const SizedBox(height: 18),
 
@@ -478,16 +536,22 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
             if (_isRoundTripTransport) ...[
               _buildSectionHeader(
                 'Return to ${widget.origin} (${_formatModeName(_effectiveReturnMode)})',
-                '< ${currency.formatPrice(_maxReturnTransportBudget)} /person',
+                _customTransportCost != null && _customTransportCost == 0
+                    ? 'Own Transport (Free)'
+                    : '< ${currency.formatPrice(_maxReturnTransportBudget)} /person',
                 _formatModeIcon(_effectiveReturnMode),
               ),
-              if (_returnLoaded && !_hasAffordableReturn && _customTransportCost == null)
-                _buildNoBudgetTransportBanner(currency, isReturn: true),
-              _buildFutureBuilder<List<TransportOption>>(
-                _returnTransportFuture,
-                (transports) => _buildTransportList(transports, isReturn: true),
-                emptyBuilder: () => _buildNoBudgetTransportBanner(currency, isReturn: true),
-              ),
+              if (_customTransportCost != null && _customTransportCost == 0)
+                _buildOwnTransportCard('Own / Pre-Booked Return Journey (${widget.destination} → ${widget.origin})')
+              else ...[
+                if (_returnLoaded && !_hasAffordableReturn)
+                  _buildNoBudgetTransportBanner(currency, isReturn: true),
+                _buildFutureBuilder<List<TransportOption>>(
+                  _returnTransportFuture,
+                  (transports) => _buildTransportList(transports, isReturn: true),
+                  emptyBuilder: () => _buildNoBudgetTransportBanner(currency, isReturn: true),
+                ),
+              ],
               const SizedBox(height: 18),
             ],
 
@@ -516,7 +580,14 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                   ),
                 ),
               )
-            else ...[
+            else if (_customStayCost != null && _customStayCost == 0) ...[
+              _buildSectionHeader(
+                'Hotels in ${widget.destination}',
+                'Family / Own Stay (Free)',
+                Icons.hotel,
+              ),
+              _buildOwnStayCard(),
+            ] else ...[
               _buildSectionHeader(
                 'Hotels in ${widget.destination}',
                 '< ${currency.formatPrice(_maxNightlyHotelBudget)} /night',
@@ -881,7 +952,8 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
         itemCount: options.length,
         itemBuilder: (context, index) {
           final t = options[index];
-          final isWithin = t.fare <= _maxTransportBudget;
+          final currentLegCap = isReturn ? _maxReturnTransportBudget : _maxOutboundTransportBudget;
+          final isWithin = t.fare <= currentLegCap;
           final isSelected = activeSelected?.id == t.id && _customTransportCost == null;
 
           return InkWell(
@@ -1783,6 +1855,74 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
     );
   }
 
+  Widget _buildOwnTransportCard(String title) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFECFDF5),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFA7F3D0)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.directions_car_rounded, color: Color(0xFF059669), size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13, color: const Color(0xFF065F46)),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Own transport / pre-booked. Rs. 0 allocated from this budget.',
+                  style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF047857)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOwnStayCard() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFECFDF5),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFA7F3D0)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.home_rounded, color: Color(0xFF059669), size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Family Stay / Own Accommodation',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 13, color: const Color(0xFF065F46)),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'No hotel expenses required. Rs. 0 allocated from this budget.',
+                  style: GoogleFonts.poppins(fontSize: 11, color: const Color(0xFF047857)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showEditBudgetSplitDialog(CurrencyProvider currency) {
     final decimals = currency.rate == 1.0 ? 0 : 2;
     final transportCtrl = TextEditingController(
@@ -1798,6 +1938,12 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDlgState) {
+          final tCur = double.tryParse(transportCtrl.text.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+          final sCur = double.tryParse(stayCtrl.text.replaceAll(RegExp(r'[^0-9.]'), '')) ?? 0.0;
+          final tPkr = currency.toPkr(tCur);
+          final sPkr = currency.toPkr(sCur);
+          final remainingPkr = _budget - tPkr - sPkr;
+
           return AlertDialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             title: Row(
@@ -1838,6 +1984,7 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                   TextField(
                     controller: transportCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (_) => setDlgState(() {}),
                     decoration: InputDecoration(
                       labelText: 'Transport Cost (${currency.selectedCurrency})',
                       prefixText: '${currency.symbol} ',
@@ -1850,6 +1997,16 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                     spacing: 6,
                     children: [
                       ActionChip(
+                        label: const Text('Auto Market Split', style: TextStyle(fontSize: 11)),
+                        onPressed: () {
+                          setDlgState(() {
+                            final bool hasFlight = _effectiveOutboundMode == 'flight' || (_effectiveReturnMode == 'flight' && tempRoundTrip);
+                            final defaultT = _budget * (hasFlight ? 0.65 : 0.25);
+                            transportCtrl.text = currency.convertFromPkr(defaultT).toStringAsFixed(decimals);
+                          });
+                        },
+                      ),
+                      ActionChip(
                         label: const Text('Own Car / Booked (0)', style: TextStyle(fontSize: 11)),
                         onPressed: () => setDlgState(() => transportCtrl.text = '0'),
                       ),
@@ -1859,6 +2016,7 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                   TextField(
                     controller: stayCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    onChanged: (_) => setDlgState(() {}),
                     decoration: InputDecoration(
                       labelText: 'Hotel / Stay Cost (${currency.selectedCurrency})',
                       prefixText: '${currency.symbol} ',
@@ -1871,10 +2029,57 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                     spacing: 6,
                     children: [
                       ActionChip(
+                        label: const Text('Auto Market Split', style: TextStyle(fontSize: 11)),
+                        onPressed: () {
+                          setDlgState(() {
+                            final defaultStay = _nightsCount > 0 ? (_budget * 0.35) : 0.0;
+                            stayCtrl.text = currency.convertFromPkr(defaultStay).toStringAsFixed(decimals);
+                          });
+                        },
+                      ),
+                      ActionChip(
                         label: const Text('Family / Own Stay (0)', style: TextStyle(fontSize: 11)),
                         onPressed: () => setDlgState(() => stayCtrl.text = '0'),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: remainingPkr >= 0 ? const Color(0xFFF8FAFC) : const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: remainingPkr >= 0 ? const Color(0xFFE2E8F0) : const Color(0xFFFCA5A5),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Trip Budget:', style: GoogleFonts.poppins(fontSize: 11, color: Colors.black54)),
+                            Text(currency.formatPrice(_budget), style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text('Remaining for Dining & Buffer:', style: GoogleFonts.poppins(fontSize: 11, color: Colors.black54)),
+                            Text(
+                              currency.formatPrice(remainingPkr > 0 ? remainingPkr : 0),
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: remainingPkr >= 0 ? const Color(0xFF059669) : Colors.red,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -1885,8 +2090,17 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                   setState(() {
                     _customTransportCost = null;
                     _customStayCost = null;
+                    _loadAllMatchedOptions(preserveUserPicks: false);
                   });
                   Navigator.pop(ctx);
+                  ScaffoldMessenger.of(this.context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Reset to smart auto split based on market prices.'),
+                      backgroundColor: AppTheme.primaryPurple,
+                      behavior: SnackBarBehavior.floating,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
                 },
                 child: const Text('Auto Reset'),
               ),
@@ -1920,8 +2134,17 @@ class _BudgetAnalysisScreenState extends State<BudgetAnalysisScreen> {
                     _isRoundTripTransport = tempRoundTrip;
                     _customTransportCost = parsedT;
                     _customStayCost = parsedS;
+                    _loadAllMatchedOptions(preserveUserPicks: false);
                   });
                   Navigator.pop(ctx);
+                  ScaffoldMessenger.of(this.context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Budget split updated! Options matched to your budget have been refreshed.'),
+                      backgroundColor: Colors.green,
+                      behavior: SnackBarBehavior.floating,
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryPurple,
